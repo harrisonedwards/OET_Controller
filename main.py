@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from function_generator import FunctionGenerator
 from pump import Pump
 from nikon_control_wrapper import Microscope
-from fluorescenceController import FluorescenceController
+from fluorescence_controller import FluorescenceController
 
 
 class cameraFeed(QtWidgets.QGraphicsView):
@@ -44,6 +44,7 @@ class Window(QtWidgets.QWidget):
             self.microscope = False
 
         self.setWindowTitle('OET System Control')
+        self.dispenseMode = None
 
         # make all of our different widgets
         # self.cameraFeed = cameraFeed()
@@ -78,6 +79,11 @@ class Window(QtWidgets.QWidget):
         self.frequencyDoubleSpinBox.setSuffix('Hz')
         self.frequencyDoubleSpinBox.setFixedWidth(80)
         self.frequencyDoubleSpinBox.setMaximum(100000)
+        self.waveformComboBox = QtWidgets.QComboBox()
+        self.waveformComboBox.addItems(['SIN', 'SQU'])
+        self.fgOutputCombobox = QtWidgets.QComboBox()
+        self.fgOutputCombobox.addItems(['OFF', 'ON'])
+        self.fgOutputCombobox.currentTextChanged.connect(self.changeFunctionGeneratorOutput)
         self.setFunctionGeneratorPushButton = QtWidgets.QPushButton('Set')
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
 
@@ -97,11 +103,25 @@ class Window(QtWidgets.QWidget):
         self.pumpSpeedDoubleSpinBox.setSuffix('ul/min')
         self.pumpSpeedDoubleSpinBox.setMaximum(10000)
         self.pumpSpeedDoubleSpinBox.setFixedWidth(100)
+
         self.pumpAmountLabel = QtWidgets.QLabel(text='Amount')
+        self.pumpAmountRadioButton = QtWidgets.QRadioButton()
+        self.pumpAmountRadioButton.clicked.connect(self.startAmountDispenseMode)
         self.pumpAmountDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.pumpAmountDoubleSpinBox.setSuffix('ul')
         self.pumpAmountDoubleSpinBox.setMaximum(10000)
         self.pumpAmountDoubleSpinBox.setFixedWidth(80)
+
+        self.pumpTimeLabel = QtWidgets.QLabel(text='Time')
+        self.pumpTimeRadioButton = QtWidgets.QRadioButton()
+        self.pumpTimeRadioButton.clicked.connect(self.startTimeDispenseMode)
+        # self.pumpTimeRadioButton.
+        self.pumpTimeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.pumpTimeDoubleSpinBox.setSuffix('min')
+        self.pumpTimeDoubleSpinBox.setMaximum(30 * 60)
+        self.pumpTimeDoubleSpinBox.setSingleStep(0.01)
+        self.pumpTimeRadioButton.click()
+
         self.pumpDispensePushButton = QtWidgets.QPushButton(text='Dispense')
         self.pumpDispensePushButton.clicked.connect(self.pumpDispense)
         self.pumpWithdrawPushButton = QtWidgets.QPushButton(text='Withdraw')
@@ -136,7 +156,9 @@ class Window(QtWidgets.QWidget):
         self.functionGeneratorLayout.addWidget(self.voltageDoubleSpinBox)
         self.functionGeneratorLayout.addWidget(self.frequencyLabel)
         self.functionGeneratorLayout.addWidget(self.frequencyDoubleSpinBox)
+        self.functionGeneratorLayout.addWidget(self.waveformComboBox)
         self.functionGeneratorLayout.addWidget(self.setFunctionGeneratorPushButton)
+        self.functionGeneratorLayout.addWidget(self.fgOutputCombobox)
         self.HBoxLayout.addWidget(self.functionGeneratorGroupBox)
         if not self.fg:
             self.functionGeneratorGroupBox.setEnabled(False)
@@ -157,8 +179,12 @@ class Window(QtWidgets.QWidget):
         self.pumpGroupBox.setLayout(self.pumpLayout)
         self.pumpLayout.addWidget(self.pumpSpeedLabel)
         self.pumpLayout.addWidget(self.pumpSpeedDoubleSpinBox)
+        self.pumpLayout.addWidget(self.pumpAmountRadioButton)
         self.pumpLayout.addWidget(self.pumpAmountLabel)
         self.pumpLayout.addWidget(self.pumpAmountDoubleSpinBox)
+        self.pumpLayout.addWidget(self.pumpTimeRadioButton)
+        self.pumpLayout.addWidget(self.pumpTimeLabel)
+        self.pumpLayout.addWidget(self.pumpTimeDoubleSpinBox)
         self.pumpLayout.addWidget(self.pumpDispensePushButton)
         self.pumpLayout.addWidget(self.pumpWithdrawPushButton)
         self.pumpLayout.addWidget(self.pumpStopPushButton)
@@ -170,24 +196,45 @@ class Window(QtWidgets.QWidget):
 
         self.VBoxLayout.addLayout(self.HBoxLayout)
 
-    def setFunctionGenerator(self):
-        v = self.voltageDoubleSpinBox.value()
-        f = self.frequencyDoubleSpinBox.value()
-        self.fg.set_voltage(v)
-        self.fg.set_frequency(f)
+    def startAmountDispenseMode(self):
+        self.dispenseMode = 'amount'
+        self.pumpTimeDoubleSpinBox.setEnabled(False)
+        self.pumpAmountDoubleSpinBox.setEnabled(True)
+
+    def startTimeDispenseMode(self):
+        self.dispenseMode = 'time'
+        self.pumpAmountDoubleSpinBox.setEnabled(False)
+        self.pumpTimeDoubleSpinBox.setEnabled(True)
+
+    def pumpDispense(self):
+        rate = self.pumpSpeedDoubleSpinBox.value()
+        if self.dispenseMode == 'amount':
+            amt = self.pumpAmountDoubleSpinBox.value()
+        elif self.dispenseMode == 'time':
+            amt = self.pumpTimeDoubleSpinBox.value() * rate
+        self.pump.dispense(amt, rate)
+
+    def pumpWithdraw(self):
+        rate = self.pumpSpeedDoubleSpinBox.value()
+        if self.dispenseMode == 'amount':
+            amt = self.pumpAmountDoubleSpinBox.value()
+        elif self.dispenseMode == 'time':
+            amt = self.pumpTimeDoubleSpinBox.value() * rate
+        self.pump.withdraw(amt, rate)
 
     def pumpStop(self):
         self.pump.halt()
 
-    def pumpDispense(self):
-        amt = self.pumpAmountDoubleSpinBox.value()
-        rate = self.pumpSpeedDoubleSpinBox.value()
-        self.pump.dispense(amt, rate)
+    def changeFunctionGeneratorOutput(self, text):
+        self.fg.change_output(text)
 
-    def pumpWithdraw(self):
-        amt = self.pumpAmountDoubleSpinBox.value()
-        rate = self.pumpSpeedDoubleSpinBox.value()
-        self.pump.withdraw(amt, rate)
+    def setFunctionGenerator(self):
+        v = self.voltageDoubleSpinBox.value()
+        f = self.frequencyDoubleSpinBox.value()
+        w = self.waveformComboBox.currentText()
+        self.fg.set_voltage(v)
+        self.fg.set_frequency(f)
+        self.fg.set_waveform(w)
 
     def changeOETPattern(self):
         pass

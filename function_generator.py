@@ -11,6 +11,7 @@ class FunctionGenerator():
             print('successfully connected to function generator')
         else:
             raise Exception('failed to connect to function generator')
+        self.change_output('OFF')
 
     def set_voltage(self, voltage):
         self.connection.write(f'SOURce:VOLTage:LEVel:IMMediate:AMPLitude {voltage}')
@@ -21,6 +22,16 @@ class FunctionGenerator():
         self.connection.write(f'SOURce:FREQuency {frequency}')
         ret = self.connection.query('FREQ?')
         print(f'frequency set to {ret}')
+
+    def set_waveform(self, waveform):
+        self.connection.write(f'FUNC {waveform}')
+        ret = self.connection.query('FUNC?')
+        print(f'waveform set to {ret}')
+
+    def change_output(self, output):
+        self.connection.write(f'OUTP {output}')
+        ret = self.connection.query('OUTP?')
+        print(f'function generator output: {ret}')
 
 
 if __name__ == '__main__':
