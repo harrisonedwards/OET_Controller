@@ -112,6 +112,8 @@ class Microscope():
         print('attempting connection to microscope...')
         if ret != 0:
             raise Exception('failed to connect')
+        else:
+            print('connected to microscope')
 
         # print('accessories mask:', accessories_mask.value)
         # print('connection error message:', error_message.value)

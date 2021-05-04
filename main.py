@@ -4,18 +4,32 @@ from function_generator import FunctionGenerator
 from pump import Pump
 from nikon_control_wrapper import Microscope
 from fluorescence_controller import FluorescenceController
+from camera import ShowVideo
+from PyQt5.QtCore import QThread
 
 
-class cameraFeed(QtWidgets.QGraphicsView):
-    photoClicked = QtCore.pyqtSignal(QtCore.QPoint)
-    photoReleased = QtCore.pyqtSignal(QtCore.QPoint)
+class ImageViewer(QtWidgets.QWidget):
 
-    def __init__(self):
-        super(cameraFeed, self).__init__()
-        self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(30, 30, 30)))
+    def __init__(self, parent=None):
+        super(ImageViewer, self).__init__(parent)
+        self.image = QtGui.QImage()
+        self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.drawImage(0, 0, self.image)
+        self.image = QtGui.QImage()
+
+    @QtCore.pyqtSlot(QtGui.QImage)
+    def setImage(self, image):
+        # if image.isNull():
+        self.image = image
+        self.update()
 
 
 class Window(QtWidgets.QWidget):
+    start_video_signal = QtCore.pyqtSignal()
+
     def __init__(self):
         super(Window, self).__init__()
 
@@ -46,8 +60,8 @@ class Window(QtWidgets.QWidget):
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
 
-        # make all of our different widgets
-        # self.cameraFeed = cameraFeed()
+
+
         # self.changeOETPatternPushbutton = QtWidgets.QPushButton(text='Change OET Pattern')
         # self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
 
@@ -131,7 +145,6 @@ class Window(QtWidgets.QWidget):
 
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout(self)
-        # self.VBoxLayout.addWidget(self.cameraFeed)
 
         self.HBoxLayout = QtWidgets.QHBoxLayout()
         self.HBoxLayout.setAlignment(QtCore.Qt.AlignCenter)
@@ -194,7 +207,22 @@ class Window(QtWidgets.QWidget):
 
         # self.HBoxLayout.addWidget(self.changeOETPatternPushbutton)
 
+        self.image_viewer = ImageViewer()
+
+        self.vid = ShowVideo()
+        self.video_input_thread = QThread()
+        self.video_input_thread.start()
+        self.vid.moveToThread(self.video_input_thread)
+
+        self.vid.VideoSignal.connect(self.image_viewer.setImage)
+
+        self.VBoxLayout.addWidget(self.image_viewer)
         self.VBoxLayout.addLayout(self.HBoxLayout)
+
+        self.showMaximized()
+        # connect to the video thread and start the video
+        self.start_video_signal.connect(self.vid.startVideo)
+        self.start_video_signal.emit()
 
     def startAmountDispenseMode(self):
         self.dispenseMode = 'amount'
