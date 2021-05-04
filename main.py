@@ -4,11 +4,12 @@ from function_generator import FunctionGenerator
 from pump import Pump
 from nikon_control_wrapper import Microscope
 from fluorescence_controller import FluorescenceController
-from camera import ShowVideo
+from camera import Camera
 from PyQt5.QtCore import QThread
 
 
 class ImageViewer(QtWidgets.QWidget):
+    resize_event_signal = QtCore.pyqtSignal(QtCore.QSize)
 
     def __init__(self, parent=None):
         super(ImageViewer, self).__init__(parent)
@@ -22,7 +23,6 @@ class ImageViewer(QtWidgets.QWidget):
 
     @QtCore.pyqtSlot(QtGui.QImage)
     def setImage(self, image):
-        # if image.isNull():
         self.image = image
         self.update()
 
@@ -32,9 +32,14 @@ class ImageViewer(QtWidgets.QWidget):
     def heightForWidth(self, width):
         return width * 2048//2060
 
+    def resizeEvent(self, event):
+        print('imviewer resized')
+        self.resize_event_signal.emit(self.size())
+
 
 class Window(QtWidgets.QWidget):
     start_video_signal = QtCore.pyqtSignal()
+
 
     def __init__(self):
         super(Window, self).__init__()
@@ -216,13 +221,13 @@ class Window(QtWidgets.QWidget):
 
         self.image_viewer = ImageViewer()
 
-        self.vid = ShowVideo()
+        self.camera = Camera()
+        self.camera_thread = QThread()
+        self.camera_thread.start()
+        self.camera.moveToThread(self.camera_thread)
+        self.camera.VideoSignal.connect(self.image_viewer.setImage)
 
-        self.video_input_thread = QThread()
-        self.video_input_thread.start()
-        self.vid.moveToThread(self.video_input_thread)
-
-        self.vid.VideoSignal.connect(self.image_viewer.setImage)
+        self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
 
         # self.VBoxLayout.setAlignment(QtCore.Qt.AlignBottom)
         self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
@@ -233,8 +238,10 @@ class Window(QtWidgets.QWidget):
 
         # self.showMaximized()
         # connect to the video thread and start the video
-        self.start_video_signal.connect(self.vid.startVideo)
+        self.start_video_signal.connect(self.camera.startVideo)
         self.start_video_signal.emit()
+
+
 
     def startAmountDispenseMode(self):
         self.dispenseMode = 'amount'
