@@ -13,6 +13,7 @@ class ShowVideo(QtCore.QObject):
         mm_directory = 'C:\\Program Files\\Micro-Manager-2.0gamma'
         sys.path.append(mm_directory)
         os.chdir(mm_directory)
+
         import MMCorePy
         self.mmc = MMCorePy.CMMCore()
         self.mmc.setCircularBufferMemoryFootprint(100)
@@ -20,7 +21,10 @@ class ShowVideo(QtCore.QObject):
         self.mmc.loadDevice('camera', 'PCO_Camera', 'pco_camera')
         self.mmc.initializeAllDevices()
         self.mmc.setCameraDevice('camera')
-
+        properties = self.mmc.getDevicePropertyNames('camera')
+        for p in properties:
+            print(p, self.mmc.getProperty('camera', p), self.mmc.getAllowedPropertyValues('camera', p))
+        self.mmc.setProperty('camera', 'Exposure', 100)
         self.run_video = True
         # self.window_size = window_size
 
@@ -42,13 +46,12 @@ class ShowVideo(QtCore.QObject):
                     img = self.mmc.getLastImage()
                     # not necessary at the moment
                     # self.vid_process_signal.emit(img.copy())
-
                     height, width = img.shape
                     qt_image = QtGui.QImage(img.data,
                                             width,
                                             height,
                                             img.strides[0],
-                                            QtGui.QImage.Format_RGB888)
+                                            QtGui.QImage.Format_Grayscale16)
                     # qt_image = qt_image.scaled(self.window_size)
                     self.VideoSignal.emit(qt_image)
                 else:

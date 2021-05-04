@@ -26,6 +26,12 @@ class ImageViewer(QtWidgets.QWidget):
         self.image = image
         self.update()
 
+    def sizeHint(self):
+        return QtCore.QSize(2060//3, 2048//3)
+
+    def heightForWidth(self, width):
+        return width * 2048//2060
+
 
 class Window(QtWidgets.QWidget):
     start_video_signal = QtCore.pyqtSignal()
@@ -66,6 +72,7 @@ class Window(QtWidgets.QWidget):
         # self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
 
         # MICROSCOPE
+        # TODO: query all of these positions and set them correctly initially
         self.filter_positions = ['DAPI', 'GFP', 'Red', 'Brightfield', 'PE-Cy7', 'empty']
         self.objectives = ['2x', '4x', '10x', '20x', '40x', 'empty']
         self.magnificationLabel = QtWidgets.QLabel(text='Magnification:')
@@ -210,16 +217,21 @@ class Window(QtWidgets.QWidget):
         self.image_viewer = ImageViewer()
 
         self.vid = ShowVideo()
+
         self.video_input_thread = QThread()
         self.video_input_thread.start()
         self.vid.moveToThread(self.video_input_thread)
 
         self.vid.VideoSignal.connect(self.image_viewer.setImage)
 
+        # self.VBoxLayout.setAlignment(QtCore.Qt.AlignBottom)
+        self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
+
         self.VBoxLayout.addWidget(self.image_viewer)
+
         self.VBoxLayout.addLayout(self.HBoxLayout)
 
-        self.showMaximized()
+        # self.showMaximized()
         # connect to the video thread and start the video
         self.start_video_signal.connect(self.vid.startVideo)
         self.start_video_signal.emit()
@@ -291,4 +303,5 @@ if __name__ == '__main__':
     window = Window()
     # window.setGeometry(500, 300, 800, 600)
     window.show()
+    window.activateWindow()
     sys.exit(app.exec_())
