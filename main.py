@@ -47,25 +47,25 @@ class Window(QtWidgets.QWidget):
             self.fg = FunctionGenerator()
         except Exception as e:
             print(f'Function generator control not available: {e}')
-            self.fg = None
+            self.fg = False
 
         try:
             self.pump = Pump()
         except Exception as e:
             print(f'Pump control not available: {e}')
-            self.pump = None
+            self.pump = False
 
         try:
             self.fc = FluorescenceController()
         except Exception as e:
             print(f'Fluorescence control not available: {e}')
-            self.fc = None
+            self.fc = False
 
         try:
             self.microscope = Microscope()
         except Exception as e:
             print(f'Microscope control not available: {e}')
-            self.microscope = None
+            self.microscope = False
 
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
@@ -81,9 +81,9 @@ class Window(QtWidgets.QWidget):
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
         self.magnificationComboBoxWidget.addItems(self.objectives)
         self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
-        self.zAxisLabel = QtWidgets.QLabel(text='Z:')
-        self.zAxisPositionDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.zAxisPositionDoubleSpinBox.valueChanged.connect(self.setZAxisPosition)
+        # self.zAxisLabel = QtWidgets.QLabel(text='Z:')
+        # self.zAxisPositionDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        # self.zAxisPositionDoubleSpinBox.valueChanged.connect(self.setZAxisPosition)
         self.filterLabel = QtWidgets.QLabel(text='Filter:')
         self.filterComboBoxWidget = QtWidgets.QComboBox()
         self.filterComboBoxWidget.addItems(self.filter_positions)
@@ -93,6 +93,7 @@ class Window(QtWidgets.QWidget):
         self.diaPushButton.clicked.connect(self.toggleDia)
         self.cameraExposureLabel = QtWidgets.QLabel('Exposure:')
         self.cameraExposureDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.cameraExposureDoubleSpinBox.setSuffix('ms')
         self.cameraExposureDoubleSpinBox.setMaximum(5000)
         self.cameraExposureDoubleSpinBox.setMinimum(5)
         self.cameraExposureDoubleSpinBox.setSingleStep(100)
@@ -125,7 +126,9 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceIntensityDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.changeFluorescenceIntensity)
         self.fluorescenceIntensityDoubleSpinBox.setSuffix('%')
+        self.fluorescenceIntensityDoubleSpinBox.setMinimum(5)
         self.fluorescenceIntensityDoubleSpinBox.setMaximum(100)
+        self.fluorescenceIntensityDoubleSpinBox.setSingleStep(5)
         self.fluorescenceShutterLabel = QtWidgets.QLabel('Shutter:')
         self.fluorescenceShutterCheckBox = QtWidgets.QCheckBox()
         self.fluorescenceShutterCheckBox.clicked.connect(self.changeFluorShutter)
@@ -175,9 +178,10 @@ class Window(QtWidgets.QWidget):
         self.microscopeLayout.addWidget(self.magnificationComboBoxWidget)
         self.microscopeLayout.addWidget(self.filterLabel)
         self.microscopeLayout.addWidget(self.filterComboBoxWidget)
-        self.microscopeLayout.addWidget(self.zAxisLabel)
-        self.microscopeLayout.addWidget(self.zAxisPositionDoubleSpinBox)
+        # self.microscopeLayout.addWidget(self.zAxisLabel)
+        # self.microscopeLayout.addWidget(self.zAxisPositionDoubleSpinBox)
         self.microscopeLayout.addWidget(self.diaPushButton)
+        self.microscopeLayout.addWidget(self.cameraExposureLabel)
         self.microscopeLayout.addWidget(self.cameraExposureDoubleSpinBox)
         self.HBoxLayout.addWidget(self.microscopeGroupBox)
         if not self.microscope:
@@ -194,7 +198,7 @@ class Window(QtWidgets.QWidget):
         self.functionGeneratorLayout.addWidget(self.setFunctionGeneratorPushButton)
         self.functionGeneratorLayout.addWidget(self.fgOutputCombobox)
         self.HBoxLayout.addWidget(self.functionGeneratorGroupBox)
-        if self.fg is None:
+        if not self.fg:
             self.functionGeneratorGroupBox.setEnabled(False)
 
         self.fluorescenceGroupBox = QtWidgets.QGroupBox('Fluorescence')
