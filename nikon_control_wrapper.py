@@ -146,13 +146,21 @@ class Microscope():
 
     def set_turret_pos(self, pos, t1shutter, diashutter):
         status = self.get_status()
-        print(status.iTURRET1POS, status.iTURRET1SHUTTER, status.iSHUTTER_DIA)
+        print('turret pos:', status.iTURRET1POS,
+              'turret shutter:', status.iTURRET1SHUTTER,
+              'dia status:', status.iSHUTTER_DIA)
         data_in = MIC_Data()
         data_in.uiDataUsageMask = 0x0000000000000040 | 0x0000000000000080 | 0x0000000000010000 | 0x0000000000000020
         data_in.iTURRET1POS = pos
         data_in.iTURRET1SHUTTER = t1shutter
         data_in.iSHUTTER_DIA = diashutter
         data_in.iNOSEPIECE = 5
+        self.issue_command(data_in)
+
+    def set_dia_shutter(self, state):
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000000010000
+        data_in.iSHUTTER_DIA = state
         self.issue_command(data_in)
 
     def set_filter(self, filter):
@@ -167,7 +175,7 @@ class Microscope():
         data_in.iNOSEPIECE = objective
         self.issue_command(data_in)
 
-    def set_shutter(self, state):
+    def set_turret_shutter(self, state):
         if state == 2: state = 1
         # print('state', state)
         data_in = MIC_Data()

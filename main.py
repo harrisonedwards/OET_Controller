@@ -27,19 +27,18 @@ class ImageViewer(QtWidgets.QWidget):
         self.update()
 
     def sizeHint(self):
-        return QtCore.QSize(2060//3, 2048//3)
+        return QtCore.QSize(2060 // 3, 2048 // 3)
 
     def heightForWidth(self, width):
-        return width * 2048//2060
+        return width * 2048 // 2060
 
     def resizeEvent(self, event):
-        print('imviewer resized')
         self.resize_event_signal.emit(self.size())
 
 
 class Window(QtWidgets.QWidget):
     start_video_signal = QtCore.pyqtSignal()
-
+    set_camera_expsure_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self):
         super(Window, self).__init__()
@@ -48,30 +47,28 @@ class Window(QtWidgets.QWidget):
             self.fg = FunctionGenerator()
         except Exception as e:
             print(f'Function generator control not available: {e}')
-            self.fg = False
+            self.fg = None
 
         try:
             self.pump = Pump()
         except Exception as e:
             print(f'Pump control not available: {e}')
-            self.pump = False
+            self.pump = None
 
         try:
             self.fc = FluorescenceController()
         except Exception as e:
             print(f'Fluorescence control not available: {e}')
-            self.fc = False
+            self.fc = None
 
         try:
             self.microscope = Microscope()
         except Exception as e:
             print(f'Microscope control not available: {e}')
-            self.microscope = False
+            self.microscope = None
 
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
-
-
 
         # self.changeOETPatternPushbutton = QtWidgets.QPushButton(text='Change OET Pattern')
         # self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
@@ -91,6 +88,16 @@ class Window(QtWidgets.QWidget):
         self.filterComboBoxWidget = QtWidgets.QComboBox()
         self.filterComboBoxWidget.addItems(self.filter_positions)
         self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
+        self.diaPushButton = QtWidgets.QPushButton('DIA')
+        self.diaPushButton.setCheckable(True)
+        self.diaPushButton.clicked.connect(self.toggleDia)
+        self.cameraExposureLabel = QtWidgets.QLabel('Exposure:')
+        self.cameraExposureDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.cameraExposureDoubleSpinBox.setMaximum(5000)
+        self.cameraExposureDoubleSpinBox.setMinimum(5)
+        self.cameraExposureDoubleSpinBox.setSingleStep(100)
+        self.cameraExposureDoubleSpinBox.setValue(200)
+        self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
 
         # FUNCTION GENERATOR
         self.voltageLabel = QtWidgets.QLabel(text='Voltage:')
@@ -121,7 +128,7 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceIntensityDoubleSpinBox.setMaximum(100)
         self.fluorescenceShutterLabel = QtWidgets.QLabel('Shutter:')
         self.fluorescenceShutterCheckBox = QtWidgets.QCheckBox()
-        self.fluorescenceShutterCheckBox.clicked.connect(self.changeShutter)
+        self.fluorescenceShutterCheckBox.clicked.connect(self.changeFluorShutter)
 
         # PUMP
         self.pumpSpeedLabel = QtWidgets.QLabel(text='Rate')
@@ -170,6 +177,8 @@ class Window(QtWidgets.QWidget):
         self.microscopeLayout.addWidget(self.filterComboBoxWidget)
         self.microscopeLayout.addWidget(self.zAxisLabel)
         self.microscopeLayout.addWidget(self.zAxisPositionDoubleSpinBox)
+        self.microscopeLayout.addWidget(self.diaPushButton)
+        self.microscopeLayout.addWidget(self.cameraExposureDoubleSpinBox)
         self.HBoxLayout.addWidget(self.microscopeGroupBox)
         if not self.microscope:
             self.microscopeGroupBox.setEnabled(False)
@@ -185,7 +194,7 @@ class Window(QtWidgets.QWidget):
         self.functionGeneratorLayout.addWidget(self.setFunctionGeneratorPushButton)
         self.functionGeneratorLayout.addWidget(self.fgOutputCombobox)
         self.HBoxLayout.addWidget(self.functionGeneratorGroupBox)
-        if not self.fg:
+        if self.fg is None:
             self.functionGeneratorGroupBox.setEnabled(False)
 
         self.fluorescenceGroupBox = QtWidgets.QGroupBox('Fluorescence')
@@ -227,6 +236,7 @@ class Window(QtWidgets.QWidget):
         self.camera.moveToThread(self.camera_thread)
         self.camera.VideoSignal.connect(self.image_viewer.setImage)
 
+        self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
         self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
 
         # self.VBoxLayout.setAlignment(QtCore.Qt.AlignBottom)
@@ -240,8 +250,6 @@ class Window(QtWidgets.QWidget):
         # connect to the video thread and start the video
         self.start_video_signal.connect(self.camera.startVideo)
         self.start_video_signal.emit()
-
-
 
     def startAmountDispenseMode(self):
         self.dispenseMode = 'amount'
@@ -283,12 +291,6 @@ class Window(QtWidgets.QWidget):
         self.fg.set_frequency(f)
         self.fg.set_waveform(w)
 
-    def changeOETPattern(self):
-        pass
-
-    def changeFluorescenceIntensity(self, value):
-        self.fc.change_intensity(value)
-
     def changeMagnification(self, text):
         idx_dict = {k: v for k, v in zip(self.objectives, range(1, 7))}
         self.microscope.set_objective(idx_dict[text])
@@ -297,12 +299,30 @@ class Window(QtWidgets.QWidget):
         idx_dict = {k: v for k, v in zip(self.filter_positions, range(1, 7))}
         self.microscope.set_filter(idx_dict[text])
 
+    def toggleDia(self):
+        state = self.diaPushButton.isChecked()
+        if state:
+            self.diaPushButton.setStyleSheet('background-color : lightblue')
+        else:
+            self.diaPushButton.setStyleSheet('background-color : lightgrey')
+        self.microscope.set_dia_shutter(state)
+
+    def setCameraExposure(self, exposure):
+        self.set_camera_expsure_signal.emit(exposure)
+
     def setZAxisPosition(self, value):
         self.microscope.set_z(value)
 
-    def changeShutter(self):
+    def changeFluorescenceIntensity(self, value):
+        self.fc.change_intensity(value)
+
+    def changeFluorShutter(self):
         state = self.fluorescenceShutterCheckBox.checkState()
-        self.microscope.set_shutter(state)
+        print('microscope shutter:', state)
+        self.microscope.set_turret_shutter(state)
+
+    def changeOETPattern(self):
+        pass
 
 
 if __name__ == '__main__':

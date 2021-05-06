@@ -1,5 +1,5 @@
 import os, sys, time
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 
 class Camera(QtCore.QObject):
@@ -9,7 +9,7 @@ class Camera(QtCore.QObject):
 
     def __init__(self, parent=None):
         super(Camera, self).__init__(parent)
-        self.exposure = 100
+        self.exposure = 200
 
         # start micromanager and grab camera
         mm_directory = 'C:\\Program Files\\Micro-Manager-2.0gamma'
@@ -37,8 +37,14 @@ class Camera(QtCore.QObject):
 
     @QtCore.pyqtSlot(QtCore.QSize)
     def resize_slot(self, size):
-        print('caught resize')
-        self.window_size = size
+        pass
+        # self.window_size = size
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def set_exposure_slot(self, exposure):
+        self.exposure = exposure
+        self.mmc.setProperty('camera', 'Exposure', self.exposure)
+        print('exposure set:', self.exposure)
 
     @QtCore.pyqtSlot()
     def startVideo(self):
@@ -50,6 +56,7 @@ class Camera(QtCore.QObject):
             while True:
                 # TODO fix, if possible
                 time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
+                QtWidgets.QApplication.processEvents()
                 if self.mmc.getRemainingImageCount() > 0:
                     img = self.mmc.getLastImage()
                     # not necessary at the moment

@@ -85,6 +85,7 @@ class FluorescenceController():
         cmd_string = 'ip=' + ',' * (self.lamp_index - 1) + str(int(intensity))
         self.send_receive(cmd_string)
         self.send_receive('ip?')
+        self.send_receive('on=a')
 
     def turn_all_on(self):
         self.send_receive('ip=' + ','.join([str(self.current_intensity) for _ in range(6)]))
