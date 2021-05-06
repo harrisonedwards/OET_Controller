@@ -4,10 +4,14 @@ import serial
 class Pump:
 
     def __init__(self):
-        self.ser = self.connect()
+        try:
+            self.ser = self.connect()
+        except Exception as e:
+            print('failed to connect to pump...')
+            self.ser = None
 
     def __del__(self):
-        if self.ser != None:
+        if self.ser is not None:
             print('closing pump connection...')
             self.ser.close()
 

@@ -7,7 +7,11 @@ DEFAULT_INTENSITY = 50
 class FluorescenceController():
 
     def __init__(self, parent=None):
-        self.ser = self.get_connection()
+        try:
+            self.ser = self.get_connection()
+        except Exception as e:
+            print('failed to connect to fluorescence controller')
+            self.ser = None
         # print(self.send_receive('lh?'))
         # print(self.send_receive(('ip=' + ','.join(['500' for i in range(4)]))))
         self.lamp_index = 0
@@ -16,7 +20,8 @@ class FluorescenceController():
 
     def __del__(self):
         print('closing fluorescence controller connection...')
-        self.ser.close()
+        if self.ser is not None:
+            self.ser.close()
 
     def get_connection(self):
         possible_coms = range(1, 11)

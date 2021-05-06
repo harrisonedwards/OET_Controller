@@ -124,11 +124,11 @@ class Window(QtWidgets.QWidget):
         # FLUORESCENCE CONTROLLER
         self.fluorescenceIntensityLabel = QtWidgets.QLabel(text='Intensity')
         self.fluorescenceIntensityDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.changeFluorescenceIntensity)
         self.fluorescenceIntensityDoubleSpinBox.setSuffix('%')
         self.fluorescenceIntensityDoubleSpinBox.setMinimum(5)
         self.fluorescenceIntensityDoubleSpinBox.setMaximum(100)
         self.fluorescenceIntensityDoubleSpinBox.setSingleStep(5)
+        self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.changeFluorescenceIntensity)
         self.fluorescenceShutterLabel = QtWidgets.QLabel('Shutter:')
         self.fluorescenceShutterCheckBox = QtWidgets.QCheckBox()
         self.fluorescenceShutterCheckBox.clicked.connect(self.changeFluorShutter)
