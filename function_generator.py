@@ -13,6 +13,10 @@ class FunctionGenerator():
             raise Exception('failed to connect to function generator')
         self.change_output('OFF')
 
+    def __del__(self):
+        print('closing function generator connection...')
+        self.connection.close()
+
     def set_voltage(self, voltage):
         self.connection.write(f'SOURce:VOLTage:LEVel:IMMediate:AMPLitude {voltage}')
         ret = self.connection.query('VOLT?')

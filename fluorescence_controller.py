@@ -8,11 +8,15 @@ class FluorescenceController():
 
     def __init__(self, parent=None):
         self.ser = self.get_connection()
-        print(self.send_receive('lh?'))
-        print(self.send_receive(('ip=' + ','.join(['500' for i in range(4)]))))
+        # print(self.send_receive('lh?'))
+        # print(self.send_receive(('ip=' + ','.join(['500' for i in range(4)]))))
         self.lamp_index = 0
         self.current_intensity = DEFAULT_INTENSITY
         self.turn_all_off()
+
+    def __del__(self):
+        print('closing fluorescence controller connection...')
+        self.ser.close()
 
     def get_connection(self):
         possible_coms = range(1, 11)

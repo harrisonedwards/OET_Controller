@@ -6,6 +6,10 @@ class Pump:
     def __init__(self):
         self.ser = self.connect()
 
+    def __del__(self):
+        print('closing pump connection...')
+        self.ser.close()
+
     def connect(self):
         for i in range(1,10):
             try:

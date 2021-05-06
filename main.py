@@ -104,7 +104,7 @@ class Window(QtWidgets.QWidget):
         self.frequencyDoubleSpinBox.setSingleStep(100)
         self.frequencyDoubleSpinBox.setSuffix('Hz')
         self.frequencyDoubleSpinBox.setFixedWidth(80)
-        self.frequencyDoubleSpinBox.setMaximum(100000)
+        self.frequencyDoubleSpinBox.setMaximum(100000000)
         self.waveformComboBox = QtWidgets.QComboBox()
         self.waveformComboBox.addItems(['SIN', 'SQU'])
         self.fgOutputCombobox = QtWidgets.QComboBox()
