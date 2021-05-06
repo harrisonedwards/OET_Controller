@@ -7,8 +7,9 @@ class Pump:
         self.ser = self.connect()
 
     def __del__(self):
-        print('closing pump connection...')
-        self.ser.close()
+        if self.ser != None:
+            print('closing pump connection...')
+            self.ser.close()
 
     def connect(self):
         for i in range(1,10):
@@ -22,7 +23,7 @@ class Pump:
                         print('connected to pump')
                         return s
             except Exception as e:
-                pass
+                print(e)
         raise Exception('failed to connect')
 
 

@@ -5,17 +5,22 @@ class FunctionGenerator():
 
     def __init__(self):
         # hard coded for now...for some reason ResourceManager.list_resources() hangs indefinitely
-        self.connection = visa.ResourceManager().get_instrument('USB0::0x0957::0x0407::MY44008868::0::INSTR')
+        try:
+            self.connection = visa.ResourceManager().get_instrument('USB0::0x0957::0x0407::MY44008868::0::INSTR')
+            if 'Agilent Technologies,33220A,MY44008868,2.00-2.00-22-2' in self.connection.query('*IDN?'):
+                print('successfully connected to function generator')
+                self.change_output('OFF')
+            else:
+                raise Exception('failed to connect to function generator')
+        except Exception as e:
+            print('failed to connect to function generator')
+            self.connection = None
         # self.connection.write('*RST')
-        if 'Agilent Technologies,33220A,MY44008868,2.00-2.00-22-2' in self.connection.query('*IDN?'):
-            print('successfully connected to function generator')
-        else:
-            raise Exception('failed to connect to function generator')
-        self.change_output('OFF')
 
     def __del__(self):
-        print('closing function generator connection...')
-        self.connection.close()
+        if self.connection != None:
+            print('closing function generator connection...')
+            self.connection.close()
 
     def set_voltage(self, voltage):
         self.connection.write(f'SOURce:VOLTage:LEVel:IMMediate:AMPLitude {voltage}')

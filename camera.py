@@ -4,6 +4,7 @@ from PyQt5 import QtCore, QtGui
 
 class Camera(QtCore.QObject):
     VideoSignal = QtCore.pyqtSignal(QtGui.QImage)
+
     # vid_process_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self, parent=None):
@@ -17,7 +18,7 @@ class Camera(QtCore.QObject):
 
         import MMCorePy
         self.mmc = MMCorePy.CMMCore()
-        self.mmc.setCircularBufferMemoryFootprint(500)
+        self.mmc.setCircularBufferMemoryFootprint(1000)
         print('initializing camera...')
         self.mmc.loadDevice('camera', 'PCO_Camera', 'pco_camera')
         self.mmc.initializeAllDevices()
@@ -39,7 +40,6 @@ class Camera(QtCore.QObject):
         print('caught resize')
         self.window_size = size
 
-
     @QtCore.pyqtSlot()
     def startVideo(self):
         while self.run_video:
@@ -49,7 +49,7 @@ class Camera(QtCore.QObject):
             count = 0
             while True:
                 # TODO fix, if possible
-                time.sleep(1/self.exposure + .01) # add extra time, see later if we can increase performance later
+                time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
                 if self.mmc.getRemainingImageCount() > 0:
                     img = self.mmc.getLastImage()
                     # not necessary at the moment
