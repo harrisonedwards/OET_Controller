@@ -1,7 +1,6 @@
 import os, sys, time
 from PyQt5 import QtCore, QtGui, QtWidgets
 import cv2
-import matplotlib.pyplot as plt
 
 class Camera(QtCore.QObject):
     VideoSignal = QtCore.pyqtSignal(QtGui.QImage)

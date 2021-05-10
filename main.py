@@ -5,6 +5,7 @@ from pump import Pump
 from nikon_control_wrapper import Microscope
 from fluorescence_controller import FluorescenceController
 from camera import Camera
+from stage import Stage
 from PyQt5.QtCore import QThread
 
 
@@ -68,6 +69,12 @@ class Window(QtWidgets.QWidget):
             self.fc = False
 
         try:
+            self.stage = Stage()
+        except Exception as e:
+            print(f'Stage not available: {e}')
+            self.stage = False
+
+        try:
             self.microscope = Microscope()
         except Exception as e:
             print(f'Microscope control not available: {e}')
@@ -75,7 +82,7 @@ class Window(QtWidgets.QWidget):
 
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
-
+        self.setFocusPolicy(QtCore.Qt.NoFocus)
         # self.changeOETPatternPushbutton = QtWidgets.QPushButton(text='Change OET Pattern')
         # self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
 
@@ -87,6 +94,15 @@ class Window(QtWidgets.QWidget):
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
         self.magnificationComboBoxWidget.addItems(self.objectives)
         self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
+        self.magnificationComboBoxWidget.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.stageStepSizeLabel = QtWidgets.QLabel('Step Size:')
+        self.stageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.stageStepSizeDoubleSpinBox.setSingleStep(50)
+        self.stageStepSizeDoubleSpinBox.setMinimum(10)
+        self.stageStepSizeDoubleSpinBox.setDecimals(0)
+        self.stageStepSizeDoubleSpinBox.setMaximum(100000)
+
+        self.stageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_step_size)
         # self.zAxisLabel = QtWidgets.QLabel(text='Z:')
         # self.zAxisPositionDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         # self.zAxisPositionDoubleSpinBox.valueChanged.connect(self.setZAxisPosition)
@@ -94,6 +110,7 @@ class Window(QtWidgets.QWidget):
         self.filterComboBoxWidget = QtWidgets.QComboBox()
         self.filterComboBoxWidget.addItems(self.filter_positions)
         self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
+        self.filterComboBoxWidget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.diaPushButton = QtWidgets.QPushButton('DIA')
         self.diaPushButton.setCheckable(True)
         self.diaPushButton.clicked.connect(self.toggleDia)
@@ -104,6 +121,7 @@ class Window(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.setMinimum(5)
         self.cameraExposureDoubleSpinBox.setSingleStep(100)
         self.cameraExposureDoubleSpinBox.setValue(200)
+        self.cameraExposureDoubleSpinBox.setFocusPolicy(QtCore.Qt.NoFocus)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
 
         # FUNCTION GENERATOR
@@ -184,8 +202,11 @@ class Window(QtWidgets.QWidget):
         self.microscopeLayout.addWidget(self.magnificationComboBoxWidget)
         self.microscopeLayout.addWidget(self.filterLabel)
         self.microscopeLayout.addWidget(self.filterComboBoxWidget)
+        self.microscopeLayout.addWidget(self.stageStepSizeLabel)
+        self.microscopeLayout.addWidget(self.stageStepSizeDoubleSpinBox)
         # self.microscopeLayout.addWidget(self.zAxisLabel)
         # self.microscopeLayout.addWidget(self.zAxisPositionDoubleSpinBox)
+
         self.microscopeLayout.addWidget(self.diaPushButton)
         self.microscopeLayout.addWidget(self.cameraExposureLabel)
         self.microscopeLayout.addWidget(self.cameraExposureDoubleSpinBox)
@@ -261,7 +282,27 @@ class Window(QtWidgets.QWidget):
         self.showMaximized()
         # connect to the video thread and start the video
         self.start_video_signal.connect(self.camera.startVideo)
+        self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)
         self.start_video_signal.emit()
+
+    def setChildrenFocusPolicy(self, policy):
+        def recursiveSetChildFocusPolicy(parentQWidget):
+            for childQWidget in parentQWidget.findChildren(QtWidgets.QWidget):
+                childQWidget.setFocusPolicy(policy)
+                recursiveSetChildFocusPolicy(childQWidget)
+        recursiveSetChildFocusPolicy(self)
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == QtCore.Qt.Key_Up:
+            self.stage.step('u')
+        elif key == QtCore.Qt.Key_Left:
+            self.stage.step('l')
+        elif key == QtCore.Qt.Key_Right:
+            self.stage.step('r')
+        elif key == QtCore.Qt.Key_Down:
+            self.stage.step('d')
+
 
     def startAmountDispenseMode(self):
         self.dispenseMode = 'amount'

@@ -99,9 +99,15 @@ class FluorescenceController():
         self.send_receive('on=a')
         self.send_receive('on?')
 
+    # def flush_and_close(self):
+    #     print('CLOSING')
+    #     del self
+
+
 if __name__ == '__main__':
     fluorescence = FluorescenceController()
-    fluorescence.turn_led_on()
+    fluorescence.turn_all_off()
+    # fluorescence.flush_and_close()
     # parity = serial.PARITY_NONE
     # ser = serial.Serial('COM3', 19200, timeout=.25,
     #                     parity=parity)
