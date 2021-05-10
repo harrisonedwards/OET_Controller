@@ -82,7 +82,6 @@ class Window(QtWidgets.QWidget):
 
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
-        self.setFocusPolicy(QtCore.Qt.NoFocus)
         # self.changeOETPatternPushbutton = QtWidgets.QPushButton(text='Change OET Pattern')
         # self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
 
@@ -94,7 +93,6 @@ class Window(QtWidgets.QWidget):
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
         self.magnificationComboBoxWidget.addItems(self.objectives)
         self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
-        self.magnificationComboBoxWidget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.stageStepSizeLabel = QtWidgets.QLabel('Step Size:')
         self.stageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.stageStepSizeDoubleSpinBox.setSingleStep(50)
@@ -110,7 +108,6 @@ class Window(QtWidgets.QWidget):
         self.filterComboBoxWidget = QtWidgets.QComboBox()
         self.filterComboBoxWidget.addItems(self.filter_positions)
         self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
-        self.filterComboBoxWidget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.diaPushButton = QtWidgets.QPushButton('DIA')
         self.diaPushButton.setCheckable(True)
         self.diaPushButton.clicked.connect(self.toggleDia)
@@ -121,7 +118,6 @@ class Window(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.setMinimum(5)
         self.cameraExposureDoubleSpinBox.setSingleStep(100)
         self.cameraExposureDoubleSpinBox.setValue(200)
-        self.cameraExposureDoubleSpinBox.setFocusPolicy(QtCore.Qt.NoFocus)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
 
         # FUNCTION GENERATOR
@@ -181,7 +177,6 @@ class Window(QtWidgets.QWidget):
         self.pumpTimeDoubleSpinBox.setMaximum(30 * 60)
         self.pumpTimeDoubleSpinBox.setSingleStep(0.01)
         self.pumpTimeRadioButton.click()
-
         self.pumpDispensePushButton = QtWidgets.QPushButton(text='Dispense')
         self.pumpDispensePushButton.clicked.connect(self.pumpDispense)
         self.pumpWithdrawPushButton = QtWidgets.QPushButton(text='Withdraw')
@@ -190,9 +185,9 @@ class Window(QtWidgets.QWidget):
         self.pumpStopPushButton.clicked.connect(self.pumpStop)
 
         # arrange the widgets
-        self.VBoxLayout = QtWidgets.QVBoxLayout(self)
+        self.VBoxLayout = QtWidgets.QVBoxLayout()
 
-        self.HBoxLayout = QtWidgets.QHBoxLayout()
+        self.HBoxLayout = QtWidgets.QHBoxLayout(self)
         # self.HBoxLayout.setAlignment(QtCore.Qt.AlignCenter)
 
         self.microscopeGroupBox = QtWidgets.QGroupBox('Microscope')
@@ -206,11 +201,11 @@ class Window(QtWidgets.QWidget):
         self.microscopeLayout.addWidget(self.stageStepSizeDoubleSpinBox)
         # self.microscopeLayout.addWidget(self.zAxisLabel)
         # self.microscopeLayout.addWidget(self.zAxisPositionDoubleSpinBox)
-
         self.microscopeLayout.addWidget(self.diaPushButton)
         self.microscopeLayout.addWidget(self.cameraExposureLabel)
         self.microscopeLayout.addWidget(self.cameraExposureDoubleSpinBox)
-        self.HBoxLayout.addWidget(self.microscopeGroupBox)
+        self.microscopeLayout.setAlignment(QtCore.Qt.AlignLeft)
+        self.VBoxLayout.addWidget(self.microscopeGroupBox)
         if not self.microscope:
             self.microscopeGroupBox.setEnabled(False)
 
@@ -224,7 +219,8 @@ class Window(QtWidgets.QWidget):
         self.functionGeneratorLayout.addWidget(self.waveformComboBox)
         self.functionGeneratorLayout.addWidget(self.setFunctionGeneratorPushButton)
         self.functionGeneratorLayout.addWidget(self.fgOutputCombobox)
-        self.HBoxLayout.addWidget(self.functionGeneratorGroupBox)
+        self.functionGeneratorLayout.setAlignment(QtCore.Qt.AlignLeft)
+        self.VBoxLayout.addWidget(self.functionGeneratorGroupBox)
         if not self.fg:
             self.functionGeneratorGroupBox.setEnabled(False)
 
@@ -235,7 +231,8 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceLayout.addWidget(self.fluorescenceShutterCheckBox)
         self.fluorescenceLayout.addWidget(self.fluorescenceIntensityLabel)
         self.fluorescenceLayout.addWidget(self.fluorescenceIntensityDoubleSpinBox)
-        self.HBoxLayout.addWidget(self.fluorescenceGroupBox)
+        self.fluorescenceLayout.setAlignment(QtCore.Qt.AlignLeft)
+        self.VBoxLayout.addWidget(self.fluorescenceGroupBox)
         if not self.fc:
             self.fluorescenceGroupBox.setEnabled(False)
 
@@ -253,7 +250,8 @@ class Window(QtWidgets.QWidget):
         self.pumpLayout.addWidget(self.pumpDispensePushButton)
         self.pumpLayout.addWidget(self.pumpWithdrawPushButton)
         self.pumpLayout.addWidget(self.pumpStopPushButton)
-        self.HBoxLayout.addWidget(self.pumpGroupBox)
+        self.pumpLayout.setAlignment(QtCore.Qt.AlignLeft)
+        self.VBoxLayout.addWidget(self.pumpGroupBox)
         if not self.pump:
             self.pumpGroupBox.setEnabled(False)
 
@@ -272,12 +270,12 @@ class Window(QtWidgets.QWidget):
         # self.image_viewer.
         # print('h for w:', self.image_viewer.hasHeightForWidth())
 
-        # self.VBoxLayout.setAlignment(QtCore.Qt.AlignBottom)
+        self.VBoxLayout.setAlignment(QtCore.Qt.AlignTop)
+        # self.image_viewer.setMinimumSize(500, 500)
         self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
 
-        self.VBoxLayout.addWidget(self.image_viewer)
-
-        self.VBoxLayout.addLayout(self.HBoxLayout)
+        self.HBoxLayout.addLayout(self.VBoxLayout)
+        self.HBoxLayout.addWidget(self.image_viewer)
 
         self.showMaximized()
         # connect to the video thread and start the video
