@@ -7,6 +7,8 @@ from fluorescence_controller import FluorescenceController
 from camera import Camera
 from stage import Stage
 from PyQt5.QtCore import QThread
+from mightex import Polygon1000
+import cv2
 
 
 class ImageViewer(QtWidgets.QWidget):
@@ -80,10 +82,17 @@ class Window(QtWidgets.QWidget):
             print(f'Microscope control not available: {e}')
             self.microscope = False
 
+        try:
+            self.pg = Polygon1000(1140, 912*2)
+        except Exception as e:
+            print(f'unable to connect to polygon: {e}')
+            self.pg = False
+
+        self.test_image = cv2.imread(r'C:\Users\Mohamed\Desktop\Harrison\5.png')
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
-        # self.changeOETPatternPushbutton = QtWidgets.QPushButton(text='Change OET Pattern')
-        # self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
+        self.changeOETPatternPushbutton = QtWidgets.QPushButton(text='Change OET Pattern')
+        self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
 
         # MICROSCOPE
         # TODO: query all of these positions and set them correctly initially
@@ -188,7 +197,7 @@ class Window(QtWidgets.QWidget):
         self.VBoxLayout = QtWidgets.QVBoxLayout()
 
         self.HBoxLayout = QtWidgets.QHBoxLayout(self)
-        # self.HBoxLayout.setAlignment(QtCore.Qt.AlignCenter)
+
 
         self.microscopeGroupBox = QtWidgets.QGroupBox('Microscope')
         self.microscopeLayout = QtWidgets.QHBoxLayout()
@@ -255,7 +264,7 @@ class Window(QtWidgets.QWidget):
         if not self.pump:
             self.pumpGroupBox.setEnabled(False)
 
-        # self.HBoxLayout.addWidget(self.changeOETPatternPushbutton)
+        self.VBoxLayout.addWidget(self.changeOETPatternPushbutton)
 
         self.image_viewer = ImageViewer()
 
@@ -267,12 +276,12 @@ class Window(QtWidgets.QWidget):
 
         self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
         self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
-        # self.image_viewer.
-        # print('h for w:', self.image_viewer.hasHeightForWidth())
+        # self.image_viewer.clicked.connect(self.handle_click)
 
         self.VBoxLayout.setAlignment(QtCore.Qt.AlignTop)
         # self.image_viewer.setMinimumSize(500, 500)
         self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
+
 
         self.HBoxLayout.addLayout(self.VBoxLayout)
         self.HBoxLayout.addWidget(self.image_viewer)
@@ -301,6 +310,8 @@ class Window(QtWidgets.QWidget):
         elif key == QtCore.Qt.Key_Down:
             self.stage.step('d')
 
+    def changeOETPattern(self):
+        self.pg.set_image(self.test_image)
 
     def startAmountDispenseMode(self):
         self.dispenseMode = 'amount'
@@ -372,8 +383,7 @@ class Window(QtWidgets.QWidget):
         print('microscope shutter:', state)
         self.microscope.set_turret_shutter(state)
 
-    def changeOETPattern(self):
-        pass
+
 
 
 if __name__ == '__main__':
