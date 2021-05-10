@@ -18,11 +18,15 @@ class ImageViewer(QtWidgets.QWidget):
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
-        painter.drawImage(0, 0, self.image)
+        # draw in the center here
+
+        x = int(self.width()/2 - self.image.width()/2)
+        painter.drawImage(x, 0, self.image)
         self.image = QtGui.QImage()
 
     @QtCore.pyqtSlot(QtGui.QImage)
     def setImage(self, image):
+        # print(self.image)
         self.image = image
         self.update()
 
@@ -33,7 +37,10 @@ class ImageViewer(QtWidgets.QWidget):
         return width * 2048 // 2060
 
     def resizeEvent(self, event):
-        self.resize_event_signal.emit(self.size())
+        # force aspect ratio here
+        h = self.height()
+        w = int(2060/2048 * h)
+        self.resize_event_signal.emit(QtCore.QSize(h, w))
 
 
 class Window(QtWidgets.QWidget):
@@ -169,7 +176,7 @@ class Window(QtWidgets.QWidget):
         self.VBoxLayout = QtWidgets.QVBoxLayout(self)
 
         self.HBoxLayout = QtWidgets.QHBoxLayout()
-        self.HBoxLayout.setAlignment(QtCore.Qt.AlignCenter)
+        # self.HBoxLayout.setAlignment(QtCore.Qt.AlignCenter)
 
         self.microscopeGroupBox = QtWidgets.QGroupBox('Microscope')
         self.microscopeLayout = QtWidgets.QHBoxLayout()
@@ -242,6 +249,8 @@ class Window(QtWidgets.QWidget):
 
         self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
         self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
+        # self.image_viewer.
+        # print('h for w:', self.image_viewer.hasHeightForWidth())
 
         # self.VBoxLayout.setAlignment(QtCore.Qt.AlignBottom)
         self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
@@ -250,7 +259,7 @@ class Window(QtWidgets.QWidget):
 
         self.VBoxLayout.addLayout(self.HBoxLayout)
 
-        # self.showMaximized()
+        self.showMaximized()
         # connect to the video thread and start the video
         self.start_video_signal.connect(self.camera.startVideo)
         self.start_video_signal.emit()

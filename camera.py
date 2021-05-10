@@ -28,7 +28,7 @@ class Camera(QtCore.QObject):
             print(p, self.mmc.getProperty('camera', p), self.mmc.getAllowedPropertyValues('camera', p))
         self.mmc.setProperty('camera', 'Exposure', self.exposure)
         self.run_video = True
-        self.window_size = QtCore.QSize(2060, 2048)
+        self.window_size = QtCore.QSize(2060, 2048) # original image size
 
     def __del__(self):
         print('closing camera...')
@@ -37,8 +37,8 @@ class Camera(QtCore.QObject):
 
     @QtCore.pyqtSlot(QtCore.QSize)
     def resize_slot(self, size):
-        pass
-        # self.window_size = size
+        # pass
+        self.window_size = size
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def set_exposure_slot(self, exposure):

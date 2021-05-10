@@ -21,6 +21,8 @@ class FluorescenceController():
     def __del__(self):
         print('closing fluorescence controller connection...')
         if self.ser is not None:
+            self.ser.reset_input_buffer()
+            self.ser.reset_output_buffer()
             self.ser.close()
 
     def get_connection(self):
