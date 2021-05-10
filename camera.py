@@ -1,6 +1,7 @@
 import os, sys, time
 from PyQt5 import QtCore, QtGui, QtWidgets
-
+import cv2
+import matplotlib.pyplot as plt
 
 class Camera(QtCore.QObject):
     VideoSignal = QtCore.pyqtSignal(QtGui.QImage)
@@ -61,13 +62,17 @@ class Camera(QtCore.QObject):
                     img = self.mmc.getLastImage()
                     # not necessary at the moment
                     # self.vid_process_signal.emit(img.copy())
-                    height, width = img.shape
+                    # height, width = img.shape
+                    window_h = self.window_size.height()
+                    window_w = self.window_size.width()
+                    img = cv2.resize(img, (window_h, window_w))
                     qt_image = QtGui.QImage(img.data,
-                                            width,
-                                            height,
+                                            window_w,
+                                            window_h,
                                             img.strides[0],
                                             QtGui.QImage.Format_Grayscale16)
-                    qt_image = qt_image.scaled(self.window_size)
+                    # this resizing is problematic - not used
+                    # qt_image = qt_image.scaled(self.window_size)
                     self.VideoSignal.emit(qt_image)
                 else:
                     count += 1
