@@ -95,12 +95,15 @@ class Microscope():
         self.rolling = False
         # print('debug')
 
+    def __del__(self):
+        self.close_microscope()
+
     def get_status(self):
         data_in = MIC_Data()
         data_in.uiDataUsageMask = default_mask
         ret = c_lib.MIC_DataGet(ctypes.byref(data_in))
         if ret != 0:
-            print('get_status failed!', 0)
+            print('get_status failed!', ret)
             self.close_microscope()
         return data_in
 
