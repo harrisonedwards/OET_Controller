@@ -1,4 +1,5 @@
 import ctypes, time, os
+from PyQt5 import QtWidgets
 
 dll_name = 'Ni_Mic_Driver.dll'
 
@@ -90,6 +91,9 @@ class Microscope():
         self.open_microscope()
         self.status = self.get_status()
         print_fields(self.status)
+        self.step_size = 5
+        self.rolling = False
+        # print('debug')
 
     def get_status(self):
         data_in = MIC_Data()
@@ -105,11 +109,11 @@ class Microscope():
         accessories_mask = ctypes.c_uint64()
         error_message_size = ctypes.c_int32(2 ** 32)
         error_message = ctypes.c_wchar_p()
+        print('attempting connection to microscope...')
         ret = c_lib.MIC_Open(device_index,
                              ctypes.byref(accessories_mask),
                              error_message_size,
                              error_message)
-        print('attempting connection to microscope...')
         if ret != 0:
             raise Exception('failed to connect')
         else:
@@ -121,7 +125,11 @@ class Microscope():
     def close_microscope(self):
         print('closing microscope...', c_lib.MIC_Close())
 
-    def set_z(self, z=-500000):
+    def set_zstep_size(self, value):
+        print(f'z step size set to: {value}')
+        self.step_size = value
+
+    def move_absolute_z(self, z=-500000):
         data_in = MIC_Data()
         data_in.uiDataUsageMask = 0x0000000000000001
 
@@ -141,8 +149,10 @@ class Microscope():
         except Exception as e:
             print('Microscope movement error:', e)
             self.close_microscope()
-        print_fields(data_in)
-        print_fields(data_out)
+        self.status = data_out
+        print(f'z at: {self.status.iZPOSITION}')
+        # print_fields(data_in)
+        # print_fields(data_out)
 
     def set_turret_pos(self, pos, t1shutter, diashutter):
         status = self.get_status()
@@ -155,6 +165,25 @@ class Microscope():
         data_in.iTURRET1SHUTTER = t1shutter
         data_in.iSHUTTER_DIA = diashutter
         data_in.iNOSEPIECE = 5
+        self.issue_command(data_in)
+
+    def roll_z(self, direction):
+        while self.rolling:
+            time.sleep(0.02)
+            QtWidgets.QApplication.processEvents()
+            if direction == 'f':
+                self.move_rel_z(self.step_size)
+            elif direction == 'b':
+                self.move_rel_z(-self.step_size)
+            print('rolling...', self.status.iZPOSITION)
+
+    def move_rel_z(self, amount):
+        z = self.status.iZPOSITION
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000000000001
+        data_in.iZPOSITION = int(z) + int(amount)
+        # data_in.iZPOSITIONTolerance = 10
+        # data_in.iZPOSITIONSpeed = 1
         self.issue_command(data_in)
 
     def set_dia_shutter(self, state):
@@ -195,6 +224,7 @@ class Microscope():
         except Exception as e:
             print('Microscope movement error:', e)
             self.close_microscope()
+        self.status = data_out
         # print(data_out.iTURRET1POS, data_out.iTURRET1SHUTTER, data_in.iSHUTTER_DIA)
 
 

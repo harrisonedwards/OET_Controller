@@ -102,17 +102,20 @@ class Window(QtWidgets.QWidget):
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
         self.magnificationComboBoxWidget.addItems(self.objectives)
         self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
-        self.stageStepSizeLabel = QtWidgets.QLabel('Step Size:')
-        self.stageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.stageStepSizeDoubleSpinBox.setSingleStep(50)
-        self.stageStepSizeDoubleSpinBox.setMinimum(10)
-        self.stageStepSizeDoubleSpinBox.setDecimals(0)
-        self.stageStepSizeDoubleSpinBox.setMaximum(100000)
-
-        self.stageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_step_size)
-        # self.zAxisLabel = QtWidgets.QLabel(text='Z:')
-        # self.zAxisPositionDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        # self.zAxisPositionDoubleSpinBox.valueChanged.connect(self.setZAxisPosition)
+        self.stageStepSizeLabel = QtWidgets.QLabel('XY Step Size:')
+        self.xystageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.xystageStepSizeDoubleSpinBox.setSingleStep(50)
+        self.xystageStepSizeDoubleSpinBox.setMinimum(10)
+        self.xystageStepSizeDoubleSpinBox.setDecimals(0)
+        self.xystageStepSizeDoubleSpinBox.setMaximum(100000)
+        self.xystageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_xystep_size)
+        self.zstageStepSizeLabel = QtWidgets.QLabel('Z Step Size:')
+        self.zstageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.zstageStepSizeDoubleSpinBox.setSingleStep(100)
+        self.zstageStepSizeDoubleSpinBox.setMinimum(50)
+        self.zstageStepSizeDoubleSpinBox.setDecimals(0)
+        self.zstageStepSizeDoubleSpinBox.setMaximum(50000)
+        self.zstageStepSizeDoubleSpinBox.valueChanged.connect(self.microscope.set_zstep_size)
         self.filterLabel = QtWidgets.QLabel(text='Filter:')
         self.filterComboBoxWidget = QtWidgets.QComboBox()
         self.filterComboBoxWidget.addItems(self.filter_positions)
@@ -207,9 +210,9 @@ class Window(QtWidgets.QWidget):
         self.microscopeLayout.addWidget(self.filterLabel)
         self.microscopeLayout.addWidget(self.filterComboBoxWidget)
         self.microscopeLayout.addWidget(self.stageStepSizeLabel)
-        self.microscopeLayout.addWidget(self.stageStepSizeDoubleSpinBox)
-        # self.microscopeLayout.addWidget(self.zAxisLabel)
-        # self.microscopeLayout.addWidget(self.zAxisPositionDoubleSpinBox)
+        self.microscopeLayout.addWidget(self.xystageStepSizeDoubleSpinBox)
+        self.microscopeLayout.addWidget(self.zstageStepSizeLabel)
+        self.microscopeLayout.addWidget(self.zstageStepSizeDoubleSpinBox)
         self.microscopeLayout.addWidget(self.diaPushButton)
         self.microscopeLayout.addWidget(self.cameraExposureLabel)
         self.microscopeLayout.addWidget(self.cameraExposureDoubleSpinBox)
@@ -296,8 +299,20 @@ class Window(QtWidgets.QWidget):
         def recursiveSetChildFocusPolicy(parentQWidget):
             for childQWidget in parentQWidget.findChildren(QtWidgets.QWidget):
                 childQWidget.setFocusPolicy(policy)
+                childQWidget.installEventFilter(self)
                 recursiveSetChildFocusPolicy(childQWidget)
         recursiveSetChildFocusPolicy(self)
+
+    def eventFilter(self, a0: object, event):
+        ignore_keys = [QtCore.Qt.Key_Up, QtCore.Qt.Key_Down,
+                       QtCore.Qt.Key_Left, QtCore.Qt.Key_Right,
+                       QtCore.Qt.Key_PageUp, QtCore.Qt.Key_PageDown]
+        if event.type == QtCore.QEvent.KeyPress:
+            if event.key in ignore_keys:
+                return
+        if event.type == QtCore.QEvent.KeyRelease:
+            if event.key in ignore_keys:
+                return
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -309,6 +324,19 @@ class Window(QtWidgets.QWidget):
             self.stage.step('r')
         elif key == QtCore.Qt.Key_Down:
             self.stage.step('d')
+        elif key == QtCore.Qt.Key_PageUp:
+            self.microscope.rolling = True
+            self.microscope.roll_z('f')
+        elif key == QtCore.Qt.Key_PageDown:
+            self.microscope.rolling = True
+            self.microscope.roll_z('b')
+
+    def keyReleaseEvent(self, event):
+        key = event.key()
+        if key == QtCore.Qt.Key_PageUp:
+            self.microscope.rolling = False
+        elif key == QtCore.Qt.Key_PageDown:
+            self.microscope.rolling = False
 
     def changeOETPattern(self):
         self.pg.set_image(self.test_image)
@@ -372,8 +400,6 @@ class Window(QtWidgets.QWidget):
     def setCameraExposure(self, exposure):
         self.set_camera_expsure_signal.emit(exposure)
 
-    def setZAxisPosition(self, value):
-        self.microscope.set_z(value)
 
     def changeFluorescenceIntensity(self, value):
         self.fc.change_intensity(value)

@@ -51,8 +51,8 @@ class Stage():
         if ret != b'':
             raise Exception(f'Stage movement error: {ret}')
 
-    def set_step_size(self, value):
-        print(f'step size set to: {value}')
+    def set_xystep_size(self, value):
+        print(f'xy step size set to: {value}')
         self.step_size = value
 
 if __name__ == '__main__':
