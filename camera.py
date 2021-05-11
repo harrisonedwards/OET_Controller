@@ -28,6 +28,7 @@ class Camera(QtCore.QObject):
             print(p, self.mmc.getProperty('camera', p), self.mmc.getAllowedPropertyValues('camera', p))
         self.mmc.setProperty('camera', 'Exposure', self.exposure)
         self.run_video = True
+        self.rotation = False
         self.window_size = QtCore.QSize(2060, 2048) # original image size
 
     def __del__(self):
@@ -65,6 +66,8 @@ class Camera(QtCore.QObject):
                     window_h = self.window_size.height()
                     window_w = self.window_size.width()
                     img = cv2.resize(img, (window_h, window_w))
+                    if self.rotation:
+                        img = cv2.rotate(img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
                     qt_image = QtGui.QImage(img.data,
                                             window_w,
                                             window_h,

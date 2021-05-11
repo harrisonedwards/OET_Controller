@@ -56,20 +56,6 @@ class Polygon1000():
             #     self.mask[h,1::2] = True
         self.mask = self.mask.flatten()
 
-        # try:
-        #     ret = self.led_clib.MTUSB_BLSDriverInitDevices(c_int(0))
-        #     print('led devices:', ret)
-        #     self.led_handle = self.led_clib.MTUSB_BLSDriverOpenDevice(c_int(0))
-        #     print('led connection:', self.led_handle)
-        #     channel = self.led_clib.MTUSB_BLSDriverGetChannels(self.led_handle)
-        #     print('led channel:', channel)
-        #     for i in range(1, 5):
-        #         ret = self.led_clib.MTUSB_BLSDriverSetMode(self.led_handle, c_int(i), c_int(1))
-        #         print('led mode:', ret)
-        #         ret = self.led_clib.MTUSB_BLSDriverSetNormalCurrent(self.led_handle, c_int(i), c_int(50))
-        #         print('led current:', ret)
-        # except Exception as e:
-        #     print('failure to connect to DMD LED:', e)
 
         uninit = self.dmd_clib.MTPLG_UnInitDevice()
         if uninit != 0:
@@ -112,20 +98,42 @@ class Polygon1000():
         # data = (c_byte*len(self.image_bytes1))(*self.image_bytes1)
         self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1))
 
-    def set_image(self, image):
-        offs = np.zeros((self.height, self.width), dtype=bool)
-        ons = np.ones((self.height, self.width), dtype=bool)
-        image = cv2.resize(image, (self.width, self.height))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        img = np.where(image != 0, ons, offs)
+    def draw_square(self, img, x, y):
+        w = 100
+        # x, y = self.height//2, self.width//2
+        img[x-w:x+w, y-w//2:y+w//2] = True
+        return img
 
-        self.image_bytes1 = np.packbits(img).tobytes()
+    def set_image(self, image):
+
+        numpy_image = np.zeros((self.height, self.width), dtype=bool)
+        numpy_image[::2] = True
+        self.image_bytes1 = np.packbits(numpy_image).tobytes()
         self.buff1 = (c_byte * len(self.image_bytes1))(*self.image_bytes1)
 
 
+        offs = np.zeros((self.height, self.width), dtype=bool)
+        offs[::2] = True
+        ons = np.ones((self.height, self.width), dtype=bool)
+
+        # image = cv2.resize(image, (self.width, self.height))
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # img = np.where(image != 0, ons, offs)
+        x, y = np.random.randint(50, self.height-50), np.random.randint(50, self.width-50)
+        x = 1140//2
+        y = 912//2
+        print(f'drawing square at {x}, {y}')
+        img = self.draw_square(np.copy(offs), x, y).T.flatten()
+
+        image_bytes = np.packbits(img).tobytes()
+        data = (c_byte * len(image_bytes))(*image_bytes)
+        #     *np.packbits(np.reshape(np.frombuffer(image_bytes, dtype=np.uint8), (self.height, self.width)
+        #                             ).T.flatten()[self.mask]).tobytes()
+        # )
+
 
         print('changing dmd:', self.tog,
-              self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(self.buff1), c_int(1)))
+              self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1)))
 
 # if __name__ == '__main__':
 #     poly = Polygon1000()

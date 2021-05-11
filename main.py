@@ -44,6 +44,9 @@ class ImageViewer(QtWidgets.QWidget):
         w = int(2060/2048 * h)
         self.resize_event_signal.emit(QtCore.QSize(h, w))
 
+    def mousePressEvent(self, event):
+        print(event.pos())
+
 
 class Window(QtWidgets.QWidget):
     start_video_signal = QtCore.pyqtSignal()
@@ -83,7 +86,7 @@ class Window(QtWidgets.QWidget):
             self.microscope = False
 
         try:
-            self.pg = Polygon1000(1140, 912*2)
+            self.pg = Polygon1000(1140, 912)
         except Exception as e:
             print(f'unable to connect to polygon: {e}')
             self.pg = False
@@ -124,8 +127,10 @@ class Window(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.setSuffix('ms')
         self.cameraExposureDoubleSpinBox.setMaximum(5000)
         self.cameraExposureDoubleSpinBox.setMinimum(5)
-        self.cameraExposureDoubleSpinBox.setSingleStep(100)
+        self.cameraExposureDoubleSpinBox.setSingleStep(20)
         self.cameraExposureDoubleSpinBox.setValue(200)
+        self.cameraRotationLabel = QtWidgets.QLabel('Rotate:')
+        self.cameraRotationCheckBox = QtWidgets.QCheckBox()
 
         # FUNCTION GENERATOR
         self.voltageLabel = QtWidgets.QLabel(text='Voltage:')
@@ -204,6 +209,8 @@ class Window(QtWidgets.QWidget):
         self.microscopeLayout.addWidget(self.diaPushButton)
         self.microscopeLayout.addWidget(self.cameraExposureLabel)
         self.microscopeLayout.addWidget(self.cameraExposureDoubleSpinBox)
+        self.microscopeLayout.addWidget(self.cameraRotationLabel)
+        self.microscopeLayout.addWidget(self.cameraRotationCheckBox)
         self.microscopeLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.microscopeGroupBox)
         if not self.microscope:
@@ -267,7 +274,7 @@ class Window(QtWidgets.QWidget):
 
         self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
         self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
-        # self.image_viewer.clicked.connect(self.handle_click)
+
 
         self.VBoxLayout.setAlignment(QtCore.Qt.AlignTop)
         self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
@@ -281,6 +288,8 @@ class Window(QtWidgets.QWidget):
         self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)
         self.initialize_gui_state()
         self.start_video_signal.emit()
+
+
 
     def initialize_gui_state(self):
         # get the initial state and make the GUI synced to it
@@ -305,6 +314,7 @@ class Window(QtWidgets.QWidget):
         self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
         self.diaPushButton.clicked.connect(self.toggleDia)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
+        self.cameraRotationCheckBox.clicked.connect(self.toggleRotation)
         self.fgOutputCombobox.currentTextChanged.connect(self.changeFunctionGeneratorOutput)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
         self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.changeFluorescenceIntensity)
@@ -324,15 +334,25 @@ class Window(QtWidgets.QWidget):
 
     def keyPressEvent(self, event):
         key = event.key()
-        if key == QtCore.Qt.Key_Up:
-            self.stage.step('u')
-        elif key == QtCore.Qt.Key_Left:
-            self.stage.step('l')
-        elif key == QtCore.Qt.Key_Right:
-            self.stage.step('r')
-        elif key == QtCore.Qt.Key_Down:
-            self.stage.step('d')
-        elif key == QtCore.Qt.Key_PageUp:
+        if self.cameraRotationCheckBox.isChecked():
+            if key == QtCore.Qt.Key_Up:
+                self.stage.step('l')
+            elif key == QtCore.Qt.Key_Left:
+                self.stage.step('d')
+            elif key == QtCore.Qt.Key_Right:
+                self.stage.step('u')
+            elif key == QtCore.Qt.Key_Down:
+                self.stage.step('r')
+        else:
+            if key == QtCore.Qt.Key_Up:
+                self.stage.step('u')
+            elif key == QtCore.Qt.Key_Left:
+                self.stage.step('l')
+            elif key == QtCore.Qt.Key_Right:
+                self.stage.step('r')
+            elif key == QtCore.Qt.Key_Down:
+                self.stage.step('d')
+        if key == QtCore.Qt.Key_PageUp:
             self.microscope.rolling = True
             self.microscope.roll_z('f')
         elif key == QtCore.Qt.Key_PageDown:
@@ -343,6 +363,10 @@ class Window(QtWidgets.QWidget):
         key = event.key()
         if key in  [QtCore.Qt.Key_PageUp, QtCore.Qt.Key_PageDown]:
             self.microscope.rolling = False
+
+    def toggleRotation(self):
+        state = self.cameraRotationCheckBox.checkState()
+        self.camera.rotation = state
 
     def changeOETPattern(self):
         self.pg.set_image(self.test_image)
