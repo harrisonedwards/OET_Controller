@@ -293,6 +293,9 @@ class Window(QtWidgets.QWidget):
         self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
 
         fluor_shutter_state = self.microscope.status.iTURRET1SHUTTER
+        if fluor_shutter_state > 0:
+            fluor_shutter_state = 2
+        self.fluorescenceShutterCheckBox.setCheckState(fluor_shutter_state)
 
         # connect all of our control signals
         self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
@@ -409,7 +412,6 @@ class Window(QtWidgets.QWidget):
 
     def changeFluorShutter(self):
         state = self.fluorescenceShutterCheckBox.checkState()
-        print('microscope shutter:', state)
         self.microscope.set_turret_shutter(state)
 
 
