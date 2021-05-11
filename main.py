@@ -101,6 +101,7 @@ class Window(QtWidgets.QWidget):
         self.magnificationLabel = QtWidgets.QLabel(text='Magnification:')
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
         self.magnificationComboBoxWidget.addItems(self.objectives)
+        self.magnificationComboBoxWidget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
         self.stageStepSizeLabel = QtWidgets.QLabel('XY Step Size:')
         self.xystageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
@@ -119,6 +120,7 @@ class Window(QtWidgets.QWidget):
         self.filterLabel = QtWidgets.QLabel(text='Filter:')
         self.filterComboBoxWidget = QtWidgets.QComboBox()
         self.filterComboBoxWidget.addItems(self.filter_positions)
+        self.filterComboBoxWidget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
         self.diaPushButton = QtWidgets.QPushButton('DIA')
         self.diaPushButton.setCheckable(True)
@@ -147,8 +149,10 @@ class Window(QtWidgets.QWidget):
         self.frequencyDoubleSpinBox.setMaximum(100000000)
         self.waveformComboBox = QtWidgets.QComboBox()
         self.waveformComboBox.addItems(['SIN', 'SQU'])
+        self.waveformComboBox.setFocusPolicy(QtCore.Qt.NoFocus)
         self.fgOutputCombobox = QtWidgets.QComboBox()
         self.fgOutputCombobox.addItems(['OFF', 'ON'])
+        self.fgOutputCombobox.setFocusPolicy(QtCore.Qt.NoFocus)
         self.fgOutputCombobox.currentTextChanged.connect(self.changeFunctionGeneratorOutput)
         self.setFunctionGeneratorPushButton = QtWidgets.QPushButton('Set')
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
@@ -295,24 +299,22 @@ class Window(QtWidgets.QWidget):
         self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)
         self.start_video_signal.emit()
 
+
     def setChildrenFocusPolicy(self, policy):
         def recursiveSetChildFocusPolicy(parentQWidget):
             for childQWidget in parentQWidget.findChildren(QtWidgets.QWidget):
                 childQWidget.setFocusPolicy(policy)
-                childQWidget.installEventFilter(self)
                 recursiveSetChildFocusPolicy(childQWidget)
         recursiveSetChildFocusPolicy(self)
 
-    def eventFilter(self, a0: object, event):
+    def eventFilter(self, object, event):
         ignore_keys = [QtCore.Qt.Key_Up, QtCore.Qt.Key_Down,
                        QtCore.Qt.Key_Left, QtCore.Qt.Key_Right,
                        QtCore.Qt.Key_PageUp, QtCore.Qt.Key_PageDown]
-        if event.type == QtCore.QEvent.KeyPress:
-            if event.key in ignore_keys:
-                return
-        if event.type == QtCore.QEvent.KeyRelease:
-            if event.key in ignore_keys:
-                return
+        if event.type() == QtCore.QEvent.KeyPress or event.type() == QtCore.QEvent.KeyRelease:
+            if event.key() in ignore_keys:
+                return False
+        return True
 
     def keyPressEvent(self, event):
         key = event.key()
