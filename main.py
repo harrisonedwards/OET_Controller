@@ -2,7 +2,7 @@ import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from function_generator import FunctionGenerator
 from pump import Pump
-from nikon_control_wrapper import Microscope
+from microscope import Microscope
 from fluorescence_controller import FluorescenceController
 from camera import Camera
 from stage import Stage
@@ -13,6 +13,7 @@ import cv2
 
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize)
+    click_event_signal = QtCore.pyqtSignal(QtGui.QMoveEvent)
 
     def __init__(self, parent=None):
         super(ImageViewer, self).__init__(parent)
@@ -45,12 +46,13 @@ class ImageViewer(QtWidgets.QWidget):
         self.resize_event_signal.emit(QtCore.QSize(h, w))
 
     def mousePressEvent(self, event):
-        print(event.pos())
+        self.click_event_signal.emit(event)
 
 
 class Window(QtWidgets.QWidget):
     start_video_signal = QtCore.pyqtSignal()
     set_camera_expsure_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    screenshot_signal = QtCore.pyqtSignal()
 
     def __init__(self):
         super(Window, self).__init__()
@@ -95,6 +97,7 @@ class Window(QtWidgets.QWidget):
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
         self.changeOETPatternPushbutton = QtWidgets.QPushButton(text='Change OET Pattern')
+        self.takeScreenshotPushButton = QtWidgets.QPushButton(text='Screenshot')
 
         # MICROSCOPE
         # TODO: query all of these positions and set them correctly initially
@@ -103,23 +106,25 @@ class Window(QtWidgets.QWidget):
         self.magnificationLabel = QtWidgets.QLabel(text='Magnification:')
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
         self.magnificationComboBoxWidget.addItems(self.objectives)
-        self.magnificationComboBoxWidget.setFocusPolicy(QtCore.Qt.NoFocus)
+
         self.stageStepSizeLabel = QtWidgets.QLabel('XY Step Size:')
         self.xystageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.xystageStepSizeDoubleSpinBox.setSingleStep(50)
-        self.xystageStepSizeDoubleSpinBox.setMinimum(10)
+        self.xystageStepSizeDoubleSpinBox.setSingleStep(1000)
+        self.xystageStepSizeDoubleSpinBox.setMinimum(5000)
         self.xystageStepSizeDoubleSpinBox.setDecimals(0)
         self.xystageStepSizeDoubleSpinBox.setMaximum(100000)
+        self.xystageStepSizeDoubleSpinBox.setValue(25000)
         self.zstageStepSizeLabel = QtWidgets.QLabel('Z Step Size:')
         self.zstageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.zstageStepSizeDoubleSpinBox.setSingleStep(100)
-        self.zstageStepSizeDoubleSpinBox.setMinimum(50)
+        self.zstageStepSizeDoubleSpinBox.setSingleStep(1000)
+        self.zstageStepSizeDoubleSpinBox.setMinimum(5000)
         self.zstageStepSizeDoubleSpinBox.setDecimals(0)
         self.zstageStepSizeDoubleSpinBox.setMaximum(50000)
+        self.zstageStepSizeDoubleSpinBox.setValue(10000)
         self.filterLabel = QtWidgets.QLabel(text='Filter:')
         self.filterComboBoxWidget = QtWidgets.QComboBox()
         self.filterComboBoxWidget.addItems(self.filter_positions)
-        self.filterComboBoxWidget.setFocusPolicy(QtCore.Qt.NoFocus)
+
         self.diaPushButton = QtWidgets.QPushButton('DIA')
         self.diaPushButton.setCheckable(True)
         self.cameraExposureLabel = QtWidgets.QLabel('Exposure:')
@@ -263,6 +268,7 @@ class Window(QtWidgets.QWidget):
             self.pumpGroupBox.setEnabled(False)
 
         self.VBoxLayout.addWidget(self.changeOETPatternPushbutton)
+        self.VBoxLayout.addWidget(self.takeScreenshotPushButton)
 
         self.image_viewer = ImageViewer()
 
@@ -274,7 +280,7 @@ class Window(QtWidgets.QWidget):
 
         self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
         self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
-
+        self.image_viewer.click_event_signal.connect(self.handle_click)
 
         self.VBoxLayout.setAlignment(QtCore.Qt.AlignTop)
         self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
@@ -289,7 +295,9 @@ class Window(QtWidgets.QWidget):
         self.initialize_gui_state()
         self.start_video_signal.emit()
 
-
+    @QtCore.pyqtSlot()
+    def handle_click(self, point):
+        print(point)
 
     def initialize_gui_state(self):
         # get the initial state and make the GUI synced to it
@@ -307,6 +315,7 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceShutterCheckBox.setCheckState(fluor_shutter_state)
 
         # connect all of our control signals
+        self.takeScreenshotPushButton.clicked.connect(self.camera.take_screenshot_slot)
         self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
         self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
         self.xystageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_xystep_size)
@@ -328,7 +337,11 @@ class Window(QtWidgets.QWidget):
     def setChildrenFocusPolicy(self, policy):
         def recursiveSetChildFocusPolicy(parentQWidget):
             for childQWidget in parentQWidget.findChildren(QtWidgets.QWidget):
-                childQWidget.setFocusPolicy(policy)
+                if isinstance(childQWidget, QtWidgets.QComboBox):
+                    # make all comboboxes respond to nothing at all
+                    childQWidget.setFocusPolicy(QtCore.Qt.NoFocus)
+                else:
+                    childQWidget.setFocusPolicy(policy)
                 recursiveSetChildFocusPolicy(childQWidget)
         recursiveSetChildFocusPolicy(self)
 
@@ -336,13 +349,13 @@ class Window(QtWidgets.QWidget):
         key = event.key()
         if self.cameraRotationCheckBox.isChecked():
             if key == QtCore.Qt.Key_Up:
-                self.stage.step('l')
-            elif key == QtCore.Qt.Key_Left:
-                self.stage.step('d')
-            elif key == QtCore.Qt.Key_Right:
-                self.stage.step('u')
-            elif key == QtCore.Qt.Key_Down:
                 self.stage.step('r')
+            elif key == QtCore.Qt.Key_Left:
+                self.stage.step('u')
+            elif key == QtCore.Qt.Key_Right:
+                self.stage.step('d')
+            elif key == QtCore.Qt.Key_Down:
+                self.stage.step('l')
         else:
             if key == QtCore.Qt.Key_Up:
                 self.stage.step('u')
@@ -353,16 +366,12 @@ class Window(QtWidgets.QWidget):
             elif key == QtCore.Qt.Key_Down:
                 self.stage.step('d')
         if key == QtCore.Qt.Key_PageUp:
-            self.microscope.rolling = True
-            self.microscope.roll_z('f')
+            self.microscope.move_rel_z(self.zstageStepSizeDoubleSpinBox.value())
         elif key == QtCore.Qt.Key_PageDown:
-            self.microscope.rolling = True
-            self.microscope.roll_z('b')
+            self.microscope.move_rel_z(-self.zstageStepSizeDoubleSpinBox.value())
 
     def keyReleaseEvent(self, event):
-        key = event.key()
-        if key in  [QtCore.Qt.Key_PageUp, QtCore.Qt.Key_PageDown]:
-            self.microscope.rolling = False
+        pass
 
     def toggleRotation(self):
         state = self.cameraRotationCheckBox.checkState()

@@ -1,4 +1,6 @@
 import os, sys, time
+from time import strftime
+import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 import cv2
 
@@ -30,6 +32,7 @@ class Camera(QtCore.QObject):
         self.run_video = True
         self.rotation = False
         self.window_size = QtCore.QSize(2060, 2048) # original image size
+        self.image = np.zeros((500, 500))
 
     def __del__(self):
         print('closing camera...')
@@ -48,6 +51,11 @@ class Camera(QtCore.QObject):
         print('exposure set:', self.exposure)
 
     @QtCore.pyqtSlot()
+    def take_screenshot_slot(self):
+        cv2.imwrite('C:\\Users\\Mohamed\\Desktop\\Harrison\\Screenshots\\' + strftime('%Y_%m_%d_%H_%M_%S.png', time.gmtime()),
+                    self.image)
+
+    @QtCore.pyqtSlot()
     def startVideo(self):
         while self.run_video:
             self.mmc.startContinuousSequenceAcquisition(1)
@@ -56,23 +64,27 @@ class Camera(QtCore.QObject):
             count = 0
             while True:
                 # TODO fix, if possible
-                time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
+                # time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
                 QtWidgets.QApplication.processEvents()
                 if self.mmc.getRemainingImageCount() > 0:
-                    img = self.mmc.getLastImage()
-                    # not necessary at the moment
-                    # self.vid_process_signal.emit(img.copy())
-                    # height, width = img.shape
-                    window_h = self.window_size.height()
-                    window_w = self.window_size.width()
-                    img = cv2.resize(img, (window_h, window_w))
-                    if self.rotation:
-                        img = cv2.rotate(img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
-                    qt_image = QtGui.QImage(img.data,
-                                            window_w,
-                                            window_h,
-                                            img.strides[0],
-                                            QtGui.QImage.Format_Grayscale16)
+                    try:
+                        img = self.mmc.getLastImage()
+                        # not necessary at the moment
+                        # self.vid_process_signal.emit(img.copy())
+                        # height, width = img.shape
+                        window_h = self.window_size.height()
+                        window_w = self.window_size.width()
+                        if self.rotation:
+                            img = cv2.rotate(img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
+                        self.image = np.copy(img)
+                        img = cv2.resize(img, (window_h, window_w))
+                        qt_image = QtGui.QImage(img.data,
+                                                window_w,
+                                                window_h,
+                                                img.strides[0],
+                                                QtGui.QImage.Format_Grayscale16)
+                    except Exception as e:
+                        print(f'camera dropped frame {count}, {e}')
                     # this resizing is problematic - not used
                     # qt_image = qt_image.scaled(self.window_size)
                     self.VideoSignal.emit(qt_image)

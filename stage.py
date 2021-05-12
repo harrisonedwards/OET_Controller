@@ -7,7 +7,7 @@ class Stage():
     def __init__(self):
         self.ser = self.find_port()
         self.pos = self.get_position()
-        self.step_size = 50
+        self.step_size = 25000
         print(f'stage initial position: {self.pos}')
 
     def find_port(self):
