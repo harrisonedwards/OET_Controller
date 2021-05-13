@@ -134,8 +134,8 @@ class Window(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.setMinimum(5)
         self.cameraExposureDoubleSpinBox.setSingleStep(20)
         self.cameraExposureDoubleSpinBox.setValue(200)
-        self.cameraRotationLabel = QtWidgets.QLabel('Rotate:')
-        self.cameraRotationCheckBox = QtWidgets.QCheckBox()
+        self.cameraRotationPushButton = QtWidgets.QPushButton('Rotate')
+        self.cameraRotationPushButton.setCheckable(True)
 
         # FUNCTION GENERATOR
         self.voltageLabel = QtWidgets.QLabel(text='Voltage:')
@@ -165,8 +165,9 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceIntensityDoubleSpinBox.setMinimum(5)
         self.fluorescenceIntensityDoubleSpinBox.setMaximum(100)
         self.fluorescenceIntensityDoubleSpinBox.setSingleStep(5)
-        self.fluorescenceShutterLabel = QtWidgets.QLabel('Shutter:')
-        self.fluorescenceShutterCheckBox = QtWidgets.QCheckBox()
+        self.fluorescenceShutterPushButton = QtWidgets.QPushButton('Shutter')
+        self.fluorescenceShutterPushButton.setCheckable(True)
+
 
         # PUMP
         self.pumpSpeedLabel = QtWidgets.QLabel(text='Rate')
@@ -214,8 +215,7 @@ class Window(QtWidgets.QWidget):
         self.microscopeLayout.addWidget(self.diaPushButton)
         self.microscopeLayout.addWidget(self.cameraExposureLabel)
         self.microscopeLayout.addWidget(self.cameraExposureDoubleSpinBox)
-        self.microscopeLayout.addWidget(self.cameraRotationLabel)
-        self.microscopeLayout.addWidget(self.cameraRotationCheckBox)
+        self.microscopeLayout.addWidget(self.cameraRotationPushButton)
         self.microscopeLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.microscopeGroupBox)
         if not self.microscope:
@@ -239,8 +239,7 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceGroupBox = QtWidgets.QGroupBox('Fluorescence')
         self.fluorescenceLayout = QtWidgets.QHBoxLayout()
         self.fluorescenceGroupBox.setLayout(self.fluorescenceLayout)
-        self.fluorescenceLayout.addWidget(self.fluorescenceShutterLabel)
-        self.fluorescenceLayout.addWidget(self.fluorescenceShutterCheckBox)
+        self.fluorescenceLayout.addWidget(self.fluorescenceShutterPushButton)
         self.fluorescenceLayout.addWidget(self.fluorescenceIntensityLabel)
         self.fluorescenceLayout.addWidget(self.fluorescenceIntensityDoubleSpinBox)
         self.fluorescenceLayout.setAlignment(QtCore.Qt.AlignLeft)
@@ -295,10 +294,6 @@ class Window(QtWidgets.QWidget):
         self.initialize_gui_state()
         self.start_video_signal.emit()
 
-    @QtCore.pyqtSlot()
-    def handle_click(self, point):
-        print(point)
-
     def initialize_gui_state(self):
         # get the initial state and make the GUI synced to it
         idx_dict = {k: v for k, v in zip(range(1,7), self.objectives)}
@@ -310,9 +305,10 @@ class Window(QtWidgets.QWidget):
         self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
 
         fluor_shutter_state = self.microscope.status.iTURRET1SHUTTER
-        if fluor_shutter_state > 0:
-            fluor_shutter_state = 2
-        self.fluorescenceShutterCheckBox.setCheckState(fluor_shutter_state)
+        self.fluorescenceShutterPushButton.setChecked(fluor_shutter_state)
+
+        dia_state = self.microscope.status.iSHUTTER_DIA
+        self.diaPushButton.setChecked(dia_state)
 
         # connect all of our control signals
         self.takeScreenshotPushButton.clicked.connect(self.camera.take_screenshot_slot)
@@ -323,11 +319,11 @@ class Window(QtWidgets.QWidget):
         self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
         self.diaPushButton.clicked.connect(self.toggleDia)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
-        self.cameraRotationCheckBox.clicked.connect(self.toggleRotation)
+        self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
         self.fgOutputCombobox.currentTextChanged.connect(self.changeFunctionGeneratorOutput)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
         self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.changeFluorescenceIntensity)
-        self.fluorescenceShutterCheckBox.clicked.connect(self.changeFluorShutter)
+        self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
         self.pumpAmountRadioButton.clicked.connect(self.startAmountDispenseMode)
         self.pumpTimeRadioButton.clicked.connect(self.startTimeDispenseMode)
         self.pumpDispensePushButton.clicked.connect(self.pumpDispense)
@@ -373,9 +369,9 @@ class Window(QtWidgets.QWidget):
     def keyReleaseEvent(self, event):
         pass
 
-    def toggleRotation(self):
-        state = self.cameraRotationCheckBox.checkState()
-        self.camera.rotation = state
+    @QtCore.pyqtSlot()
+    def handle_click(self, point):
+        print(point)
 
     def changeOETPattern(self):
         self.pg.set_image(self.test_image)
@@ -428,6 +424,17 @@ class Window(QtWidgets.QWidget):
         idx_dict = {k: v for k, v in zip(self.filter_positions, range(1, 7))}
         self.microscope.set_filter(idx_dict[text])
 
+    def toggleFluorShutter(self):
+        state = self.fluorescenceShutterPushButton.isChecked()
+        if state:
+            self.fluorescenceShutterPushButton.setStyleSheet('background-color : lightblue')
+        else:
+            self.fluorescenceShutterPushButton.setStyleSheet('background-color : lightgrey')
+        self.microscope.set_turret_shutter(state)
+
+    def changeFluorescenceIntensity(self, value):
+        self.fc.change_intensity(value)
+
     def toggleDia(self):
         state = self.diaPushButton.isChecked()
         if state:
@@ -436,16 +443,20 @@ class Window(QtWidgets.QWidget):
             self.diaPushButton.setStyleSheet('background-color : lightgrey')
         self.microscope.set_dia_shutter(state)
 
+    def toggleRotation(self):
+        state = self.cameraRotationPushButton.isChecked()
+        if state:
+            self.cameraRotationPushButton.setStyleSheet('background-color : lightblue')
+        else:
+            self.cameraRotationPushButton.setStyleSheet('background-color : lightgrey')
+        self.camera.rotation = state
+
     def setCameraExposure(self, exposure):
         self.set_camera_expsure_signal.emit(exposure)
 
 
-    def changeFluorescenceIntensity(self, value):
-        self.fc.change_intensity(value)
 
-    def changeFluorShutter(self):
-        state = self.fluorescenceShutterCheckBox.checkState()
-        self.microscope.set_turret_shutter(state)
+
 
 
 
