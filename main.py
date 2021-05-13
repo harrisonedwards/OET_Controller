@@ -107,7 +107,7 @@ class Window(QtWidgets.QWidget):
         self.test_image = cv2.imread(r'C:\Users\Mohamed\Desktop\Harrison\5.png')
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
-        self.changeOETPatternPushbutton = QtWidgets.QPushButton(text='Change OET Pattern')
+
         self.takeScreenshotPushButton = QtWidgets.QPushButton(text='Screenshot')
 
         # MICROSCOPE
@@ -200,6 +200,15 @@ class Window(QtWidgets.QWidget):
         self.pumpWithdrawPushButton = QtWidgets.QPushButton(text='Withdraw')
         self.pumpStopPushButton = QtWidgets.QPushButton(text='Halt')
 
+        # DMD
+        self.changeOETPatternPushbutton = QtWidgets.QPushButton('Change OET Pattern')
+        self.oetGrabPushButton = QtWidgets.QPushButton('Grab')
+        self.oetMoveToPushButton = QtWidgets.QPushButton('Move To')
+        self.oetActivatePushButton = QtWidgets.QPushButton('Activate')
+        self.oetRunPushButton = QtWidgets.QPushButton('Run')
+        self.oetSpeedLabel = QtWidgets.QLabel('Speed')
+        self.oetSpeedDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout()
 
@@ -270,7 +279,20 @@ class Window(QtWidgets.QWidget):
         if not self.pump:
             self.pumpGroupBox.setEnabled(False)
 
-        self.VBoxLayout.addWidget(self.changeOETPatternPushbutton)
+        self.oetGroupBox = QtWidgets.QGroupBox('OET Controls')
+        self.oetLayout = QtWidgets.QHBoxLayout()
+        self.oetGroupBox.setLayout(self.oetLayout)
+        self.oetLayout.addWidget(self.changeOETPatternPushbutton)
+        self.oetLayout.addWidget(self.oetGrabPushButton)
+        self.oetLayout.addWidget(self.oetMoveToPushButton)
+        self.oetLayout.addWidget(self.oetRunPushButton)
+        self.oetLayout.addWidget(self.oetSpeedLabel)
+        self.oetLayout.addWidget(self.oetSpeedDoubleSpinBox)
+        self.oetLayout.setAlignment(QtCore.Qt.AlignLeft)
+        if not self.pg:
+            self.oetGroupBox.setEnabled(False)
+
+        self.VBoxLayout.addWidget(self.oetGroupBox)
         self.VBoxLayout.addWidget(self.takeScreenshotPushButton)
 
         self.image_viewer = ImageViewer()
@@ -347,6 +369,7 @@ class Window(QtWidgets.QWidget):
                 else:
                     childQWidget.setFocusPolicy(policy)
                 recursiveSetChildFocusPolicy(childQWidget)
+
         recursiveSetChildFocusPolicy(self)
 
     def keyPressEvent(self, event):
@@ -455,14 +478,17 @@ class Window(QtWidgets.QWidget):
 
 
 sys._excepthook = sys.excepthook
+
+
 def exception_hook(exctype, value, traceback):
     print(exctype, value, traceback)
     sys._excepthook(exctype, value, traceback)
     sys.exit(1)
+
+
 sys.excepthook = exception_hook
 
 if __name__ == '__main__':
-
     app = QtWidgets.QApplication(sys.argv)
     window = Window()
     # window.setGeometry(500, 300, 800, 600)
