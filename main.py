@@ -286,12 +286,11 @@ class Window(QtWidgets.QWidget):
 
         self.HBoxLayout.addLayout(self.VBoxLayout)
         self.HBoxLayout.addWidget(self.image_viewer)
-
+        self.initialize_gui_state()
         self.showMaximized()
         # connect to the video thread and start the video
         self.start_video_signal.connect(self.camera.startVideo)
         self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)
-        self.initialize_gui_state()
         self.start_video_signal.emit()
 
     def initialize_gui_state(self):
@@ -320,15 +319,15 @@ class Window(QtWidgets.QWidget):
         self.diaPushButton.clicked.connect(self.toggleDia)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
-        self.fgOutputCombobox.currentTextChanged.connect(self.changeFunctionGeneratorOutput)
+        self.fgOutputCombobox.currentTextChanged.connect(self.fg.change_output)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
-        self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.changeFluorescenceIntensity)
+        self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fc.change_intensity)
         self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
         self.pumpAmountRadioButton.clicked.connect(self.startAmountDispenseMode)
         self.pumpTimeRadioButton.clicked.connect(self.startTimeDispenseMode)
         self.pumpDispensePushButton.clicked.connect(self.pumpDispense)
         self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
-        self.pumpStopPushButton.clicked.connect(self.pumpStop)
+        self.pumpStopPushButton.clicked.connect(self.pump.halt)
 
     def setChildrenFocusPolicy(self, policy):
         def recursiveSetChildFocusPolicy(parentQWidget):
@@ -402,12 +401,6 @@ class Window(QtWidgets.QWidget):
             amt = self.pumpTimeDoubleSpinBox.value() * rate
         self.pump.withdraw(amt, rate)
 
-    def pumpStop(self):
-        self.pump.halt()
-
-    def changeFunctionGeneratorOutput(self, text):
-        self.fg.change_output(text)
-
     def setFunctionGenerator(self):
         v = self.voltageDoubleSpinBox.value()
         f = self.frequencyDoubleSpinBox.value()
@@ -431,9 +424,6 @@ class Window(QtWidgets.QWidget):
         else:
             self.fluorescenceShutterPushButton.setStyleSheet('background-color : lightgrey')
         self.microscope.set_turret_shutter(state)
-
-    def changeFluorescenceIntensity(self, value):
-        self.fc.change_intensity(value)
 
     def toggleDia(self):
         state = self.diaPushButton.isChecked()
