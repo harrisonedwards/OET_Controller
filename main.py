@@ -1,4 +1,6 @@
 import sys
+
+import PyQt5.QtGui
 from PyQt5 import QtCore, QtGui, QtWidgets
 from function_generator import FunctionGenerator
 from pump import Pump
@@ -12,18 +14,19 @@ import cv2
 
 
 class ImageViewer(QtWidgets.QWidget):
-    resize_event_signal = QtCore.pyqtSignal(QtCore.QSize)
-    click_event_signal = QtCore.pyqtSignal(QtGui.QMoveEvent)
+    resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
+    click_event_signal = QtCore.pyqtSignal(QtGui.QMouseEvent)
 
     def __init__(self, parent=None):
         super(ImageViewer, self).__init__(parent)
         self.image = QtGui.QImage()
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
+        self.ignore_release = True
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
         # draw in the center here
-        x = int(self.width()/2 - self.image.width()/2) # offset to draw in center
+        x = int(self.width() / 2 - self.image.width() / 2)  # offset to draw in center
         painter.drawImage(x, 0, self.image)
         self.image = QtGui.QImage()
 
@@ -42,10 +45,18 @@ class ImageViewer(QtWidgets.QWidget):
     def resizeEvent(self, event):
         # force aspect ratio here
         h = self.height()
-        w = int(2060/2048 * h)
-        self.resize_event_signal.emit(QtCore.QSize(h, w))
+        w = int(2060 / 2048 * h)
+        self.resize_event_signal.emit(QtCore.QSize(h, w), False)
+        self.ignore_release = False
+
+    def mouseReleaseEvent(self, event):
+        if not self.ignore_release:
+            h = self.height()
+            w = int(2060 / 2048 * h)
+            self.resize_event_signal.emit(QtCore.QSize(h, w), True)
 
     def mousePressEvent(self, event):
+        self.ignore_release = True
         self.click_event_signal.emit(event)
 
 
@@ -168,7 +179,6 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceShutterPushButton = QtWidgets.QPushButton('Shutter')
         self.fluorescenceShutterPushButton.setCheckable(True)
 
-
         # PUMP
         self.pumpSpeedLabel = QtWidgets.QLabel(text='Rate')
         self.pumpSpeedDoubleSpinBox = QtWidgets.QDoubleSpinBox()
@@ -194,7 +204,6 @@ class Window(QtWidgets.QWidget):
         self.pumpDispensePushButton = QtWidgets.QPushButton(text='Dispense')
         self.pumpWithdrawPushButton = QtWidgets.QPushButton(text='Withdraw')
         self.pumpStopPushButton = QtWidgets.QPushButton(text='Halt')
-
 
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout()
@@ -274,20 +283,23 @@ class Window(QtWidgets.QWidget):
         self.camera = Camera()
         self.camera_thread = QThread()
         self.camera_thread.start()
-        self.camera.moveToThread(self.camera_thread)
-        self.camera.VideoSignal.connect(self.image_viewer.setImage)
 
-        self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
         self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
+        self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
+
+        self.camera.VideoSignal.connect(self.image_viewer.setImage)
+        self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
+        self.camera.moveToThread(self.camera_thread)
+
         self.image_viewer.click_event_signal.connect(self.handle_click)
 
         self.VBoxLayout.setAlignment(QtCore.Qt.AlignTop)
-        self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
 
         self.HBoxLayout.addLayout(self.VBoxLayout)
         self.HBoxLayout.addWidget(self.image_viewer)
         self.initialize_gui_state()
         self.showMaximized()
+
         # connect to the video thread and start the video
         self.start_video_signal.connect(self.camera.startVideo)
         self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)
@@ -295,11 +307,11 @@ class Window(QtWidgets.QWidget):
 
     def initialize_gui_state(self):
         # get the initial state and make the GUI synced to it
-        idx_dict = {k: v for k, v in zip(range(1,7), self.objectives)}
+        idx_dict = {k: v for k, v in zip(range(1, 7), self.objectives)}
         objective = self.microscope.status.iNOSEPIECE
         self.magnificationComboBoxWidget.setCurrentText(idx_dict[objective])
 
-        idx_dict = {k: v for k, v in zip(range(1,7), self.filter_positions)}
+        idx_dict = {k: v for k, v in zip(range(1, 7), self.filter_positions)}
         filter = self.microscope.status.iTURRET1POS
         self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
 
@@ -338,11 +350,12 @@ class Window(QtWidgets.QWidget):
                 else:
                     childQWidget.setFocusPolicy(policy)
                 recursiveSetChildFocusPolicy(childQWidget)
+
         recursiveSetChildFocusPolicy(self)
 
     def keyPressEvent(self, event):
         key = event.key()
-        if self.cameraRotationCheckBox.isChecked():
+        if self.cameraRotationPushButton.isChecked():
             if key == QtCore.Qt.Key_Up:
                 self.stage.step('r')
             elif key == QtCore.Qt.Key_Left:
@@ -368,9 +381,9 @@ class Window(QtWidgets.QWidget):
     def keyReleaseEvent(self, event):
         pass
 
-    @QtCore.pyqtSlot()
-    def handle_click(self, point):
-        print(point)
+    @QtCore.pyqtSlot(QtGui.QMouseEvent)
+    def handle_click(self, event):
+        print(event.x(), event.y())
 
     def changeOETPattern(self):
         self.pg.set_image(self.test_image)
@@ -445,13 +458,15 @@ class Window(QtWidgets.QWidget):
         self.set_camera_expsure_signal.emit(exposure)
 
 
-
-
-
-
-
+sys._excepthook = sys.excepthook
+def exception_hook(exctype, value, traceback):
+    print(exctype, value, traceback)
+    sys._excepthook(exctype, value, traceback)
+    sys.exit(1)
+sys.excepthook = exception_hook
 
 if __name__ == '__main__':
+
     app = QtWidgets.QApplication(sys.argv)
     window = Window()
     # window.setGeometry(500, 300, 800, 600)
