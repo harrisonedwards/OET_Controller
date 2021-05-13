@@ -71,7 +71,7 @@ class Polygon1000():
         device_no_status = self.dmd_clib.MTPLG_GetDevModuleNo(c_int(self.dev_id), devno)
         if device_no_status != 0:
             raise Exception('Unable to get Polygon 1000 device number')
-        print(devno.value)
+        print(f'connected to DMD: {devno.value}')
         set_display_mode = self.dmd_clib.MTPLG_SetDevDisplayMode(c_int(self.dev_id), c_int(1))
         if set_display_mode != 0:
             raise Exception('Unable to set Polygon 1000 display mode')

@@ -117,7 +117,6 @@ class Window(QtWidgets.QWidget):
         self.magnificationLabel = QtWidgets.QLabel(text='Magnification:')
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
         self.magnificationComboBoxWidget.addItems(self.objectives)
-
         self.stageStepSizeLabel = QtWidgets.QLabel('XY Step Size:')
         self.xystageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.xystageStepSizeDoubleSpinBox.setSingleStep(1000)
@@ -185,22 +184,18 @@ class Window(QtWidgets.QWidget):
         self.pumpSpeedDoubleSpinBox.setSuffix('ul/min')
         self.pumpSpeedDoubleSpinBox.setMaximum(10000)
         self.pumpSpeedDoubleSpinBox.setFixedWidth(100)
-
         self.pumpAmountLabel = QtWidgets.QLabel(text='Amount')
         self.pumpAmountRadioButton = QtWidgets.QRadioButton()
         self.pumpAmountDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.pumpAmountDoubleSpinBox.setSuffix('ul')
         self.pumpAmountDoubleSpinBox.setMaximum(10000)
         self.pumpAmountDoubleSpinBox.setFixedWidth(80)
-
         self.pumpTimeLabel = QtWidgets.QLabel(text='Time')
         self.pumpTimeRadioButton = QtWidgets.QRadioButton()
-        # self.pumpTimeRadioButton.
         self.pumpTimeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.pumpTimeDoubleSpinBox.setSuffix('min')
         self.pumpTimeDoubleSpinBox.setMaximum(30 * 60)
         self.pumpTimeDoubleSpinBox.setSingleStep(0.01)
-        self.pumpTimeRadioButton.click()
         self.pumpDispensePushButton = QtWidgets.QPushButton(text='Dispense')
         self.pumpWithdrawPushButton = QtWidgets.QPushButton(text='Withdraw')
         self.pumpStopPushButton = QtWidgets.QPushButton(text='Halt')
@@ -331,7 +326,8 @@ class Window(QtWidgets.QWidget):
         self.diaPushButton.clicked.connect(self.toggleDia)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
-        self.fgOutputCombobox.currentTextChanged.connect(self.fg.change_output)
+        if self.fg:
+            self.fgOutputCombobox.currentTextChanged.connect(self.fg.change_output)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
         self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fc.change_intensity)
         self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
@@ -340,6 +336,7 @@ class Window(QtWidgets.QWidget):
         self.pumpDispensePushButton.clicked.connect(self.pumpDispense)
         self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
         self.pumpStopPushButton.clicked.connect(self.pump.halt)
+        self.pumpTimeRadioButton.click()
 
     def setChildrenFocusPolicy(self, policy):
         def recursiveSetChildFocusPolicy(parentQWidget):
@@ -350,7 +347,6 @@ class Window(QtWidgets.QWidget):
                 else:
                     childQWidget.setFocusPolicy(policy)
                 recursiveSetChildFocusPolicy(childQWidget)
-
         recursiveSetChildFocusPolicy(self)
 
     def keyPressEvent(self, event):
