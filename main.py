@@ -69,10 +69,10 @@ class Window(QtWidgets.QWidget):
         super(Window, self).__init__()
 
         try:
-            self.fg = FunctionGenerator()
+            self.function_generator = FunctionGenerator()
         except Exception as e:
             print(f'Function generator control not available: {e}')
-            self.fg = False
+            self.function_generator = False
 
         try:
             self.pump = Pump()
@@ -81,10 +81,10 @@ class Window(QtWidgets.QWidget):
             self.pump = False
 
         try:
-            self.fc = FluorescenceController()
+            self.fluorescence_controller = FluorescenceController()
         except Exception as e:
             print(f'Fluorescence control not available: {e}')
-            self.fc = False
+            self.fluorescence_controller = False
 
         try:
             self.stage = Stage()
@@ -99,10 +99,10 @@ class Window(QtWidgets.QWidget):
             self.microscope = False
 
         try:
-            self.pg = Polygon1000(1140, 912)
+            self.dmd = Polygon1000(1140, 912)
         except Exception as e:
             print(f'unable to connect to polygon: {e}')
-            self.pg = False
+            self.dmd = False
 
         self.test_image = cv2.imread(r'C:\Users\Mohamed\Desktop\Harrison\5.png')
         self.setWindowTitle('OET System Control')
@@ -246,7 +246,7 @@ class Window(QtWidgets.QWidget):
         self.functionGeneratorLayout.addWidget(self.fgOutputCombobox)
         self.functionGeneratorLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.functionGeneratorGroupBox)
-        if not self.fg:
+        if not self.function_generator:
             self.functionGeneratorGroupBox.setEnabled(False)
 
         self.fluorescenceGroupBox = QtWidgets.QGroupBox('Fluorescence')
@@ -257,7 +257,7 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceLayout.addWidget(self.fluorescenceIntensityDoubleSpinBox)
         self.fluorescenceLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.fluorescenceGroupBox)
-        if not self.fc:
+        if not self.fluorescence_controller:
             self.fluorescenceGroupBox.setEnabled(False)
 
         self.pumpGroupBox = QtWidgets.QGroupBox('Pump')
@@ -289,7 +289,7 @@ class Window(QtWidgets.QWidget):
         self.oetLayout.addWidget(self.oetSpeedLabel)
         self.oetLayout.addWidget(self.oetSpeedDoubleSpinBox)
         self.oetLayout.setAlignment(QtCore.Qt.AlignLeft)
-        if not self.pg:
+        if not self.dmd:
             self.oetGroupBox.setEnabled(False)
 
         self.VBoxLayout.addWidget(self.oetGroupBox)
@@ -348,10 +348,10 @@ class Window(QtWidgets.QWidget):
         self.diaPushButton.clicked.connect(self.toggleDia)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
-        if self.fg:
-            self.fgOutputCombobox.currentTextChanged.connect(self.fg.change_output)
+        if self.function_generator:
+            self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
-        self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fc.change_intensity)
+        self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
         self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
         self.pumpAmountRadioButton.clicked.connect(self.startAmountDispenseMode)
         self.pumpTimeRadioButton.clicked.connect(self.startTimeDispenseMode)
@@ -359,6 +359,13 @@ class Window(QtWidgets.QWidget):
         self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
         self.pumpStopPushButton.clicked.connect(self.pump.halt)
         self.pumpTimeRadioButton.click()
+
+    def closeEvent(self, event):
+        print('closing all connections...')
+        for hardware in [self.microscope, self.fluorescence_controller, self.function_generator,
+                         self.dmd, self.pump]:
+            if hardware is not False:
+                hardware.__del__()
 
     def setChildrenFocusPolicy(self, policy):
         def recursiveSetChildFocusPolicy(parentQWidget):
@@ -369,7 +376,6 @@ class Window(QtWidgets.QWidget):
                 else:
                     childQWidget.setFocusPolicy(policy)
                 recursiveSetChildFocusPolicy(childQWidget)
-
         recursiveSetChildFocusPolicy(self)
 
     def keyPressEvent(self, event):
@@ -405,7 +411,7 @@ class Window(QtWidgets.QWidget):
         print(event.x(), event.y())
 
     def changeOETPattern(self):
-        self.pg.set_image(self.test_image)
+        self.dmd.set_image(self.test_image)
 
     def startAmountDispenseMode(self):
         self.dispenseMode = 'amount'
@@ -437,9 +443,9 @@ class Window(QtWidgets.QWidget):
         v = self.voltageDoubleSpinBox.value()
         f = self.frequencyDoubleSpinBox.value()
         w = self.waveformComboBox.currentText()
-        self.fg.set_voltage(v)
-        self.fg.set_frequency(f)
-        self.fg.set_waveform(w)
+        self.function_generator.set_voltage(v)
+        self.function_generator.set_frequency(f)
+        self.function_generator.set_waveform(w)
 
     def changeMagnification(self, text):
         idx_dict = {k: v for k, v in zip(self.objectives, range(1, 7))}

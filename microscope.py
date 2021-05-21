@@ -92,7 +92,7 @@ class Microscope():
         self.status = self.get_status()
         print_fields(self.status)
         self.step_size = 25000
-        self.rolling = False
+        print('initial z position:', self.status.iZPOSITION)
 
     def __del__(self):
         self.close_microscope()
@@ -125,21 +125,26 @@ class Microscope():
         # print('connection error message:', error_message.value)
 
     def close_microscope(self):
-        print('closing microscope...', c_lib.MIC_Close())
+        print('closing microscope...')
+        self.set_dia_shutter(0)
+        self.set_turret_shutter(0)
+        print('microscope closed:', c_lib.MIC_Close())
 
     def set_zstep_size(self, value):
         print(f'z step size set to: {value}')
         self.step_size = value
 
     def move_rel_z(self, amount):
+        self.status = self.get_status()
         z = self.status.iZPOSITION
+        print('z pos before:', z)
         data_in = MIC_Data()
         data_in.uiDataUsageMask = 0x0000000000000001
         data_in.iZPOSITION = int(z) + int(amount)
         # data_in.iZPOSITIONTolerance = 10
         # data_in.iZPOSITIONSpeed = 1
         self.issue_command(data_in)
-        print('z pos:', self.status.iZPOSITION)
+        print('z pos after:', self.status.iZPOSITION)
 
     def move_absolute_z(self, z=-500000):
         data_in = MIC_Data()

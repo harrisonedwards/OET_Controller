@@ -84,6 +84,12 @@ class Polygon1000():
         self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(self.buff1), c_int(1))
         # os.chdir(current_dir)
 
+    def __del__(self):
+        print('closing DMD connection:', self.dmd_clib.MTPLG_DisconnectDev(c_int(self.dev_id)),
+              self.dmd_clib.MTPLG_UnInitDevice())
+
+
+
     def draw_pyglet(self):
 
         glReadPixels(0, 0, self.width, self.height, GL_LUMINANCE, GL_UNSIGNED_BYTE, self.byte_buff)
