@@ -172,7 +172,7 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceIntensityLabel = QtWidgets.QLabel(text='Intensity')
         self.fluorescenceIntensityDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.fluorescenceIntensityDoubleSpinBox.setSuffix('%')
-        self.fluorescenceIntensityDoubleSpinBox.setMinimum(5)
+        self.fluorescenceIntensityDoubleSpinBox.setMinimum(0)
         self.fluorescenceIntensityDoubleSpinBox.setMaximum(100)
         self.fluorescenceIntensityDoubleSpinBox.setSingleStep(5)
         self.fluorescenceShutterPushButton = QtWidgets.QPushButton('Shutter')
@@ -359,6 +359,7 @@ class Window(QtWidgets.QWidget):
         self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
         self.pumpStopPushButton.clicked.connect(self.pump.halt)
         self.pumpTimeRadioButton.click()
+        self.dmd.turn_on_led()
 
     def closeEvent(self, event):
         print('closing all connections...')

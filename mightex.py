@@ -5,6 +5,7 @@ from pyglet.gl import *
 import cv2
 
 
+
 class Polygon1000():
     class tDevTrigSetting(Structure):
         _fields_ = [('Enabled', c_int),
@@ -88,6 +89,17 @@ class Polygon1000():
         print('closing DMD connection:', self.dmd_clib.MTPLG_DisconnectDev(c_int(self.dev_id)),
               self.dmd_clib.MTPLG_UnInitDevice())
 
+    def turn_on_led(self):
+        print('init leds:', self.led_clib.MTUSB_BLSDriverInitDevices())
+        print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        print('reset device led:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
+        print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
+        for channel in range(1,5):
+            print(f'set led mode for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
+            print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
+            print(f'set led current for channel {channel}:',
+                  self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
 
 
     def draw_pyglet(self):
@@ -129,7 +141,7 @@ class Polygon1000():
         x = 1140//2
         y = 912//2
         print(f'drawing square at {x}, {y}')
-        img = self.draw_square(np.copy(offs), x, y).T.flatten()
+        img = self.draw_square(np.copy(ons), x, y).T.flatten()
 
         image_bytes = np.packbits(img).tobytes()
         data = (c_byte * len(image_bytes))(*image_bytes)
@@ -141,7 +153,7 @@ class Polygon1000():
         print('changing dmd:', self.tog,
               self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1)))
 
-# if __name__ == '__main__':
-#     poly = Polygon1000()
-# while True:
-#     poly.draw_pyglet()
+if __name__ == '__main__':
+    poly = Polygon1000(100, 100)
+    poly.turn_on_led()
+
