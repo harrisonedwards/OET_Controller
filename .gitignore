@@ -74,3 +74,9 @@ PolyScan2.dll
 pthreadVC2.dll
 
 new_mic_sdk.h
+
+.ipynb_checkpoints/
+
+*.png
+
+*.ipynb
