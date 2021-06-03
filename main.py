@@ -63,6 +63,7 @@ class ImageViewer(QtWidgets.QWidget):
 class Window(QtWidgets.QWidget):
     start_video_signal = QtCore.pyqtSignal()
     set_camera_expsure_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    set_camera_gain_signal = QtCore.pyqtSignal('PyQt_PyObject')
     screenshot_signal = QtCore.pyqtSignal()
 
     def __init__(self):
@@ -144,6 +145,12 @@ class Window(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.setMinimum(5)
         self.cameraExposureDoubleSpinBox.setSingleStep(20)
         self.cameraExposureDoubleSpinBox.setValue(200)
+        self.gainLabel = QtWidgets.QLabel('Gain:')
+        self.gainDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.gainDoubleSpinBox.setMinimum(0)
+        self.gainDoubleSpinBox.setSingleStep(5.0)
+        self.gainDoubleSpinBox.setValue(3.60)
+        self.gainDoubleSpinBox.setMaximum(50)
         self.cameraRotationPushButton = QtWidgets.QPushButton('Rotate')
         self.cameraRotationPushButton.setCheckable(True)
 
@@ -217,22 +224,24 @@ class Window(QtWidgets.QWidget):
         self.microscopeGroupBox = QtWidgets.QGroupBox('Microscope')
         self.microscopeLayout = QtWidgets.QHBoxLayout()
         self.microscopeGroupBox.setLayout(self.microscopeLayout)
-        self.microscopeLayout.addWidget(self.magnificationLabel)
-        self.microscopeLayout.addWidget(self.magnificationComboBoxWidget)
-        self.microscopeLayout.addWidget(self.filterLabel)
-        self.microscopeLayout.addWidget(self.filterComboBoxWidget)
-        self.microscopeLayout.addWidget(self.stageStepSizeLabel)
-        self.microscopeLayout.addWidget(self.xystageStepSizeDoubleSpinBox)
-        self.microscopeLayout.addWidget(self.zstageStepSizeLabel)
-        self.microscopeLayout.addWidget(self.zstageStepSizeDoubleSpinBox)
-        self.microscopeLayout.addWidget(self.diaPushButton)
+        # self.microscopeLayout.addWidget(self.magnificationLabel)
+        # self.microscopeLayout.addWidget(self.magnificationComboBoxWidget)
+        # self.microscopeLayout.addWidget(self.filterLabel)
+        # self.microscopeLayout.addWidget(self.filterComboBoxWidget)
+        # self.microscopeLayout.addWidget(self.stageStepSizeLabel)
+        # self.microscopeLayout.addWidget(self.xystageStepSizeDoubleSpinBox)
+        # self.microscopeLayout.addWidget(self.zstageStepSizeLabel)
+        # self.microscopeLayout.addWidget(self.zstageStepSizeDoubleSpinBox)
+        # self.microscopeLayout.addWidget(self.diaPushButton)
         self.microscopeLayout.addWidget(self.cameraExposureLabel)
         self.microscopeLayout.addWidget(self.cameraExposureDoubleSpinBox)
         self.microscopeLayout.addWidget(self.cameraRotationPushButton)
+        self.microscopeLayout.addWidget(self.gainLabel)
+        self.microscopeLayout.addWidget(self.gainDoubleSpinBox)
         self.microscopeLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.microscopeGroupBox)
-        if not self.microscope:
-            self.microscopeGroupBox.setEnabled(False)
+        # if not self.microscope:
+        #     self.microscopeGroupBox.setEnabled(False)
 
         self.functionGeneratorGroupBox = QtWidgets.QGroupBox('Function Generator')
         self.functionGeneratorLayout = QtWidgets.QHBoxLayout()
@@ -245,7 +254,7 @@ class Window(QtWidgets.QWidget):
         self.functionGeneratorLayout.addWidget(self.setFunctionGeneratorPushButton)
         self.functionGeneratorLayout.addWidget(self.fgOutputCombobox)
         self.functionGeneratorLayout.setAlignment(QtCore.Qt.AlignLeft)
-        self.VBoxLayout.addWidget(self.functionGeneratorGroupBox)
+        # self.VBoxLayout.addWidget(self.functionGeneratorGroupBox)
         if not self.function_generator:
             self.functionGeneratorGroupBox.setEnabled(False)
 
@@ -256,7 +265,7 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceLayout.addWidget(self.fluorescenceIntensityLabel)
         self.fluorescenceLayout.addWidget(self.fluorescenceIntensityDoubleSpinBox)
         self.fluorescenceLayout.setAlignment(QtCore.Qt.AlignLeft)
-        self.VBoxLayout.addWidget(self.fluorescenceGroupBox)
+        # self.VBoxLayout.addWidget(self.fluorescenceGroupBox)
         if not self.fluorescence_controller:
             self.fluorescenceGroupBox.setEnabled(False)
 
@@ -275,9 +284,9 @@ class Window(QtWidgets.QWidget):
         self.pumpLayout.addWidget(self.pumpWithdrawPushButton)
         self.pumpLayout.addWidget(self.pumpStopPushButton)
         self.pumpLayout.setAlignment(QtCore.Qt.AlignLeft)
-        self.VBoxLayout.addWidget(self.pumpGroupBox)
-        if not self.pump:
-            self.pumpGroupBox.setEnabled(False)
+        # self.VBoxLayout.addWidget(self.pumpGroupBox)
+        # if not self.pump:
+        self.pumpGroupBox.setEnabled(False)
 
         self.oetGroupBox = QtWidgets.QGroupBox('OET Controls')
         self.oetLayout = QtWidgets.QHBoxLayout()
@@ -303,6 +312,7 @@ class Window(QtWidgets.QWidget):
 
         self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
         self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
+        self.set_camera_gain_signal.connect(self.camera.set_gain_slot)
 
         self.camera.VideoSignal.connect(self.image_viewer.setImage)
         self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
@@ -347,6 +357,7 @@ class Window(QtWidgets.QWidget):
         # self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
         # self.diaPushButton.clicked.connect(self.toggleDia)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
+        self.gainDoubleSpinBox.valueChanged.connect(self.setCameraGain)
         self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
         # if self.function_generator:
             # self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
@@ -482,6 +493,11 @@ class Window(QtWidgets.QWidget):
 
     def setCameraExposure(self, exposure):
         self.set_camera_expsure_signal.emit(exposure)
+
+    def setCameraGain(self, gain):
+        self.set_camera_gain_signal.emit(gain)
+
+
 
 
 sys._excepthook = sys.excepthook

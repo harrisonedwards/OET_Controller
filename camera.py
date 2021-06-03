@@ -31,6 +31,12 @@ class Camera(QtCore.QThread):
         self.hcam = toupcam.Toupcam.Open(a[0].id)
         if self.hcam:
             width, height = self.hcam.get_Size()
+
+            # set for half res for quicker acquisition
+            width = width // 2
+            height = height //2
+            self.hcam.put_Size(int(width), int(height))
+
             self.width = width
             self.height = height
             buffsize = ((width * 24 + 31) // 32 * 4) * height
@@ -98,6 +104,9 @@ class Camera(QtCore.QThread):
                 self.qt_image = QtGui.QImage(img.data, window_w, window_h,
                                              img.strides[0], QtGui.QImage.Format_Grayscale8)
                 if self.run_video:
+                    count += 1
+                    if count % 10 == 0:
+                        print(f'at frame {count}')
                     self.VideoSignal.emit(self.qt_image)
             except Exception as e:
                 print(f'camera dropped frame {count}, {e}')
@@ -121,7 +130,14 @@ class Camera(QtCore.QThread):
     @QtCore.pyqtSlot('PyQt_PyObject')
     def set_exposure_slot(self, exposure):
         print(f'set exposure: {exposure}')
-        self.hcam.put_ExpoTime(200000)
+        self.hcam.put_ExpoTime(int(exposure * 1000))
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def set_gain_slot(self, gain):
+        gain = int(gain * 100)
+        print(f'set exposure: {gain}')
+        self.hcam.put_ExpoAGain(gain)
+
 
     @QtCore.pyqtSlot()
     def take_screenshot_slot(self):
