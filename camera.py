@@ -17,6 +17,7 @@ class Camera(QtCore.QThread):
     def __init__(self, parent=None):
         super(Camera, self).__init__(parent)
         self.exposure = 200
+        self.count = 0
 
         self.hcam = None
         self.cam_buffer = None
@@ -32,7 +33,7 @@ class Camera(QtCore.QThread):
         if self.hcam:
             width, height = self.hcam.get_Size()
 
-            # set for half res for quicker acquisition
+            # set for quarter res for quicker acquisition
             width = width // 2
             height = height //2
             self.hcam.put_Size(int(width), int(height))
@@ -40,12 +41,14 @@ class Camera(QtCore.QThread):
             self.width = width
             self.height = height
             buffsize = ((width * 24 + 31) // 32 * 4) * height
-            print('image size: {} x {}, bufsize = {}'.format(width, height, buffsize))
+            print('image size: {} x {}, buffsize = {}'.format(width, height, buffsize))
             self.cam_buffer = bytes(buffsize)
             print('starting video stream...')
             if self.cam_buffer:
-                self.hcam.put_Option(toupcam.TOUPCAM_OPTION_BYTEORDER, 1)
-                self.hcam.put_ExpoTime(200000)
+                self.hcam.put_Option(toupcam.TOUPCAM_OPTION_BYTEORDER, 0)
+                self.hcam.put_Option(toupcam.TOUPCAM_OPTION_BITDEPTH, 0)
+
+                self.hcam.put_ExpoTime(15000)
                 self.hcam.StartPullModeWithCallback(self.cameraCallback, self)
 
         self.run_video = True
@@ -67,50 +70,44 @@ class Camera(QtCore.QThread):
             ctx.CameraCallback(nEvent)
 
     def CameraCallback(self, nEvent):
-        if nEvent == toupcam.TOUPCAM_EVENT_IMAGE:
+        if nEvent == toupcam.TOUPCAM_EVENT_IMAGE and self.run_video:
             self.hcam.PullImageV2(self.cam_buffer, 24, None)
-            self.waiting = False
+            img = QtGui.QImage(self.cam_buffer, self.width, self.height, (self.width * 24 + 31) // 32 * 4,
+                               QtGui.QImage.Format_RGB888)
+            self.VideoSignal.emit(img)
+            self.count += 1
+            print(self.count)
         else:
             print('event callback: {}'.format(nEvent))
 
-    def nextImage(self):
-        self.waiting = True
-        while self.waiting:
-            time.sleep(0.00001)
-        self.img_buffer = bytes(self.cam_buffer)
-        image = np.frombuffer(self.img_buffer, dtype=np.uint8)
-        image = np.flip(image.reshape((self.height, self.width, 3)),0)
-        # print(f'pull image ok, size = {image.shape}')
-        return image
 
     @QtCore.pyqtSlot()
     def startVideo(self):
         count = 0
-        QtWidgets.QApplication.processEvents()
-        while self.run_video:
-            # time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
-            QtWidgets.QApplication.processEvents()
-            try:
-                img = self.nextImage()
-
-                window_h = self.window_size.height()
-                window_w = self.window_size.width()
-
-                # if self.rotation:
-                #     img = cv2.rotate(img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
-
-                self.image = np.copy(img)
-                img = cv2.resize(img, (window_h, window_w))
-                self.qt_image = QtGui.QImage(img.data, window_w, window_h,
-                                             img.strides[0], QtGui.QImage.Format_Grayscale8)
-                if self.run_video:
-                    count += 1
-                    if count % 10 == 0:
-                        print(f'at frame {count}')
-                    self.VideoSignal.emit(self.qt_image)
-            except Exception as e:
-                print(f'camera dropped frame {count}, {e}')
-            QtWidgets.QApplication.processEvents()
+        # QtWidgets.QApplication.processEvents()
+        # while self.run_video:
+        #     try:
+        #         img = self.nextImage()
+        #
+        #         window_h = self.window_size.height()
+        #         window_w = self.window_size.width()
+        #
+        #         # if self.rotation:
+        #         #     img = cv2.rotate(img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
+        #
+        #         # for screenshots:
+        #         self.image = np.copy(img)
+        #
+        #         img = cv2.resize(img, (window_h, window_w))
+        #         self.qt_image = QtGui.QImage(img.data, window_w, window_h,
+        #                                      img.strides[0], QtGui.QImage.Format_Grayscale8)
+        #         count += 1
+        #         if count % 10 == 0:
+        #             print(f'at frame {count}')
+        #         self.VideoSignal.emit(self.qt_image)
+        #     except Exception as e:
+        #         print(f'camera dropped frame {count}, {e}')
+        #     QtWidgets.QApplication.processEvents()
 
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
     def resize_slot(self, size, running):
@@ -130,12 +127,12 @@ class Camera(QtCore.QThread):
     @QtCore.pyqtSlot('PyQt_PyObject')
     def set_exposure_slot(self, exposure):
         print(f'set exposure: {exposure}')
-        self.hcam.put_ExpoTime(int(exposure * 1000))
+        self.hcam.put_ExpoTime(int(exposure * 10))
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def set_gain_slot(self, gain):
         gain = int(gain * 100)
-        print(f'set exposure: {gain}')
+        print(f'set gain: {gain}')
         self.hcam.put_ExpoAGain(gain)
 
 
