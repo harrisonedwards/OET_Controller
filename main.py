@@ -147,9 +147,8 @@ class Window(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.setValue(150)
         self.gainLabel = QtWidgets.QLabel('Gain:')
         self.gainDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.gainDoubleSpinBox.setMinimum(0)
+        self.gainDoubleSpinBox.setMinimum(3.60)
         self.gainDoubleSpinBox.setSingleStep(5.0)
-        self.gainDoubleSpinBox.setValue(3.60)
         self.gainDoubleSpinBox.setMaximum(50)
         self.cameraRotationPushButton = QtWidgets.QPushButton('Rotate')
         self.cameraRotationPushButton.setCheckable(True)
@@ -328,9 +327,8 @@ class Window(QtWidgets.QWidget):
         self.showMaximized()
 
         # connect to the video thread and start the video
-        self.start_video_signal.connect(self.camera.startVideo)
         self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)
-        self.start_video_signal.emit()
+
 
     def initialize_gui_state(self):
         # get the initial state and make the GUI synced to it
