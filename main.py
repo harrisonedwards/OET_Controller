@@ -359,7 +359,7 @@ class Window(QtWidgets.QWidget):
         self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
         self.pumpStopPushButton.clicked.connect(self.pump.halt)
         self.pumpTimeRadioButton.click()
-        self.dmd.turn_on_led()
+        # self.dmd.turn_on_led()
 
     def closeEvent(self, event):
         print('closing all connections...')

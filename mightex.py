@@ -91,15 +91,15 @@ class Polygon1000():
 
     def turn_on_led(self):
         print('init leds:', self.led_clib.MTUSB_BLSDriverInitDevices())
-        print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
-        print('reset device led:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
-        print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
-        print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
-        for channel in range(1,5):
-            print(f'set led mode for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
-            print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
-            print(f'set led current for channel {channel}:',
-                  self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
+        # print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        # print('reset device led:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
+        # print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        # print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
+        # for channel in range(1,5):
+        #     print(f'set led mode for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
+        #     print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
+        #     print(f'set led current for channel {channel}:',
+        #           self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
 
 
     def draw_pyglet(self):
