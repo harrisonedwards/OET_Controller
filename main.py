@@ -324,41 +324,41 @@ class Window(QtWidgets.QWidget):
 
     def initialize_gui_state(self):
         # get the initial state and make the GUI synced to it
-        idx_dict = {k: v for k, v in zip(range(1, 7), self.objectives)}
-        objective = self.microscope.status.iNOSEPIECE
-        self.magnificationComboBoxWidget.setCurrentText(idx_dict[objective])
-
-        idx_dict = {k: v for k, v in zip(range(1, 7), self.filter_positions)}
-        filter = self.microscope.status.iTURRET1POS
-        self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
-
-        fluor_shutter_state = self.microscope.status.iTURRET1SHUTTER
-        self.fluorescenceShutterPushButton.setChecked(fluor_shutter_state)
-
-        dia_state = self.microscope.status.iSHUTTER_DIA
-        self.diaPushButton.setChecked(dia_state)
+        # idx_dict = {k: v for k, v in zip(range(1, 7), self.objectives)}
+        # objective = self.microscope.status.iNOSEPIECE
+        # self.magnificationComboBoxWidget.setCurrentText(idx_dict[objective])
+        #
+        # idx_dict = {k: v for k, v in zip(range(1, 7), self.filter_positions)}
+        # filter = self.microscope.status.iTURRET1POS
+        # self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
+        #
+        # fluor_shutter_state = self.microscope.status.iTURRET1SHUTTER
+        # self.fluorescenceShutterPushButton.setChecked(fluor_shutter_state)
+        #
+        # dia_state = self.microscope.status.iSHUTTER_DIA
+        # self.diaPushButton.setChecked(dia_state)
 
         # connect all of our control signals
         self.takeScreenshotPushButton.clicked.connect(self.camera.take_screenshot_slot)
         self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
-        self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
-        self.xystageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_xystep_size)
-        self.zstageStepSizeDoubleSpinBox.valueChanged.connect(self.microscope.set_zstep_size)
-        self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
-        self.diaPushButton.clicked.connect(self.toggleDia)
+        # self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
+        # self.xystageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_xystep_size)
+        # self.zstageStepSizeDoubleSpinBox.valueChanged.connect(self.microscope.set_zstep_size)
+        # self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
+        # self.diaPushButton.clicked.connect(self.toggleDia)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
-        if self.function_generator:
-            self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
-        self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
-        self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
-        self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
-        self.pumpAmountRadioButton.clicked.connect(self.startAmountDispenseMode)
-        self.pumpTimeRadioButton.clicked.connect(self.startTimeDispenseMode)
-        self.pumpDispensePushButton.clicked.connect(self.pumpDispense)
-        self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
-        self.pumpStopPushButton.clicked.connect(self.pump.halt)
-        self.pumpTimeRadioButton.click()
+        # if self.function_generator:
+            # self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
+        # self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
+        # self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
+        # self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
+        # self.pumpAmountRadioButton.clicked.connect(self.startAmountDispenseMode)
+        # self.pumpTimeRadioButton.clicked.connect(self.startTimeDispenseMode)
+        # self.pumpDispensePushButton.clicked.connect(self.pumpDispense)
+        # self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
+        # self.pumpStopPushButton.clicked.connect(self.pump.halt)
+        # self.pumpTimeRadioButton.click()
         # self.dmd.turn_on_led()
 
     def closeEvent(self, event):
