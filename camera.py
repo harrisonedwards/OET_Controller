@@ -8,16 +8,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import time
+import qimage2ndarray
 
 class Camera(QtCore.QThread):
-    VideoSignal = QtCore.pyqtSignal(QtGui.QImage)
+    VideoSignal = QtCore.pyqtSignal('PyQt_PyObject')
 
     # vid_process_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self, parent=None):
         super(Camera, self).__init__(parent)
         self.exposure = 200
-        self.count = 0
 
         self.hcam = None
         self.cam_buffer = None
@@ -26,6 +26,8 @@ class Camera(QtCore.QThread):
         self.width = 0
         self.height = 0
         self.waiting = False
+
+        self.paths = []
 
         print('initializing camera...')
         a = toupcam.Toupcam.EnumV2()
@@ -53,10 +55,10 @@ class Camera(QtCore.QThread):
 
         self.run_video = True
         self.rotation = False
-        self.window_size = QtCore.QSize(width, height) # original image size
+        self.window_size = QtCore.QSize(width, height)  # original image size
         self.image = np.zeros((width, height))
         self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
-                                     self.window_size.width(), QtGui.QImage.Format_Grayscale8)
+                                     self.window_size.width(), QtGui.QImage.Format_RGB888)
 
     def __del__(self):
         self.hcam.Close()
@@ -76,29 +78,45 @@ class Camera(QtCore.QThread):
             window_h = self.window_size.height()
             window_w = self.window_size.width()
 
-            np_img = np.frombuffer(self.cam_buffer, dtype=np.uint8)
+            # raw image:
+            np_img = np.frombuffer(self.cam_buffer, dtype=np.uint8).reshape((1536, 1024, 3))
 
             # for screenshots:
             self.image = np.copy(np_img)
 
-            np_img = cv2.resize(np_img, (window_h, window_w))
-
-            qt_img = QtGui.QImage(self.cam_buffer, self.width, self.height, (self.width * 24 + 31) // 32 * 4,
-                               QtGui.QImage.Format_RGB888)
-            self.VideoSignal.emit(qt_img)
-            self.count += 1
-            print(self.count)
+            if len(self.paths) > 0:
+                print('DRAWING PATHS:', self.paths)
+                for path in self.paths:
+                    # scale
+                    start_scaled_x = int(path['start'].x() / path['width'] * np_img.shape[0])
+                    start_scaled_y = int(path['start'].y() / path['width'] * np_img.shape[1])
+                    end_scaled_x = int(path['end'].x() / path['width'] * np_img.shape[0])
+                    end_scaled_y = int(path['end'].y() / path['width'] * np_img.shape[1])
+                    print(f'drawing line: ({start_scaled_x}, {start_scaled_y}), ({end_scaled_x}, {end_scaled_y})')
+                    cv2.line(np_img, (start_scaled_x, start_scaled_y), (end_scaled_x, end_scaled_y),
+                                      (0, 255, 0), 10)
+            np_img = cv2.resize(np_img, (window_h, window_w)).astype(np.uint8)
+            self.VideoSignal.emit(np_img)
         else:
             print('event callback: {}'.format(nEvent))
 
 
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def path_slot(self, payload):
+        print(payload)
+        self.paths.append(payload)
+        print(self.paths)
+
+    def clear_paths_slot(self):
+        pass
+
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
     def resize_slot(self, size, running):
         # print('received resize')
-        self.image = np.zeros((self.width, self.height))
-        self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
-                                     self.window_size.width(), QtGui.QImage.Format_Grayscale8)
-        self.VideoSignal.emit(self.qt_image)
+        # self.image = np.zeros((self.width, self.height))
+        # self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
+        #                              self.window_size.width(), QtGui.QImage.Format_Grayscale8)
+        # self.VideoSignal.emit(self.qt_image)
         if running:
             self.run_video = False
             time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
@@ -116,7 +134,6 @@ class Camera(QtCore.QThread):
         gain = int(gain * 100)
         print(f'set gain: {gain}')
         self.hcam.put_ExpoAGain(gain)
-
 
     @QtCore.pyqtSlot()
     def take_screenshot_slot(self):

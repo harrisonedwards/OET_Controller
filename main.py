@@ -1,6 +1,7 @@
 import sys
 
 import PyQt5.QtGui
+import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from function_generator import FunctionGenerator
 from pump import Pump
@@ -11,17 +12,23 @@ from stage import Stage
 from PyQt5.QtCore import QThread
 from mightex import Polygon1000
 import cv2
-
+import qimage2ndarray
+import copy
 
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
     click_event_signal = QtCore.pyqtSignal(QtGui.QMouseEvent)
+    path_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self, parent=None):
         super(ImageViewer, self).__init__(parent)
         self.image = QtGui.QImage()
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
         self.ignore_release = True
+        self.drawing = False
+        self.robot_paths = []
+        self.payload = {}
+        self.begin_path = None
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -30,34 +37,48 @@ class ImageViewer(QtWidgets.QWidget):
         painter.drawImage(x, 0, self.image)
         self.image = QtGui.QImage()
 
-    @QtCore.pyqtSlot(QtGui.QImage)
+    @QtCore.pyqtSlot('PyQt_PyObject')
     def setImage(self, image):
-        # print(self.image)
-        self.image = image
+        qt_img = qimage2ndarray.array2qimage(image)
+        # qt_img = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888)
+        self.image = qt_img
         self.update()
 
     def sizeHint(self):
-        return QtCore.QSize(2060 // 3, 2048 // 3)
+        return QtCore.QSize(1536 // 3, 1024 // 3)
 
     def heightForWidth(self, width):
-        return width * 2048 // 2060
+        return width * 1536 // 1024
 
     def resizeEvent(self, event):
         # force aspect ratio here
         h = self.height()
-        w = int(2060 / 2048 * h)
+        w = int(1536 / 1024 * h)
         self.resize_event_signal.emit(QtCore.QSize(h, w), False)
         self.ignore_release = False
 
     def mouseReleaseEvent(self, event):
+        # helper to ignore events if we are resizing
         if not self.ignore_release:
             h = self.height()
-            w = int(2060 / 2048 * h)
+            w = int(1536 / 1024 * h)
             self.resize_event_signal.emit(QtCore.QSize(h, w), True)
+        if self.drawing:
+            self.payload['height'] = self.height()
+            self.payload['width'] = self.width()
+            self.payload['start'] = self.begin_path
+            self.payload['end'] = event.pos()
+            print(f'payload: {self.payload}')
+            self.path_signal.emit(copy.deepcopy(self.payload))
 
     def mousePressEvent(self, event):
         self.ignore_release = True
-        self.click_event_signal.emit(event)
+        # self.click_event_signal.emit(event)
+        if self.drawing:
+            self.begin_path = event.pos()
+
+    # def mouseMoveEvent(self, event):
+    #     if event.buttons() and QtCore.Qt.LeftButton and self.drawing:
 
 
 class Window(QtWidgets.QWidget):
@@ -207,8 +228,9 @@ class Window(QtWidgets.QWidget):
         self.pumpStopPushButton = QtWidgets.QPushButton(text='Halt')
 
         # DMD
-        self.changeOETPatternPushbutton = QtWidgets.QPushButton('Change OET Pattern')
-        self.oetGrabPushButton = QtWidgets.QPushButton('Grab')
+        self.detectRobotsPushButton = QtWidgets.QPushButton('Detect Robots')
+        self.drawPathsPushButton = QtWidgets.QPushButton('Draw Paths')
+        self.drawPathsPushButton.setCheckable(True)
         self.oetMoveToPushButton = QtWidgets.QPushButton('Move To')
         self.oetActivatePushButton = QtWidgets.QPushButton('Activate')
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
@@ -290,8 +312,8 @@ class Window(QtWidgets.QWidget):
         self.oetGroupBox = QtWidgets.QGroupBox('OET Controls')
         self.oetLayout = QtWidgets.QHBoxLayout()
         self.oetGroupBox.setLayout(self.oetLayout)
-        self.oetLayout.addWidget(self.changeOETPatternPushbutton)
-        self.oetLayout.addWidget(self.oetGrabPushButton)
+        self.oetLayout.addWidget(self.detectRobotsPushButton)
+        self.oetLayout.addWidget(self.drawPathsPushButton)
         self.oetLayout.addWidget(self.oetMoveToPushButton)
         self.oetLayout.addWidget(self.oetRunPushButton)
         self.oetLayout.addWidget(self.oetSpeedLabel)
@@ -310,6 +332,7 @@ class Window(QtWidgets.QWidget):
         self.camera_thread.start()
 
         self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
+        self.image_viewer.path_signal.connect(self.camera.path_slot)
         self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
         self.set_camera_gain_signal.connect(self.camera.set_gain_slot)
 
@@ -348,7 +371,7 @@ class Window(QtWidgets.QWidget):
 
         # connect all of our control signals
         self.takeScreenshotPushButton.clicked.connect(self.camera.take_screenshot_slot)
-        self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
+        self.detectRobotsPushButton.clicked.connect(self.changeOETPattern)
         # self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
         # self.xystageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_xystep_size)
         # self.zstageStepSizeDoubleSpinBox.valueChanged.connect(self.microscope.set_zstep_size)
@@ -357,6 +380,8 @@ class Window(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.gainDoubleSpinBox.valueChanged.connect(self.setCameraGain)
         self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
+        self.detectRobotsPushButton.clicked.connect(self.detectRobots)
+        self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         # if self.function_generator:
             # self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
         # self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
@@ -369,6 +394,19 @@ class Window(QtWidgets.QWidget):
         # self.pumpStopPushButton.clicked.connect(self.pump.halt)
         # self.pumpTimeRadioButton.click()
         # self.dmd.turn_on_led()
+
+    def detectRobots(self):
+        pass
+
+    def toggleDrawPaths(self):
+        state = self.drawPathsPushButton.isChecked()
+        self.image_viewer.drawing = state
+
+
+    @QtCore.pyqtSlot(QtGui.QMouseEvent)
+    def handle_click(self, event):
+        print(event.x(), event.y())
+
 
     def closeEvent(self, event):
         print('closing all connections...')
@@ -416,9 +454,7 @@ class Window(QtWidgets.QWidget):
     def keyReleaseEvent(self, event):
         pass
 
-    @QtCore.pyqtSlot(QtGui.QMouseEvent)
-    def handle_click(self, event):
-        print(event.x(), event.y())
+
 
     def changeOETPattern(self):
         self.dmd.set_image(self.test_image)

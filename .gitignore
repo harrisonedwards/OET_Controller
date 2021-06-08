@@ -80,3 +80,5 @@ new_mic_sdk.h
 *.png
 
 *.ipynb
+
+test.py
