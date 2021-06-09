@@ -1,6 +1,7 @@
 import sys
 
 import PyQt5.QtGui
+import PyQt5.QtWidgets
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from function_generator import FunctionGenerator
@@ -14,6 +15,7 @@ from mightex import Polygon1000
 import cv2
 import qimage2ndarray
 import copy
+from AspectLayout import AspectLayout
 
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
@@ -29,6 +31,10 @@ class ImageViewer(QtWidgets.QWidget):
         self.robot_paths = []
         self.payload = {}
         self.begin_path = None
+        sizePolicy = PyQt5.QtWidgets.QSizePolicy(PyQt5.QtWidgets.QSizePolicy.Preferred,
+                                                 PyQt5.QtWidgets.QSizePolicy.Preferred)
+        self.sizePolicy().setHeightForWidth(True)
+        self.setSizePolicy(sizePolicy)
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -49,12 +55,12 @@ class ImageViewer(QtWidgets.QWidget):
         return QtCore.QSize(1536 // 2, 1024 // 2)
 
     def heightForWidth(self, width):
-        return width * 1536 // 1024
+        return width * 1.5
 
     def resizeEvent(self, event):
         # force aspect ratio here
         h = self.height()
-        w = int(1536 / 1024 * h)
+        w = 1.5*h
         self.resize_event_signal.emit(QtCore.QSize(w, h), False)
         self.ignore_release = False
 
@@ -64,7 +70,6 @@ class ImageViewer(QtWidgets.QWidget):
             h = self.height()
             w = int(1536 / 1024 * h)
             self.resize_event_signal.emit(QtCore.QSize(w, h), True)
-            QtCore.QPoint()
         if self.drawing:
             self.payload['start_x'] = self.begin_path.x()
             self.payload['start_y'] = self.begin_path.y()
@@ -348,7 +353,9 @@ class Window(QtWidgets.QWidget):
         self.VBoxLayout.setAlignment(QtCore.Qt.AlignTop)
 
         self.HBoxLayout.addLayout(self.VBoxLayout)
-        self.HBoxLayout.addWidget(self.image_viewer)
+        self.aspectLayout = AspectLayout(1.5)
+        self.aspectLayout.addWidget(self.image_viewer)
+        self.HBoxLayout.addLayout(self.aspectLayout)
         self.initialize_gui_state()
         # self.showMaximized()
 
