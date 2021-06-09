@@ -31,10 +31,6 @@ class ImageViewer(QtWidgets.QWidget):
         self.robot_paths = []
         self.payload = {}
         self.begin_path = None
-        sizePolicy = PyQt5.QtWidgets.QSizePolicy(PyQt5.QtWidgets.QSizePolicy.Preferred,
-                                                 PyQt5.QtWidgets.QSizePolicy.Preferred)
-        self.sizePolicy().setHeightForWidth(True)
-        self.setSizePolicy(sizePolicy)
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
