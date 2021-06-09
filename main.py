@@ -64,11 +64,12 @@ class ImageViewer(QtWidgets.QWidget):
             h = self.height()
             w = int(1536 / 1024 * h)
             self.resize_event_signal.emit(QtCore.QSize(w, h), True)
+            QtCore.QPoint()
         if self.drawing:
-            self.payload['height'] = self.height()
-            self.payload['width'] = self.width()
-            self.payload['start'] = self.begin_path
-            self.payload['end'] = event.pos()
+            self.payload['start_x'] = self.begin_path.x()
+            self.payload['start_y'] = self.begin_path.y()
+            self.payload['end_x'] = event.pos().x()
+            self.payload['end_y'] = event.pos().y()
             print(f'payload: {self.payload}')
             self.path_signal.emit(copy.deepcopy(self.payload))
 
@@ -349,7 +350,7 @@ class Window(QtWidgets.QWidget):
         self.HBoxLayout.addLayout(self.VBoxLayout)
         self.HBoxLayout.addWidget(self.image_viewer)
         self.initialize_gui_state()
-        self.showMaximized()
+        # self.showMaximized()
 
         # connect to the video thread and start the video
         self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)

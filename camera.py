@@ -78,9 +78,9 @@ class Camera(QtCore.QThread):
 
             # raw image:
             np_img = np.frombuffer(self.cam_buffer, dtype=np.uint8).reshape((1024, 1536, 3))
-            if len(self.paths) > 0:
-                sx = self.paths[0]['start'].x()
-                sy = self.paths[0]['start'].y()
+            # if len(self.paths) > 0:
+            #     sx = self.paths[0]['start'].x()
+            #     sy = self.paths[0]['start'].y()
                 # print(f'w:{np_img.shape[0]}, h:{np_img.shape[1]}, x:{sx}, y:{sy}')
             # for screenshots:
             self.image = np.copy(np_img)
@@ -100,17 +100,12 @@ class Camera(QtCore.QThread):
         self.draw_paths()
 
     def draw_paths(self):
-        np_img = np.zeros((1024, 1536, 3)).astype(np.uint8)
         if len(self.paths) > 0:
             for path in self.paths:
                 # scale
-                start_scaled_x = int(path['start'].x())
-                start_scaled_y = int(path['start'].y())
-                end_scaled_x = int(path['end'].x())
-                end_scaled_y = int(path['end'].y())
-                print(f'drawing line: ({start_scaled_x}, {start_scaled_y}), ({end_scaled_x}, {end_scaled_y})')
-                cv2.line(self.overlay, (start_scaled_x, start_scaled_y), (end_scaled_x, end_scaled_y),
-                         (0, 255, 0), 10)
+                # print(f'drawing line: ({start_scaled_x}, {start_scaled_y}), ({end_scaled_x}, {end_scaled_y})')
+                cv2.line(self.overlay, (int(path['start_x']), int(path['start_y'])),
+                         (int(path['end_x']), int(path['end_y'])), (0, 255, 0), 10)
 
     def clear_paths_slot(self):
         pass
@@ -131,6 +126,7 @@ class Camera(QtCore.QThread):
         else:
             self.window_size = size
             self.run_video = True
+        self.draw_paths()
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def set_exposure_slot(self, exposure):
