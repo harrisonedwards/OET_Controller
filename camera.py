@@ -77,7 +77,9 @@ class Camera(QtCore.QThread):
             self.hcam.PullImageV2(self.cam_buffer, 24, None)
 
             # raw image:
-            np_img = np.frombuffer(self.cam_buffer, dtype=np.uint8).reshape((1024, 1536, 3))
+            # np_img = np.frombuffer(self.cam_buffer, dtype=np.uint8).reshape((1024, 1536, 3))
+            # HALLUCINATION IMAGE:
+            np_img = cv2.imread(r'C:\Users\Wheeler Lab\Desktop\Harrison\OET\2021_05_12_17_39_14.png')
 
             # for screenshots:
             self.image = np.copy(np_img)
