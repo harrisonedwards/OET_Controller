@@ -56,7 +56,8 @@ class Camera(QtCore.QThread):
         self.run_video = True
         self.rotation = False
         self.window_size = QtCore.QSize(width, height)  # original image size
-        self.image = np.zeros((width, height))
+        self.image = np.zeros((width, height, 3)).astype(np.uint8)
+        self.overlay = np.zeros((width, height, 3)).astype(np.uint8)
         self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
                                      self.window_size.width(), QtGui.QImage.Format_RGB888)
 
@@ -83,19 +84,9 @@ class Camera(QtCore.QThread):
 
             # for screenshots:
             self.image = np.copy(np_img)
+            np_img = cv2.addWeighted(np_img, 1, self.overlay, 0.5, 0)
 
-            if len(self.paths) > 0:
-                print('DRAWING PATHS:', self.paths)
-                for path in self.paths:
-                    # scale
-                    start_scaled_x = int(path['start'].x() / path['width'] * np_img.shape[0])
-                    start_scaled_y = int(path['start'].y() / path['width'] * np_img.shape[1])
-                    end_scaled_x = int(path['end'].x() / path['width'] * np_img.shape[0])
-                    end_scaled_y = int(path['end'].y() / path['width'] * np_img.shape[1])
-                    print(f'drawing line: ({start_scaled_x}, {start_scaled_y}), ({end_scaled_x}, {end_scaled_y})')
-                    cv2.line(np_img, (start_scaled_x, start_scaled_y), (end_scaled_x, end_scaled_y),
-                                      (0, 255, 0), 10)
-            np_img = cv2.resize(np_img, (window_h, window_w)).astype(np.uint8)
+            np_img = cv2.resize(np_img, (window_w, window_h)).astype(np.uint8)
             self.VideoSignal.emit(np_img)
         else:
             print('event callback: {}'.format(nEvent))
@@ -103,17 +94,30 @@ class Camera(QtCore.QThread):
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def path_slot(self, payload):
-        print(payload)
         self.paths.append(payload)
-        print(self.paths)
+        self.draw_paths()
+
+    def draw_paths(self):
+        np_img = np.zeros((1536, 1024, 3)).astype(np.uint8)
+        if len(self.paths) > 0:
+            for path in self.paths:
+                # scale
+                start_scaled_x = int(path['start'].x() / path['width'] * np_img.shape[0])
+                start_scaled_y = int(path['start'].y() / path['width'] * np_img.shape[1])
+                end_scaled_x = int(path['end'].x() / path['width'] * np_img.shape[0])
+                end_scaled_y = int(path['end'].y() / path['width'] * np_img.shape[1])
+                print(f'drawing line: ({start_scaled_x}, {start_scaled_y}), ({end_scaled_x}, {end_scaled_y})')
+                cv2.line(self.overlay, (start_scaled_x, start_scaled_y), (end_scaled_x, end_scaled_y),
+                         (0, 255, 0), 10)
 
     def clear_paths_slot(self):
         pass
 
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
     def resize_slot(self, size, running):
-        # print('received resize')
-        # self.image = np.zeros((self.width, self.height))
+        print('received resize')
+        self.image = np.zeros((self.width, self.height, 3)).astype(np.uint8)
+        self.overlay = np.zeros((self.width, self.height, 3)).astype(np.uint8)
         # self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
         #                              self.window_size.width(), QtGui.QImage.Format_Grayscale8)
         # self.VideoSignal.emit(self.qt_image)
