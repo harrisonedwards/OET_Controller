@@ -76,17 +76,19 @@ class Camera(QtCore.QThread):
         if nEvent == toupcam.TOUPCAM_EVENT_IMAGE and self.run_video:
             self.hcam.PullImageV2(self.cam_buffer, 24, None)
 
-            window_h = self.window_size.height()
-            window_w = self.window_size.width()
-
             # raw image:
-            np_img = np.frombuffer(self.cam_buffer, dtype=np.uint8).reshape((1536, 1024, 3))
-
+            np_img = np.frombuffer(self.cam_buffer, dtype=np.uint8).reshape((1024, 1536, 3))
+            if len(self.paths) > 0:
+                sx = self.paths[0]['start'].x()
+                sy = self.paths[0]['start'].y()
+                # print(f'w:{np_img.shape[0]}, h:{np_img.shape[1]}, x:{sx}, y:{sy}')
             # for screenshots:
             self.image = np.copy(np_img)
+
+            np_img = cv2.resize(np_img, (self.width, self.height)).astype(np.uint8)
+
             np_img = cv2.addWeighted(np_img, 1, self.overlay, 0.5, 0)
 
-            np_img = cv2.resize(np_img, (window_w, window_h)).astype(np.uint8)
             self.VideoSignal.emit(np_img)
         else:
             print('event callback: {}'.format(nEvent))
@@ -98,14 +100,14 @@ class Camera(QtCore.QThread):
         self.draw_paths()
 
     def draw_paths(self):
-        np_img = np.zeros((1536, 1024, 3)).astype(np.uint8)
+        np_img = np.zeros((1024, 1536, 3)).astype(np.uint8)
         if len(self.paths) > 0:
             for path in self.paths:
                 # scale
-                start_scaled_x = int(path['start'].x() / path['width'] * np_img.shape[0])
-                start_scaled_y = int(path['start'].y() / path['width'] * np_img.shape[1])
-                end_scaled_x = int(path['end'].x() / path['width'] * np_img.shape[0])
-                end_scaled_y = int(path['end'].y() / path['width'] * np_img.shape[1])
+                start_scaled_x = int(path['start'].x())
+                start_scaled_y = int(path['start'].y())
+                end_scaled_x = int(path['end'].x())
+                end_scaled_y = int(path['end'].y())
                 print(f'drawing line: ({start_scaled_x}, {start_scaled_y}), ({end_scaled_x}, {end_scaled_y})')
                 cv2.line(self.overlay, (start_scaled_x, start_scaled_y), (end_scaled_x, end_scaled_y),
                          (0, 255, 0), 10)
@@ -116,8 +118,10 @@ class Camera(QtCore.QThread):
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
     def resize_slot(self, size, running):
         print('received resize')
-        self.image = np.zeros((self.width, self.height, 3)).astype(np.uint8)
-        self.overlay = np.zeros((self.width, self.height, 3)).astype(np.uint8)
+        self.width = size.width()
+        self.height = size.height()
+        self.image = np.zeros((self.height, self.width, 3)).astype(np.uint8)
+        self.overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
         # self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
         #                              self.window_size.width(), QtGui.QImage.Format_Grayscale8)
         # self.VideoSignal.emit(self.qt_image)

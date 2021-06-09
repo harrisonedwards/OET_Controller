@@ -34,6 +34,7 @@ class ImageViewer(QtWidgets.QWidget):
         painter = QtGui.QPainter(self)
         # draw in the center here
         x = int(self.width() / 2 - self.image.width() / 2)  # offset to draw in center
+        print(self.width(), self.height(), self.image.width(), self.image.height())
         painter.drawImage(x, 0, self.image)
         self.image = QtGui.QImage()
 
@@ -45,7 +46,7 @@ class ImageViewer(QtWidgets.QWidget):
         self.update()
 
     def sizeHint(self):
-        return QtCore.QSize(1536 // 3, 1024 // 3)
+        return QtCore.QSize(1536 // 2, 1024 // 2)
 
     def heightForWidth(self, width):
         return width * 1536 // 1024
@@ -54,7 +55,7 @@ class ImageViewer(QtWidgets.QWidget):
         # force aspect ratio here
         h = self.height()
         w = int(1536 / 1024 * h)
-        self.resize_event_signal.emit(QtCore.QSize(h, w), False)
+        self.resize_event_signal.emit(QtCore.QSize(w, h), False)
         self.ignore_release = False
 
     def mouseReleaseEvent(self, event):
@@ -62,7 +63,7 @@ class ImageViewer(QtWidgets.QWidget):
         if not self.ignore_release:
             h = self.height()
             w = int(1536 / 1024 * h)
-            self.resize_event_signal.emit(QtCore.QSize(h, w), True)
+            self.resize_event_signal.emit(QtCore.QSize(w, h), True)
         if self.drawing:
             self.payload['height'] = self.height()
             self.payload['width'] = self.width()
@@ -72,6 +73,7 @@ class ImageViewer(QtWidgets.QWidget):
             self.path_signal.emit(copy.deepcopy(self.payload))
 
     def mousePressEvent(self, event):
+        print(event.pos())
         self.ignore_release = True
         # self.click_event_signal.emit(event)
         if self.drawing:
