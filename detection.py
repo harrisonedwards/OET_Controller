@@ -7,7 +7,7 @@ def detect(img):
     canny = np.copy(cv2.Canny(img, 0, 60))
     dilated = cv2.dilate(canny, structure)
     contours, hier = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    filled = cv2.drawContours(img, contours, -1, 1, -1, 0, hier, 1)
+    filled = cv2.drawContours(img, contours, -1, 1, -1, 0, hier, 1)[:,:,0]
     return np.copy(filled)
 
 

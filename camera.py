@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import time
-import qimage2ndarray
+from detection import full_process
 
 class Camera(QtCore.QThread):
     VideoSignal = QtCore.pyqtSignal('PyQt_PyObject')
@@ -25,7 +25,7 @@ class Camera(QtCore.QThread):
         self.total = 0
         self.width = 0
         self.height = 0
-        self.waiting = False
+        self.detection = False
 
         self.paths = []
 
@@ -57,7 +57,8 @@ class Camera(QtCore.QThread):
         self.rotation = False
         self.window_size = QtCore.QSize(width, height)  # original image size
         self.image = np.zeros((width, height, 3)).astype(np.uint8)
-        self.overlay = np.zeros((width, height, 3)).astype(np.uint8)
+        self.path_overlay = np.zeros((width, height, 3)).astype(np.uint8)
+        self.detection_overlay = np.zeros((width, height, 3)).astype(np.uint8)
         self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
                                      self.window_size.width(), QtGui.QImage.Format_RGB888)
 
@@ -78,20 +79,35 @@ class Camera(QtCore.QThread):
 
             # raw image:
             # np_img = np.frombuffer(self.cam_buffer, dtype=np.uint8).reshape((1024, 1536, 3))
+
             # HALLUCINATION IMAGE:
             np_img = cv2.imread(r'C:\Users\Wheeler Lab\Desktop\Harrison\OET\2021_05_12_17_39_14.png')
 
             # for screenshots:
             self.image = np.copy(np_img)
 
+            if self.detection:
+                if self.detection_overlay.shape[-1] != 3:
+                    self.detection_overlay = cv2.cvtColor(self.detection_overlay, cv2.COLOR_GRAY2BGR)
+                self.detection_overlay = cv2.resize(self.detection_overlay, np_img.shape[:2])
+                print('DETECTION OVERLAY SHAPE', self.detection_overlay.shape, 'np img shape:', np_img.shape)
+                np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.5, 0)
+
             np_img = cv2.resize(np_img, (self.width, self.height)).astype(np.uint8)
 
-            np_img = cv2.addWeighted(np_img, 1, self.overlay, 0.5, 0)
+            np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.5, 0)
+
 
             self.VideoSignal.emit(np_img)
         else:
             print('event callback: {}'.format(nEvent))
 
+    @QtCore.pyqtSlot()
+    def run_detection_slot(self):
+        print('running detection')
+        self.detection = True
+        robot_control_mask, inner_circle_mask, robot_angles = full_process(self.image)
+        self.detection_overlay = robot_control_mask
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def path_slot(self, payload):
@@ -104,19 +120,19 @@ class Camera(QtCore.QThread):
         self.draw_paths()
 
     def draw_paths(self):
-        self.overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
+        self.path_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
         if len(self.paths) > 0:
             for path in self.paths:
                 start_x_scaled = int(path['start_x'] * self.width)
                 start_y_scaled = int(path['start_y'] * self.height)
                 end_x_scaled = int(path['end_x'] * self.width)
                 end_y_scaled = int(path['end_y'] * self.height)
-                cv2.line(self.overlay, (start_x_scaled, start_y_scaled),
+                cv2.line(self.path_overlay, (start_x_scaled, start_y_scaled),
                          (end_x_scaled, end_y_scaled), (0, 255, 0), 2)
-        self.overlay = cv2.resize(self.overlay, (self.width, self.height)).astype(np.uint8)
+        self.path_overlay = cv2.resize(self.path_overlay, (self.width, self.height)).astype(np.uint8)
 
     @QtCore.pyqtSlot()
-    def clear_paths_slot(self):
+    def clear_overlay_slot(self):
         self.paths = []
         self.draw_paths()
 
@@ -126,7 +142,7 @@ class Camera(QtCore.QThread):
         self.width = size.width()
         self.height = size.height()
         self.image = np.zeros((self.height, self.width, 3)).astype(np.uint8)
-        self.overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
+        self.path_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
         # self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
         #                              self.window_size.width(), QtGui.QImage.Format_Grayscale8)
         # self.VideoSignal.emit(self.qt_image)

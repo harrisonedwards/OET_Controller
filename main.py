@@ -16,6 +16,7 @@ import cv2
 import qimage2ndarray
 import copy
 from AspectLayout import AspectLayout
+from detection import full_process
 
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
@@ -235,7 +236,7 @@ class Window(QtWidgets.QWidget):
         self.detectRobotsPushButton = QtWidgets.QPushButton('Detect Robots')
         self.drawPathsPushButton = QtWidgets.QPushButton('Draw Paths')
         self.drawPathsPushButton.setCheckable(True)
-        self.oetClearPathsPushButton = QtWidgets.QPushButton('Clear Paths')
+        self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Overlay')
         self.oetActivatePushButton = QtWidgets.QPushButton('Activate')
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
         self.oetSpeedLabel = QtWidgets.QLabel('Speed')
@@ -318,7 +319,7 @@ class Window(QtWidgets.QWidget):
         self.oetGroupBox.setLayout(self.oetLayout)
         self.oetLayout.addWidget(self.detectRobotsPushButton)
         self.oetLayout.addWidget(self.drawPathsPushButton)
-        self.oetLayout.addWidget(self.oetClearPathsPushButton)
+        self.oetLayout.addWidget(self.oetClearOverlayPushButton)
         self.oetLayout.addWidget(self.oetRunPushButton)
         self.oetLayout.addWidget(self.oetSpeedLabel)
         self.oetLayout.addWidget(self.oetSpeedDoubleSpinBox)
@@ -377,8 +378,9 @@ class Window(QtWidgets.QWidget):
 
         # connect all of our control signals
         self.takeScreenshotPushButton.clicked.connect(self.camera.take_screenshot_slot)
-        self.detectRobotsPushButton.clicked.connect(self.changeOETPattern)
-        self.oetClearPathsPushButton.clicked.connect(self.camera.clear_paths_slot)
+        self.detectRobotsPushButton.clicked.connect(self.camera.run_detection_slot)
+
+        self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_overlay_slot)
         # self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
         # self.xystageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_xystep_size)
         # self.zstageStepSizeDoubleSpinBox.valueChanged.connect(self.microscope.set_zstep_size)
@@ -387,7 +389,6 @@ class Window(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.gainDoubleSpinBox.valueChanged.connect(self.setCameraGain)
         self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
-        self.detectRobotsPushButton.clicked.connect(self.detectRobots)
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         # if self.function_generator:
             # self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
@@ -402,8 +403,6 @@ class Window(QtWidgets.QWidget):
         # self.pumpTimeRadioButton.click()
         # self.dmd.turn_on_led()
 
-    def detectRobots(self):
-        pass
 
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()
