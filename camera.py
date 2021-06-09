@@ -110,11 +110,13 @@ class Camera(QtCore.QThread):
                 end_x_scaled = int(path['end_x'] * self.width)
                 end_y_scaled = int(path['end_y'] * self.height)
                 cv2.line(self.overlay, (start_x_scaled, start_y_scaled),
-                         (end_x_scaled, end_y_scaled), (0, 255, 0), 10)
+                         (end_x_scaled, end_y_scaled), (0, 255, 0), 2)
         self.overlay = cv2.resize(self.overlay, (self.width, self.height)).astype(np.uint8)
 
+    @QtCore.pyqtSlot()
     def clear_paths_slot(self):
-        pass
+        self.paths = []
+        self.draw_paths()
 
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
     def resize_slot(self, size, running):
