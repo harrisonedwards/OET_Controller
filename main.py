@@ -16,7 +16,7 @@ import cv2
 import qimage2ndarray
 import copy
 from AspectLayout import AspectLayout
-from detection import full_process
+from detection import get_robot_control
 
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
@@ -72,11 +72,9 @@ class ImageViewer(QtWidgets.QWidget):
             self.payload['start_y'] = self.begin_path.y()
             self.payload['end_x'] = event.pos().x()
             self.payload['end_y'] = event.pos().y()
-            print(f'payload: {self.payload}')
             self.path_signal.emit(copy.deepcopy(self.payload))
 
     def mousePressEvent(self, event):
-        print(event.pos())
         self.ignore_release = True
         # self.click_event_signal.emit(event)
         if self.drawing:

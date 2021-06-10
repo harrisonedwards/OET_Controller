@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import time
-from detection import full_process
+from detection import get_robot_control
 
 NATIVE_CAMERA_WIDTH = 2048
 NATIVE_CAMERA_HEIGHT = 2060
@@ -29,10 +29,7 @@ class Camera(QtCore.QThread):
         self.width = 0
         self.height = 0
         self.detection = False
-
-        self.contours_towards_center = []
-
-        self.paths = []
+        self.robots = {}
 
         print('initializing camera...')
         a = toupcam.Toupcam.EnumV2()
@@ -111,39 +108,23 @@ class Camera(QtCore.QThread):
 
     @QtCore.pyqtSlot()
     def run_detection_slot(self):
-        print('running detection')
+        print('running detection...')
+        self.clear_overlay_slot()
         self.detection = True
-        self.robot_control_mask, self.contours_towards_center, robot_angles = full_process(self.image)
+        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image)
         self.detection_overlay = np.copy(self.robot_control_mask)
-
-
-    def draw_paths(self):
-        self.path_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
-        # find closest contour, color the robot the same as the path, and draw it
-        if len(self.paths) > 0:
-            for path in self.paths:
-                # start_x_scaled = int(path['start_x'] * self.width)
-                # start_y_scaled = int(path['start_y'] * self.height)
-
-                start_x_scaled = int(path['nearest_robot_cx'] * self.width)
-                start_y_scaled = int(path['nearest_robot_cy'] * self.height)
-
-                end_x_scaled = int(path['end_x'] * self.width)
-                end_y_scaled = int(path['end_y'] * self.height)
-                print('line:', (start_x_scaled, start_y_scaled), (end_x_scaled, end_y_scaled))
-                cv2.line(self.path_overlay, (start_x_scaled, start_y_scaled),
-                         (end_x_scaled, end_y_scaled), (0, 255, 0), 2)
-        self.path_overlay = cv2.resize(self.path_overlay, (self.width, self.height)).astype(np.uint8)
+        for i in range(len(robot_contours)):
+            name = f'robot_{i}'
+            self.robots[name] = {'contour': robot_contours[i], 'angle': robot_angles[i]}
+        print(f'found {len(robot_contours)} robots')
 
     def find_closest_robot(self, payload):
-        if len(self.contours_towards_center) == 0:
-            print('no robots detected for path')
-            return
         min_d = np.inf
         nearest_robot = None
         nearest_robot_cx = None
         nearest_robot_cy = None
-        for contour in self.contours_towards_center:
+        for robot in self.robots:
+            contour = self.robots[robot]['contour']
             M = cv2.moments(contour)
 
             # unit normalize our native image width and the window width for comparison
@@ -156,7 +137,7 @@ class Camera(QtCore.QThread):
             d = np.sqrt((cx - click_x) ** 2 + (cy - click_y) ** 2)
             if d < min_d:
                 min_d = d
-                nearest_robot = contour
+                nearest_robot = robot
                 nearest_robot_cx = cx
                 nearest_robot_cy = cy
 
@@ -165,22 +146,40 @@ class Camera(QtCore.QThread):
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def path_slot(self, payload):
+        if len(self.robots.items()) == 0:
+            print('no robots currently detected for paths..')
+            return
+
         # find nearest robot here and add it to the dictionary
         cx, cy, nearest_robot = self.find_closest_robot(payload)
 
-        # unit normalize all paths
-        payload['end_x'] /= self.width
-        payload['end_y'] /= self.height
-        payload['nearest_robot'] = nearest_robot
-        payload['nearest_robot_cx'] = cx / self.width
-        payload['nearest_robot_cy'] = cy / self.height
-        self.paths.append(payload)
+        # unit normalize all
+        self.robots[nearest_robot]['path_start_x'] = cx / self.width
+        self.robots[nearest_robot]['path_start_y'] = cy / self.height
+        self.robots[nearest_robot]['path_end_x'] = payload['end_x'] / self.width
+        self.robots[nearest_robot]['path_end_y'] = payload['end_y'] / self.height
+        print('nearest robot:', nearest_robot)
+        # print('robots:', self.robots)
         self.draw_paths()
+
+    def draw_paths(self):
+        self.path_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
+        # find closest contour, color the robot the same as the path, and draw it
+        for robot in self.robots:
+            if 'path_start_x' in self.robots[robot].keys():
+                start_x_scaled = int(self.robots[robot]['path_start_x'] * self.width)
+                start_y_scaled = int(self.robots[robot]['path_start_y'] * self.height)
+                end_x_scaled = int(self.robots[robot]['path_end_x'] * self.width)
+                end_y_scaled = int(self.robots[robot]['path_end_y'] * self.height)
+                cv2.line(self.path_overlay, (start_x_scaled, start_y_scaled),
+                         (end_x_scaled, end_y_scaled), (0, 255, 0), 2)
+        self.path_overlay = cv2.resize(self.path_overlay, (self.width, self.height)).astype(np.uint8)
 
     @QtCore.pyqtSlot()
     def clear_overlay_slot(self):
-        self.paths = []
-        self.draw_paths()
+        self.robots = {}
+        self.path_overlay[:, :, :] = 0
+        self.detection_overlay[:, :, :] = 0
         self.detection = False
 
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
@@ -199,7 +198,8 @@ class Camera(QtCore.QThread):
         else:
             self.window_size = size
             self.run_video = True
-        self.draw_paths()
+        if len(self.robots.items()) > 0:
+            self.draw_paths()
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def set_exposure_slot(self, exposure):

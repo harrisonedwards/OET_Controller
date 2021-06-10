@@ -14,7 +14,6 @@ def detect(img):
 
 def get_large_contours(detect):
     # take a detection mask, and contour information add circles
-    print(detect.shape)
     contours, hier = cv2.findContours(detect, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     large_contours = []
     contour_area_minimum = 2000
@@ -45,9 +44,13 @@ def get_robot_control_mask(large_contours, detect):
     contours_towards_center = []
     contour_range_border_limit = 200
     robot_center_radius = 70
+
+    dilation_size = 20
+
+    # for drawing detected robot direction:
     line_length = 200
     line_width = 20
-    dilation_size = 20
+
     for contour in large_contours:
         # find centers
         M = cv2.moments(contour)
@@ -75,7 +78,7 @@ def get_robot_control_mask(large_contours, detect):
 
     return robot_control_mask, contours_towards_center, robot_angles
 
-def full_process(img):
+def get_robot_control(img):
     # REMOVE WHEN MONOCHROME
     detected = detect(img)[:, :, 0]
 
