@@ -37,7 +37,7 @@ class ImageViewer(QtWidgets.QWidget):
         painter = QtGui.QPainter(self)
         # draw in the center here
         x = int(self.width() / 2 - self.image.width() / 2)  # offset to draw in center
-        print(self.width(), self.height(), self.image.width(), self.image.height())
+        # print(self.width(), self.height(), self.image.width(), self.image.height())
         painter.drawImage(x, 0, self.image)
         self.image = QtGui.QImage()
 

@@ -1,18 +1,20 @@
 import cv2
 import numpy as np
 
+
 def detect(img):
     # finds and fills the located robots
-    structure = np.ones((3, 3))
+    structure = np.ones((5, 5))
     canny = np.copy(cv2.Canny(img, 0, 60))
     dilated = cv2.dilate(canny, structure)
     contours, hier = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    filled = cv2.drawContours(img, contours, -1, 1, -1, 0, hier, 1)[:,:,0]
+    filled = cv2.drawContours(np.zeros(img.shape, dtype=np.uint8), contours, -1, 1, -1, 0, hier, 1)
     return np.copy(filled)
 
 
 def get_large_contours(detect):
     # take a detection mask, and contour information add circles
+    print(detect.shape)
     contours, hier = cv2.findContours(detect, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     large_contours = []
     contour_area_minimum = 2000
@@ -41,8 +43,8 @@ def get_robot_control_mask(large_contours, detect):
 
     robot_angles = []
     contours_towards_center = []
-    contour_range_border_limit = 200 // 2
-    robot_center_radius = 70 // 2
+    contour_range_border_limit = 200
+    robot_center_radius = 70
     line_length = 200
     line_width = 20
     dilation_size = 20
@@ -71,13 +73,14 @@ def get_robot_control_mask(large_contours, detect):
     dilation = cv2.dilate(dilation, np.ones((dilation_size, dilation_size)))
     robot_control_mask -= dilation
 
-    return robot_control_mask, inner_circle_mask, robot_angles
+    return robot_control_mask, contours_towards_center, robot_angles
 
 def full_process(img):
-    detected = detect(img)
+    # REMOVE WHEN MONOCHROME
+    detected = detect(img)[:, :, 0]
 
     large_contours = get_large_contours(detected)
 
-    robot_control_mask, inner_circle_mask, robot_angles = get_robot_control_mask(large_contours, detected)
+    robot_control_mask, contours_towards_center, robot_angles = get_robot_control_mask(large_contours, detected)
 
-    return robot_control_mask, inner_circle_mask, robot_angles
+    return robot_control_mask, contours_towards_center, robot_angles
