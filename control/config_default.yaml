@@ -1,0 +1,42 @@
+settings:
+  speed: 1
+  rotation_speed: 0.2
+  scale: 0.5
+  stage_speed: 1 # microns
+  transpose_controls: False
+controllers:
+  keyboard:
+    controls:
+      up: W
+      down: S
+      left: A
+      right: D
+      rotate_clockwise: Q
+      rotate_counter_clockwise: E
+      toggle_rotate_clockwise: T
+      toggle_rotate_counter_clockwise: R
+      grow: EQUAL
+      shrink: MINUS
+      faster: BRACKETRIGHT # ]
+      slower: BRACKETLEFT # [
+      rotate_faster: APOSTROPHE
+      rotate_slower: SEMICOLON
+      toggle_display: SPACE
+      ##STAGE CONTROLS##
+      stage_up: UP #Arrow up
+      stage_down: DOWN #Arrow down
+      stage_left: LEFT #Arrow left
+      stage_right: RIGHT #Arrow right
+      stage_faster: PERIOD
+      stage_slower: COMMA
+      ##FUNCTION GENERATOR CONTROLS##
+      fg_toggle: F
+      ##MISC CONTROLS##
+      print_pose: P
+  Controller (XBOX 360 For Windows):
+    controls:
+      translate_x: rx # Right analog stick
+      translate_y: ry # Right analog stick
+      rotate: z # Triggers
+    settings:
+      deadzone: 0.3

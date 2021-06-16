@@ -6,9 +6,9 @@ import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from function_generator import FunctionGenerator
 from pump import Pump
-from microscope import Microscope
+#from microscope import Microscope
 from fluorescence_controller import FluorescenceController
-from camera import Camera
+from viewport import ViewPort
 from stage import Stage
 from PyQt5.QtCore import QThread
 from mightex import Polygon1000
@@ -330,7 +330,7 @@ class Window(QtWidgets.QWidget):
 
         self.image_viewer = ImageViewer()
 
-        self.camera = Camera()
+        self.camera = ViewPort()
         self.camera_thread = QThread()
         self.camera_thread.start()
 
