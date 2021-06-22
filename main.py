@@ -8,14 +8,16 @@ from function_generator import FunctionGenerator
 from pump import Pump
 #from microscope import Microscope
 from fluorescence_controller import FluorescenceController
-from viewport import ViewPort
+import viewport
 from stage import Stage
 from PyQt5.QtCore import QThread
 from mightex import Polygon1000
 import cv2
 import qimage2ndarray
 import copy
+from light_patterns.light_pattern_display import LightPatternDisplay, LightPattern, Move, Pose
 from AspectLayout import AspectLayout
+from control.calibration import CameraToProjector
 from detection import get_robot_control
 
 class ImageViewer(QtWidgets.QWidget):
@@ -90,6 +92,8 @@ class Window(QtWidgets.QWidget):
     set_camera_gain_signal = QtCore.pyqtSignal('PyQt_PyObject')
     screenshot_signal = QtCore.pyqtSignal()
 
+    cam2proj = CameraToProjector()
+
     def __init__(self):
         super(Window, self).__init__()
 
@@ -129,6 +133,13 @@ class Window(QtWidgets.QWidget):
             print(f'unable to connect to polygon: {e}')
             self.dmd = False
 
+        if self.dmd == False:
+            try:
+                self.dmd = LightPatternDisplay(0)
+            except Exception as e:
+                print(f'unable to connect to projector: {e}')
+                self.dmd = False
+
         self.test_image = cv2.imread(r'C:\Users\Mohamed\Desktop\Harrison\5.png')
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
@@ -166,9 +177,9 @@ class Window(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.cameraExposureDoubleSpinBox.setSuffix('ms')
         self.cameraExposureDoubleSpinBox.setMaximum(5000)
-        self.cameraExposureDoubleSpinBox.setMinimum(30)
+        self.cameraExposureDoubleSpinBox.setMinimum(10)
         self.cameraExposureDoubleSpinBox.setSingleStep(10)
-        self.cameraExposureDoubleSpinBox.setValue(150)
+        self.cameraExposureDoubleSpinBox.setValue(16.6)
         self.gainLabel = QtWidgets.QLabel('Gain:')
         self.gainDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.gainDoubleSpinBox.setMinimum(3.60)
@@ -239,6 +250,8 @@ class Window(QtWidgets.QWidget):
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
         self.oetSpeedLabel = QtWidgets.QLabel('Speed')
         self.oetSpeedDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.oetSpeedDoubleSpinBox.setMaximum(100.0)
+        self.oetSpeedDoubleSpinBox.setMinimum(0.1)
 
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout()
@@ -330,7 +343,7 @@ class Window(QtWidgets.QWidget):
 
         self.image_viewer = ImageViewer()
 
-        self.camera = ViewPort()
+        self.camera = viewport.ViewPort()
         self.camera_thread = QThread()
         self.camera_thread.start()
 
@@ -388,6 +401,8 @@ class Window(QtWidgets.QWidget):
         self.gainDoubleSpinBox.valueChanged.connect(self.setCameraGain)
         self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
+
+        self.oetRunPushButton.clicked.connect(self.runLightPatterns)
         # if self.function_generator:
             # self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
         # self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
@@ -459,9 +474,36 @@ class Window(QtWidgets.QWidget):
         pass
 
 
+    def runLightPatterns(self):
+
+        def angle_between(p1, p2):
+            return np.rad2deg(np.arctan2(p2[1]-p1[1],p2[0]-p1[0]))
+
+        paths = self.camera.robots
+        for path in paths.values():
+            if len(path)<6:
+                continue
+            start = (path['path_start_x']*viewport.NATIVE_CAMERA_WIDTH,
+                                        path['path_start_y']*viewport.NATIVE_CAMERA_HEIGHT)
+            end = (path['path_end_x']*viewport.NATIVE_CAMERA_WIDTH,
+                                                path['path_end_y']*viewport.NATIVE_CAMERA_HEIGHT)
+            end_angle = -angle_between(start, end)
+            start = self.cam2proj.convert(*start)
+            end = self.cam2proj.convert(*end)
+            start_angle = -np.rad2deg(path['angle'])
+
+            if (not np.isnan(start[0])) and (not np.isnan(end[0])):
+                print(np.rad2deg(path['angle']))
+                lp = self.dmd.add_light_pattern(start[0],start[1],rotation=start_angle,colour='white')
+                move = Move(lp.pose,Pose(end[0],end[1],end_angle),max_velocity_t=self.oetSpeedDoubleSpinBox.value(),
+                            max_velocity_r=10,acceleration_t=10,acceleration_r=10)
+                lp.move_to(move)
+
 
     def changeOETPattern(self):
-        self.dmd.set_image(self.test_image)
+        if isinstance(self.dmd,Polygon1000):
+            self.dmd.set_image(self.test_image)
+
 
     def startAmountDispenseMode(self):
         self.dispenseMode = 'amount'
@@ -555,4 +597,7 @@ if __name__ == '__main__':
     # window.setGeometry(500, 300, 800, 600)
     window.show()
     window.activateWindow()
-    sys.exit(app.exec_())
+    if isinstance(window.dmd,LightPatternDisplay):
+        window.dmd.run()
+    else:
+        sys.exit(app.exec_())

@@ -43,6 +43,16 @@ class LightPatternDisplay:
         self.lps.append(lp)
         return lp
 
+    def moving(self):
+        moving = False
+        for lp in self.lps:
+            if lp.moves_submitted and lp.moving:
+                moving = True
+            elif not lp.moves_submitted:
+                moving = True
+        return moving
+
+
     def start_logging(self, log_folder, prefix):
         self.logging = True
         self.log_folder = log_folder
@@ -61,17 +71,12 @@ class LightPatternDisplay:
             self.fps_display.draw()
 
     def update(self,time):
-        self.running = True
-        moving = False
-        for lp in self.lps:
-            if lp.moves_submitted and lp.moving:
-                moving = True
-            elif not lp.moves_submitted:
-                moving = True
-            lp.update(time)
+        moving = self.moving()
         if not moving:
-            self.running = False
-            self.window.close()
+            self.lps = []
+        for lp in self.lps:
+            lp.update(time)
+            #self.window.close()
         for func in self.update_funcs:
             func(time)
         #print(self.lp.pose)

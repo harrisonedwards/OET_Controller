@@ -63,7 +63,7 @@ class Camera():
         self.mmc = mm.mmc
         self.mmc.setCameraDevice('HamamatsuHam_DCAM')
         self.set_exposure(16.6)
-        self.mmc.setCircularBufferMemoryFootprint(8) # set memory buffer to size of 1 image so that we always have the latest image
+        self.mmc.setCircularBufferMemoryFootprint(100) # set memory buffer to size of 1 image so that we always have the latest image
         self.mmc.startContinuousSequenceAcquisition(1)
         img = self.next_image()
         self.height, self.width = img.shape
@@ -79,9 +79,13 @@ class Camera():
         return util.img_as_float(img)
 
     def next_image(self):
-        while self.mmc.getRemainingImageCount() == 0:
-            time.sleep(0.001)
-        return self.mmc.popNextImage()#self.mmc.getLastImage()
+        try:
+            while self.mmc.getRemainingImageCount() == 0:
+                time.sleep(0.001)
+            return self.mmc.popNextImage()#self.mmc.getLastImage()
+        except Exception as e:
+            print(e)
+            return self.next_image()
 
     def set_exposure(self, exposure):
         self.mmc.setProperty('HamamatsuHam_DCAM','Exposure',exposure)

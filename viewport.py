@@ -19,7 +19,7 @@ camera_type = CameraType.HAMAMATSU
 if camera_type is CameraType.TOUPCAM:
     NATIVE_CAMERA_WIDTH = 2048
     NATIVE_CAMERA_HEIGHT = 2060
-if camera_type == 'hamamatsu':
+if camera_type is CameraType.HAMAMATSU:
     NATIVE_CAMERA_WIDTH = 2048
     NATIVE_CAMERA_HEIGHT = 2048
 
@@ -32,6 +32,7 @@ class ViewPort(QtCore.QThread):
         super(ViewPort, self).__init__(parent)
         self.exposure = 200
         self.resize_lock = QtCore.QMutex()
+        self.detection_lock = QtCore.QMutex()
         self.hcam = None
         self.cam_buffer = None
         self.img_buffer = None
@@ -54,13 +55,14 @@ class ViewPort(QtCore.QThread):
         self.robot_control_mask = np.zeros((self.height, self.width, 3)).astype(np.uint8)
         self.path_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
         self.detection_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
+        print(self.detection_overlay.shape)
         self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
                                      self.window_size.width(), QtGui.QImage.Format_RGB888)
 
     def init_hamamatsu(self):
         self.hcam = Camera()
-        self.width = Camera.width
-        self.height = Camera.height
+        self.width = self.hcam.width
+        self.height = self.hcam.height
         self.hcam.start_sequence_qt(self.process_and_emit_image)
 
     def init_toupcam(self):
@@ -117,13 +119,14 @@ class ViewPort(QtCore.QThread):
         # for screenshots:
         self.image = np.copy(np_img)
 
-        if self.detection:
+        if self.detection and self.detection_lock.tryLock(10):
             if self.detection_overlay.shape[-1] != 3:
                 self.detection_overlay = cv2.cvtColor(self.detection_overlay, cv2.COLOR_GRAY2BGR)
                 # make it red only
                 self.detection_overlay[:, :, 1:] = 0
 
             np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.5, 0)
+            self.detection_lock.unlock()
         #print('image locking')
         self.resize_lock.lock()
         #print('image locked')
@@ -140,12 +143,14 @@ class ViewPort(QtCore.QThread):
         print('running detection...')
         self.clear_overlay_slot()
         self.detection = True
-        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image)
-        self.detection_overlay = np.copy(self.robot_control_mask)
-        for i in range(len(robot_contours)):
-            name = f'robot_{i}'
-            self.robots[name] = {'contour': robot_contours[i], 'angle': robot_angles[i]}
-        print(f'found {len(robot_contours)} robots')
+        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image,100,200)
+        if self.detection_lock.tryLock(10):
+            self.detection_overlay = np.copy(self.robot_control_mask)
+            for i in range(len(robot_contours)):
+                name = f'robot_{i}'
+                self.robots[name] = {'contour': robot_contours[i], 'angle': robot_angles[i]}
+            print(f'found {len(robot_contours)} robots')
+            self.detection_lock.unlock()
 
     def find_closest_robot(self, payload):
         min_d = np.inf

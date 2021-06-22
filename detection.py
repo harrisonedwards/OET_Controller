@@ -1,11 +1,12 @@
 import cv2
 import numpy as np
+from matplotlib import pyplot as plt
 
 
-def detect(img):
+def detect(img, canny_thresh_0=0, canny_thresh_1=60):
     # finds and fills the located robots
     structure = np.ones((5, 5))
-    canny = np.copy(cv2.Canny(img, 0, 60))
+    canny = np.copy(cv2.Canny(img, canny_thresh_0, canny_thresh_1))
     dilated = cv2.dilate(canny, structure)
     contours, hier = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     filled = cv2.drawContours(np.zeros(img.shape, dtype=np.uint8), contours, -1, 1, -1, 0, hier, 1)
@@ -31,8 +32,8 @@ def get_robot_angle(contour, center):
     rho = np.sqrt(contour[:, 0] ** 2 + contour[:, 1] ** 2)
     val, bin_edges = np.histogram(theta, bins=50, range=[-np.pi, np.pi])
     bin_centers = bin_edges[:-1] + np.diff(bin_edges) / 2
-
-    return np.nanmean(np.where(val == 0, bin_centers, np.nan))
+    angle = np.nanmean(np.where(val == 0, bin_centers, np.nan))
+    return angle
 
 
 def get_robot_control_mask(large_contours, detect):
@@ -78,12 +79,18 @@ def get_robot_control_mask(large_contours, detect):
 
     return robot_control_mask, contours_towards_center, robot_angles
 
-def get_robot_control(img):
+def get_robot_control(img, canny_thresh0=0, canny_thresh1=60):
     # REMOVE WHEN MONOCHROME
-    detected = detect(img)[:, :, 0]
+    detected = detect(img,canny_thresh0,canny_thresh1)[:, :, 0]
 
     large_contours = get_large_contours(detected)
 
     robot_control_mask, contours_towards_center, robot_angles = get_robot_control_mask(large_contours, detected)
 
     return robot_control_mask, contours_towards_center, robot_angles
+
+if __name__ == '__main__':
+    img = cv2.imread('Image0.tif',-1)
+    img = (img / 65535) * 255
+    img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+    get_robot_control(img,50,200)

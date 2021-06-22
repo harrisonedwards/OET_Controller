@@ -17,7 +17,11 @@ class Pose:
 
     def __post_init__(self):
         if self.rotation<-180 or self.rotation>180:
-            raise Exception(f'Invalid rotation for pose:{self.rotation}. Acceptable rotations between -180 and 180')
+            rotation = self.rotation%360
+            if rotation >180:
+                rotation = -(360-rotation)
+            self.rotation = rotation
+            #raise Exception(f'Invalid rotation for pose:{self.rotation}. Acceptable rotations between -180 and 180')
 
     @classmethod
     def from_radians(cls, x, y, r):
@@ -226,6 +230,7 @@ class Component():
             self.move_q.pop()
 
 
+
 class LightPattern(Component):
 
     def __init__(self, image, window, batch, *args, **kwargs):
@@ -265,6 +270,14 @@ class LightPattern(Component):
         self.sprite.rotation = self.pose.rotation
         if self.logging:
             self.log.write(timer(),self.pose.x,self.pose.y,self.pose.rotation)
+
+    def toggle_display(self,on=None):
+        if on is None:
+            if self.sprite.opacity > 0:
+                self.sprite.opacity = 0
+            else:
+                self.sprite.opacity = 255
+        self.sprite = 255 if on else 0
 
 
 class ManualLightPattern(LightPattern):
@@ -329,9 +342,3 @@ class ManualLightPattern(LightPattern):
         if self.rotation_rate > amount + self.EPS:
             self.rotation_rate -= amount
             print(f'Speed: {self.rotation_rate:.3f}')
-
-    def toggle_display(self):
-        if self.sprite.opacity > 0:
-            self.sprite.opacity = 0
-        else:
-            self.sprite.opacity = 255
