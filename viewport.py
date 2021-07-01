@@ -49,8 +49,8 @@ class ViewPort(QtCore.QThread):
         self.window_size = QtCore.QSize(self.height, self.width)  # original image size
         self.image = np.zeros((self.height, self.width))
         self.robot_control_mask = np.zeros((self.height, self.width)).astype(np.uint8)
-        self.path_overlay = np.zeros((self.height, self.width)).astype(np.uint8)
-        self.detection_overlay = np.zeros((self.height, self.width)).astype(np.uint8)
+        self.path_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
+        self.detection_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
         self.qt_image = QtGui.QImage(self.image.data, self.height,
                                      self.width, QtGui.QImage.Format_Grayscale16)
 
@@ -130,26 +130,125 @@ class ViewPort(QtCore.QThread):
         np_img = cv2.resize(np_img, (window_h, window_w))
         self.qt_image = QtGui.QImage(np_img.data, window_w, window_h,
                                      np_img.strides[0], QtGui.QImage.Format_Grayscale16)
-
         self.resize_lock.unlock()
         if self.run_video:
             self.VideoSignal.emit(self.qt_image)
 
+    @QtCore.pyqtSlot()
+    def run_detection_slot(self):
+        print('running detection...')
+        self.clear_overlay_slot()
+        self.detection = True
+        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image)
+        self.detection_overlay = np.copy(self.robot_control_mask)
+        for i in range(len(robot_contours)):
+            name = f'robot_{i}'
+            self.robots[name] = {'contour': robot_contours[i], 'angle': robot_angles[i]}
+        print(f'found {len(robot_contours)} robots')
+
+    def find_closest_robot(self, payload):
+        min_d = np.inf
+        nearest_robot = None
+        nearest_robot_cx = None
+        nearest_robot_cy = None
+        for robot in self.robots:
+            contour = self.robots[robot]['contour']
+            M = cv2.moments(contour)
+
+            # unit normalize our native image width and the window width for comparison
+            cx = int(M["m10"] / M["m00"]) / NATIVE_CAMERA_WIDTH
+            cy = int(M["m01"] / M["m00"]) / NATIVE_CAMERA_HEIGHT
+            click_x = payload['start_x'] / self.width
+            click_y = payload['start_y'] / self.height
+
+            # find minimum
+            d = np.sqrt((cx - click_x) ** 2 + (cy - click_y) ** 2)
+            if d < min_d:
+                min_d = d
+                nearest_robot = robot
+                nearest_robot_cx = cx
+                nearest_robot_cy = cy
+
+        # scale back to window size
+        return nearest_robot_cx * self.width, nearest_robot_cy * self.height, nearest_robot
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def path_slot(self, payload):
+        if len(self.robots.items()) == 0:
+            print('no robots currently detected for paths..')
+            return
+
+        # find nearest robot here and add it to the dictionary
+        cx, cy, nearest_robot = self.find_closest_robot(payload)
+
+        # unit normalize all
+        self.robots[nearest_robot]['path_start_x'] = cx / self.width
+        self.robots[nearest_robot]['path_start_y'] = cy / self.height
+        self.robots[nearest_robot]['path_end_x'] = payload['end_x'] / self.width
+        self.robots[nearest_robot]['path_end_y'] = payload['end_y'] / self.height
+        print('nearest robot:', nearest_robot)
+        # print('robots:', self.robots)
+        self.draw_paths()
+
+    def draw_paths(self):
+        self.path_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
+        # find closest contour, color the robot the same as the path, and draw it
+        for robot in self.robots:
+            if 'path_start_x' in self.robots[robot].keys():
+                start_x_scaled = int(self.robots[robot]['path_start_x'] * self.width)
+                start_y_scaled = int(self.robots[robot]['path_start_y'] * self.height)
+                end_x_scaled = int(self.robots[robot]['path_end_x'] * self.width)
+                end_y_scaled = int(self.robots[robot]['path_end_y'] * self.height)
+                cv2.line(self.path_overlay, (start_x_scaled, start_y_scaled),
+                         (end_x_scaled, end_y_scaled), (0, 255, 0), 2)
+        self.path_overlay = cv2.resize(self.path_overlay, (self.width, self.height)).astype(np.uint8)
+
+    @QtCore.pyqtSlot()
+    def clear_overlay_slot(self):
+        self.robots = {}
+        self.path_overlay[:, :, :] = 0
+        self.detection_overlay[:, :, :] = 0
+        self.detection = False
 
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
     def resize_slot(self, size, running):
-        # print('received resize')
-        self.image = np.zeros((2060, 2048))
+        print('received resize')
+        self.resize_lock.lock()
+        # print('resize locked')
+        self.width = size.width()
+        self.height = size.height()
+        self.image = np.zeros((self.height, self.width)).astype(np.uint8)
+        self.path_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
+
         self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
-                                     self.window_size.width(), QtGui.QImage.Format_Grayscale16)
+                                     self.window_size.width(), QtGui.QImage.Format_Grayscale8)
         self.VideoSignal.emit(self.qt_image)
+
         if running:
             self.run_video = False
             time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
         else:
             self.window_size = size
             self.run_video = True
-            self.startVideo()
+        if len(self.robots.items()) > 0:
+            self.draw_paths()
+        # print('resize unlocking')
+        self.resize_lock.unlock()
+
+    # @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
+    # def resize_slot(self, size, running):
+    #     # print('received resize')
+    #     self.image = np.zeros((2060, 2048))
+    #     self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
+    #                                  self.window_size.width(), QtGui.QImage.Format_Grayscale16)
+    #     self.VideoSignal.emit(self.qt_image)
+    #     if running:
+    #         self.run_video = False
+    #         time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
+    #     else:
+    #         self.window_size = size
+    #         self.run_video = True
+    #         self.startVideo()
 
 
         # # print('received resize')

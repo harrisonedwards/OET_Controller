@@ -79,8 +79,7 @@ def get_robot_control_mask(large_contours, detect):
     return robot_control_mask, contours_towards_center, robot_angles
 
 def get_robot_control(img):
-    # REMOVE WHEN MONOCHROME
-    detected = detect(img)[:, :, 0]
+    detected = detect(img)
 
     large_contours = get_large_contours(detected)
 

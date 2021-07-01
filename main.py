@@ -1,5 +1,5 @@
 import sys
-
+import copy
 import PyQt5.QtGui
 from PyQt5 import QtCore, QtGui, QtWidgets
 from function_generator import FunctionGenerator
@@ -23,6 +23,10 @@ class ImageViewer(QtWidgets.QWidget):
         self.image = QtGui.QImage()
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
         self.ignore_release = True
+        self.drawing = False
+        self.robot_paths = []
+        self.payload = {}
+        self.begin_path = None
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -55,10 +59,18 @@ class ImageViewer(QtWidgets.QWidget):
             h = self.height()
             w = int(2060 / 2048 * h)
             self.resize_event_signal.emit(QtCore.QSize(h, w), True)
+        if self.drawing:
+            self.payload['start_x'] = self.begin_path.x()
+            self.payload['start_y'] = self.begin_path.y()
+            self.payload['end_x'] = event.pos().x()
+            self.payload['end_y'] = event.pos().y()
+            self.path_signal.emit(copy.deepcopy(self.payload))
 
     def mousePressEvent(self, event):
         self.ignore_release = True
         self.click_event_signal.emit(event)
+        if self.drawing:
+            self.begin_path = event.pos()
 
 
 class Window(QtWidgets.QWidget):
@@ -202,9 +214,10 @@ class Window(QtWidgets.QWidget):
         self.pumpStopPushButton = QtWidgets.QPushButton(text='Halt')
 
         # DMD
-        self.changeOETPatternPushbutton = QtWidgets.QPushButton('Change OET Pattern')
-        self.oetGrabPushButton = QtWidgets.QPushButton('Grab')
-        self.oetMoveToPushButton = QtWidgets.QPushButton('Move To')
+        self.detectRobotsPushButton = QtWidgets.QPushButton('Detect Robots')
+        self.drawPathsPushButton = QtWidgets.QPushButton('Draw Paths')
+        self.drawPathsPushButton.setCheckable(True)
+        self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Overlay')
         self.oetActivatePushButton = QtWidgets.QPushButton('Activate')
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
         self.oetSpeedLabel = QtWidgets.QLabel('Speed')
@@ -283,15 +296,15 @@ class Window(QtWidgets.QWidget):
         self.oetGroupBox = QtWidgets.QGroupBox('OET Controls')
         self.oetLayout = QtWidgets.QHBoxLayout()
         self.oetGroupBox.setLayout(self.oetLayout)
-        self.oetLayout.addWidget(self.changeOETPatternPushbutton)
-        self.oetLayout.addWidget(self.oetGrabPushButton)
-        self.oetLayout.addWidget(self.oetMoveToPushButton)
+        self.oetLayout.addWidget(self.detectRobotsPushButton)
+        self.oetLayout.addWidget(self.drawPathsPushButton)
+        self.oetLayout.addWidget(self.oetClearOverlayPushButton)
         self.oetLayout.addWidget(self.oetRunPushButton)
         self.oetLayout.addWidget(self.oetSpeedLabel)
         self.oetLayout.addWidget(self.oetSpeedDoubleSpinBox)
         self.oetLayout.setAlignment(QtCore.Qt.AlignLeft)
-        if not self.dmd:
-            self.oetGroupBox.setEnabled(False)
+        # if not self.dmd:
+        #     self.oetGroupBox.setEnabled(False)
 
         self.VBoxLayout.addWidget(self.oetGroupBox)
         self.VBoxLayout.addWidget(self.takeScreenshotPushButton)
@@ -341,7 +354,6 @@ class Window(QtWidgets.QWidget):
 
         # connect all of our control signals
         self.takeScreenshotPushButton.clicked.connect(self.camera.take_screenshot_slot)
-        self.changeOETPatternPushbutton.clicked.connect(self.changeOETPattern)
         self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
         self.xystageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_xystep_size)
         self.zstageStepSizeDoubleSpinBox.valueChanged.connect(self.microscope.set_zstep_size)
@@ -360,7 +372,16 @@ class Window(QtWidgets.QWidget):
         self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
         self.pumpStopPushButton.clicked.connect(self.pump.halt)
         self.pumpTimeRadioButton.click()
+
+        self.detectRobotsPushButton.clicked.connect(self.camera.run_detection_slot)
+        self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_overlay_slot)
+        self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
+
         # self.dmd.turn_on_led()
+
+    def toggleDrawPaths(self):
+        state = self.drawPathsPushButton.isChecked()
+        self.image_viewer.drawing = state
 
     def closeEvent(self, event):
         print('closing all connections...')
