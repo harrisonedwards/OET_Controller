@@ -102,6 +102,7 @@ class ViewPort(QtCore.QThread):
             if self.mmc.getRemainingImageCount() > 0:
                 try:
                     img = self.mmc.getLastImage()
+                    self.image = img
                 except Exception as e:
                     print(f'camera dropped frame {count}, {e}')
                 self.process_and_emit_image(img)
@@ -119,7 +120,7 @@ class ViewPort(QtCore.QThread):
                 self.detection_overlay = cv2.cvtColor(self.detection_overlay, cv2.COLOR_GRAY2BGR)
                 # make it red only
                 self.detection_overlay[:, :, 1:] = 0
-            np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
+            np_img = cv2.cvtColor(np_img.astype(np.uint8), cv2.COLOR_GRAY2BGR)
             np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.5, 0)
             np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.5, 0)
 
@@ -133,7 +134,7 @@ class ViewPort(QtCore.QThread):
         if self.rotation:
             np_img = cv2.rotate(np_img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-        np_img = cv2.resize(np_img, (window_h, window_w))
+        np_img = cv2.resize(np_img, (window_h, window_w)).astype(np.uint16)
         self.qt_image = QtGui.QImage(np_img.data, window_w, window_h,
                                      np_img.strides[0], QtGui.QImage.Format_Grayscale16)
         self.resize_lock.unlock()
@@ -145,7 +146,7 @@ class ViewPort(QtCore.QThread):
         print('running detection...')
         self.clear_overlay_slot()
         self.detection = True
-        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image)
+        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image.astype(np.uint8))
         self.detection_overlay = np.copy(self.robot_control_mask)
         for i in range(len(robot_contours)):
             name = f'robot_{i}'
