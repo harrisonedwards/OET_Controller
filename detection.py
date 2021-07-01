@@ -28,7 +28,7 @@ def get_robot_angle(contour, center):
     contour = np.squeeze(np.copy(contour))
     contour -= center
     theta = np.arctan2(contour[:, 1], contour[:, 0])
-    rho = np.sqrt(contour[:, 0] ** 2 + contour[:, 1] ** 2)
+    # rho = np.sqrt(contour[:, 0] ** 2 + contour[:, 1] ** 2)
     val, bin_edges = np.histogram(theta, bins=50, range=[-np.pi, np.pi])
     bin_centers = bin_edges[:-1] + np.diff(bin_edges) / 2
 
