@@ -15,10 +15,10 @@ class FunctionGenerator():
 
         # self.connection.write('*RST')
 
-    # def __del__(self):
-    #     if self.connection != None:
-    #         print('closing function generator connection...')
-    #         self.connection.close()
+    def __del__(self):
+        if self.connection != None:
+            print('closing function generator connection...')
+            self.connection.close()
 
     def set_voltage(self, voltage):
         self.connection.write(f'SOURce:VOLTage:LEVel:IMMediate:AMPLitude {voltage}')

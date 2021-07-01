@@ -6,12 +6,13 @@ from function_generator import FunctionGenerator
 from pump import Pump
 from microscope import Microscope
 from fluorescence_controller import FluorescenceController
-from camera import Camera
+from viewport import ViewPort
 from stage import Stage
 from PyQt5.QtCore import QThread
 from mightex import Polygon1000
 import cv2
-
+import qimage2ndarray
+import matplotlib.pyplot as plt
 
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
@@ -112,7 +113,7 @@ class Window(QtWidgets.QWidget):
 
         # MICROSCOPE
         # TODO: query all of these positions and set them correctly initially
-        self.filter_positions = ['DAPI', 'GFP', 'Red', 'Brightfield', 'PE-Cy7', 'empty']
+        self.filter_positions = ['DAPI', 'GFP', 'Red', 'Brightfield', 'Cy5', 'PE-Cy7']
         self.objectives = ['2x', '4x', '10x', '20x', '40x', 'empty']
         self.magnificationLabel = QtWidgets.QLabel(text='Magnification:')
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
@@ -297,7 +298,7 @@ class Window(QtWidgets.QWidget):
 
         self.image_viewer = ImageViewer()
 
-        self.camera = Camera()
+        self.camera = ViewPort()
         self.camera_thread = QThread()
         self.camera_thread.start()
 
@@ -359,7 +360,7 @@ class Window(QtWidgets.QWidget):
         self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
         self.pumpStopPushButton.clicked.connect(self.pump.halt)
         self.pumpTimeRadioButton.click()
-        self.dmd.turn_on_led()
+        # self.dmd.turn_on_led()
 
     def closeEvent(self, event):
         print('closing all connections...')
