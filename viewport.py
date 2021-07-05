@@ -48,8 +48,7 @@ class ViewPort(QtCore.QThread):
         self.rotation = False
         self.window_size = QtCore.QSize(self.height, self.width)
 
-
-
+        # initialize all of our empty masks
         self.robot_control_mask = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH)).astype(np.uint8)
         self.path_overlay = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH, 3)).astype(np.uint8)
         self.detection_overlay = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH, 3)).astype(np.uint8)
@@ -91,8 +90,8 @@ class ViewPort(QtCore.QThread):
 
     @QtCore.pyqtSlot()
     def startVideo(self):
-        # print('starting video stream...')
-        time.sleep(.5)
+        print('starting video stream...')
+
         count = 0
         QtWidgets.QApplication.processEvents()
         while self.run_video:
@@ -112,31 +111,36 @@ class ViewPort(QtCore.QThread):
             QtWidgets.QApplication.processEvents()
 
     def process_and_emit_image(self, np_img):
-        # for screenshots:
-        # self.image = np.copy(np_img)
+        # np_img is native resolution from camera
 
         if self.detection:
+            # if its not in color, convert to color
             if self.detection_overlay.shape[-1] != 3:
                 self.detection_overlay = cv2.cvtColor(self.detection_overlay, cv2.COLOR_GRAY2BGR)
-                # make it red only
+                # now make it red only
                 self.detection_overlay[:, :, 1:] = 0
             np_img = cv2.cvtColor(np_img.astype(np.uint8), cv2.COLOR_GRAY2BGR)
             np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.5, 0)
             np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.5, 0)
+            print('detecting...')
 
         window_h = self.window_size.height()
         window_w = self.window_size.width()
 
-        # self.image = np.copy(np_img)
-
         self.resize_lock.lock()
 
+        # resize and rotate
         if self.rotation:
             np_img = cv2.rotate(np_img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
-
         np_img = cv2.resize(np_img, (window_h, window_w)).astype(np.uint16)
-        self.qt_image = QtGui.QImage(np_img.data, window_w, window_h,
-                                     np_img.strides[0], QtGui.QImage.Format_Grayscale16)
+
+        # emit proper image format
+        if self.detection:
+            self.qt_image = QtGui.QImage(np_img.data, window_w, window_h,
+                                         np_img.strides[0], QtGui.QImage.Format_RGB16)
+        else:
+            self.qt_image = QtGui.QImage(np_img.data, window_w, window_h, np_img.strides[0],
+                                         QtGui.QImage.Format_Grayscale16)
         self.resize_lock.unlock()
         if self.run_video:
             self.VideoSignal.emit(self.qt_image)
