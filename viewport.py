@@ -28,8 +28,6 @@ class ViewPort(QtCore.QThread):
     # VideoSignal = QtCore.pyqtSignal(QtGui.QImage)
     VideoSignal = QtCore.pyqtSignal('PyQt_PyObject')
 
-    # vid_process_signal = QtCore.pyqtSignal('PyQt_PyObject')
-
     def __init__(self, parent=None):
         super(ViewPort, self).__init__(parent)
         self.exposure = 200

@@ -18,6 +18,7 @@ import  numpy as np
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
     click_event_signal = QtCore.pyqtSignal(QtGui.QMouseEvent)
+    path_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self, parent=None):
         super(ImageViewer, self).__init__(parent)
@@ -327,6 +328,7 @@ class Window(QtWidgets.QWidget):
         self.camera_thread.start()
 
         self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
+        self.image_viewer.path_signal.connect(self.camera.path_slot)
         self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
 
         self.camera.VideoSignal.connect(self.image_viewer.setImage)
