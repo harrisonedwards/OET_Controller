@@ -216,7 +216,7 @@ class ViewPort(QtCore.QThread):
                 end_y_scaled = int(self.robots[robot]['path_end_y'] * self.height)
                 cv2.line(self.path_overlay, (start_x_scaled, start_y_scaled),
                          (end_x_scaled, end_y_scaled), (0, 255, 0), 2)
-        self.path_overlay = cv2.resize(self.path_overlay, (self.width, self.height), dtype=np.uint8)
+        self.path_overlay = cv2.resize(self.path_overlay, (self.width, self.height)).astype(np.uint8)
 
     @QtCore.pyqtSlot()
     def clear_overlay_slot(self):
