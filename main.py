@@ -43,9 +43,9 @@ class ImageViewer(QtWidgets.QWidget):
         # print(self.image)
         if len(np_img.shape) > 2:
             # Format_RGB16
-            np_img = (np_img * 256).astype(np.uint16)
-            self.image = QtGui.QImage(np_img.data, self.height(), self.width(), np_img.strides[0],
-                                      QtGui.QImage.Format_RGB16)
+            # np_img = (np_img * 256).astype(np.uint16)
+            qt_img = qimage2ndarray.array2qimage(np_img)
+            self.image = qt_img
         else:
             self.image = QtGui.QImage(np_img.data, self.height(), self.width(), np_img.strides[0],
                                       QtGui.QImage.Format_Grayscale8)
