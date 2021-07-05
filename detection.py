@@ -4,8 +4,8 @@ import numpy as np
 
 def detect(img):
     # finds and fills the located robots
-    structure = np.ones((5, 5))
-    canny = np.copy(cv2.Canny(img, 0, 60))
+    structure = np.ones((3, 3))
+    canny = np.copy(cv2.Canny(img, 20, 120))
     dilated = cv2.dilate(canny, structure)
     contours, hier = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     filled = cv2.drawContours(np.zeros(img.shape, dtype=np.uint8), contours, -1, 1, -1, 0, hier, 1)
@@ -43,7 +43,7 @@ def get_robot_control_mask(large_contours, detect):
     robot_angles = []
     contours_towards_center = []
     contour_range_border_limit = 200
-    robot_center_radius = 70
+    robot_center_radius = 70//4
 
     dilation_size = 20
 
