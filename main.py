@@ -13,6 +13,7 @@ from mightex import Polygon1000
 import cv2
 import qimage2ndarray
 import matplotlib.pyplot as plt
+import  numpy as np
 
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
@@ -40,8 +41,12 @@ class ImageViewer(QtWidgets.QWidget):
     @QtCore.pyqtSlot('PyQt_PyObject')
     def setImage(self, np_img):
         # print(self.image)
-        self.image = QtGui.QImage(np_img.data, self.height(), self.width(), np_img.strides[0],
-                                  QtGui.QImage.Format_Grayscale16)
+        if len(np_img.shape) > 2:
+            # Format_RGB16
+            print(np_img.shape)
+        else:
+            self.image = QtGui.QImage(np_img.data, self.height(), self.width(), np_img.strides[0],
+                                      QtGui.QImage.Format_Grayscale8)
         # self.image = image
         self.update()
 

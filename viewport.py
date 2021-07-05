@@ -51,14 +51,14 @@ class ViewPort(QtCore.QThread):
         self.window_size = QtCore.QSize(self.height, self.width)
 
         # initialize all of our empty masks
-        self.robot_control_mask = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH)).astype(np.uint8)
-        self.path_overlay = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH, 3)).astype(np.uint8)
-        self.detection_overlay = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH, 3)).astype(np.uint8)
+        self.robot_control_mask = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH), dtype=np.uint8)
+        self.path_overlay = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH, 3), dtype=np.uint8)
+        self.detection_overlay = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH, 3), dtype=np.uint8)
 
         self.image = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH))
         self.window_size = QtCore.QSize(self.height, self.width)  # original image size
         self.qt_image = QtGui.QImage(self.image.data, self.height,
-                                     self.width, QtGui.QImage.Format_Grayscale16)
+                                     self.width, QtGui.QImage.Format_Grayscale8)
 
     def init_nikon(self):
         # start micromanager and grab camera
@@ -103,6 +103,7 @@ class ViewPort(QtCore.QThread):
             if self.mmc.getRemainingImageCount() > 0:
                 try:
                     img = self.mmc.getLastImage()
+                    img = (img / 256).astype(np.uint8)
                     self.image = img
                 except Exception as e:
                     print(f'camera dropped frame {count}, {e}')
@@ -121,10 +122,11 @@ class ViewPort(QtCore.QThread):
                 self.detection_overlay = cv2.cvtColor(self.detection_overlay, cv2.COLOR_GRAY2BGR)
                 # now make it red only
                 self.detection_overlay[:, :, 1:] = 0
-            np_img = cv2.cvtColor(np_img.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+            # np_img = (np_img / 256)
+            np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
+
             np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.5, 0)
             np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.5, 0)
-            print('detecting...')
 
         window_h = self.window_size.height()
         window_w = self.window_size.width()
@@ -133,9 +135,10 @@ class ViewPort(QtCore.QThread):
         # resize and rotate
         if self.rotation:
             np_img = cv2.rotate(np_img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
-        np_img = cv2.resize(np_img, (window_h, window_w)).astype(np.uint16)
+        np_img = cv2.resize(np_img, (window_h, window_w))
         self.resize_lock.unlock()
 
+        # emit our array, whatever shape it may be
         if self.run_video:
             self.VideoSignal.emit(np_img)
 
@@ -151,7 +154,7 @@ class ViewPort(QtCore.QThread):
         print('running detection...')
         self.clear_overlay_slot()
         self.detection = True
-        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image.astype(np.uint8))
+        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image)
         self.detection_overlay = np.copy(self.robot_control_mask)
         for i in range(len(robot_contours)):
             name = f'robot_{i}'
@@ -203,7 +206,7 @@ class ViewPort(QtCore.QThread):
         self.draw_paths()
 
     def draw_paths(self):
-        self.path_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
+        self.path_overlay = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         # find closest contour, color the robot the same as the path, and draw it
         for robot in self.robots:
             if 'path_start_x' in self.robots[robot].keys():
@@ -213,7 +216,7 @@ class ViewPort(QtCore.QThread):
                 end_y_scaled = int(self.robots[robot]['path_end_y'] * self.height)
                 cv2.line(self.path_overlay, (start_x_scaled, start_y_scaled),
                          (end_x_scaled, end_y_scaled), (0, 255, 0), 2)
-        self.path_overlay = cv2.resize(self.path_overlay, (self.width, self.height)).astype(np.uint8)
+        self.path_overlay = cv2.resize(self.path_overlay, (self.width, self.height), dtype=np.uint8)
 
     @QtCore.pyqtSlot()
     def clear_overlay_slot(self):
@@ -229,7 +232,7 @@ class ViewPort(QtCore.QThread):
         # print('resize locked')
         self.width = size.width()
         self.height = size.height()
-        self.image = np.zeros((self.height, self.width)).astype(np.uint8)
+        self.image = np.zeros((self.height, self.width), dtype=np.uint8)
 
         self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
                                      self.window_size.width(), QtGui.QImage.Format_Grayscale8)
@@ -244,7 +247,6 @@ class ViewPort(QtCore.QThread):
             self.run_video = True
         if len(self.robots.items()) > 0:
             self.draw_paths()
-        # print('resize unlocking')
         self.resize_lock.unlock()
 
     # @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
