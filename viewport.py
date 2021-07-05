@@ -8,6 +8,7 @@ from control.micromanager import Camera
 from detection import get_robot_control
 import matplotlib.pyplot as plt
 
+
 class CameraType(enum.Enum):
     HAMAMATSU = 1
     NIKON = 2
@@ -24,7 +25,8 @@ if camera_type == 'hamamatsu':
 
 
 class ViewPort(QtCore.QThread):
-    VideoSignal = QtCore.pyqtSignal(QtGui.QImage)
+    # VideoSignal = QtCore.pyqtSignal(QtGui.QImage)
+    VideoSignal = QtCore.pyqtSignal('PyQt_PyObject')
 
     # vid_process_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
@@ -128,22 +130,21 @@ class ViewPort(QtCore.QThread):
         window_w = self.window_size.width()
 
         self.resize_lock.lock()
-
         # resize and rotate
         if self.rotation:
             np_img = cv2.rotate(np_img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
         np_img = cv2.resize(np_img, (window_h, window_w)).astype(np.uint16)
-
-        # emit proper image format
-        if self.detection:
-            self.qt_image = QtGui.QImage(np_img.data, window_w, window_h,
-                                         np_img.strides[0], QtGui.QImage.Format_RGB16)
-        else:
-            self.qt_image = QtGui.QImage(np_img.data, window_w, window_h, np_img.strides[0],
-                                         QtGui.QImage.Format_Grayscale16)
         self.resize_lock.unlock()
+
         if self.run_video:
-            self.VideoSignal.emit(self.qt_image)
+            self.VideoSignal.emit(np_img)
+
+        # if self.detection:
+        #     self.qt_image = QtGui.QImage(np_img.data, window_w, window_h,
+        #                                  np_img.strides[0], QtGui.QImage.Format_RGB16)
+        # else:
+        #     self.qt_image = QtGui.QImage(np_img.data, window_w, window_h, np_img.strides[0],
+        #                                  QtGui.QImage.Format_Grayscale16)
 
     @QtCore.pyqtSlot()
     def run_detection_slot(self):
@@ -232,7 +233,8 @@ class ViewPort(QtCore.QThread):
 
         self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
                                      self.window_size.width(), QtGui.QImage.Format_Grayscale8)
-        self.VideoSignal.emit(self.qt_image)
+        # self.VideoSignal.emit(self.qt_image)
+        self.VideoSignal.emit(self.image)
 
         if running:
             self.run_video = False
@@ -260,19 +262,18 @@ class ViewPort(QtCore.QThread):
     #         self.run_video = True
     #         self.startVideo()
 
-
-        # # print('received resize')
-        # self.image = np.zeros((2060, 2048))
-        # self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
-        #                              self.window_size.width(), QtGui.QImage.Format_Grayscale16)
-        # self.VideoSignal.emit(self.qt_image)
-        # if running:
-        #     self.run_video = False
-        #     time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
-        # else:
-        #     self.window_size = size
-        #     self.run_video = True
-        #     self.startVideo()
+    # # print('received resize')
+    # self.image = np.zeros((2060, 2048))
+    # self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
+    #                              self.window_size.width(), QtGui.QImage.Format_Grayscale16)
+    # self.VideoSignal.emit(self.qt_image)
+    # if running:
+    #     self.run_video = False
+    #     time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
+    # else:
+    #     self.window_size = size
+    #     self.run_video = True
+    #     self.startVideo()
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def set_exposure_slot(self, exposure):
@@ -285,5 +286,3 @@ class ViewPort(QtCore.QThread):
         cv2.imwrite(
             'C:\\Users\\Mohamed\\Desktop\\Harrison\\Screenshots\\' + strftime('%Y_%m_%d_%H_%M_%S.png', time.gmtime()),
             self.image)
-
-

@@ -35,10 +35,14 @@ class ImageViewer(QtWidgets.QWidget):
         painter.drawImage(x, 0, self.image)
         self.image = QtGui.QImage()
 
-    @QtCore.pyqtSlot(QtGui.QImage)
-    def setImage(self, image):
+    # @QtCore.pyqtSlot(QtGui.QImage)
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def setImage(self, np_img):
         # print(self.image)
-        self.image = image
+        self.image = QtGui.QImage(np_img.data, self.height(), self.width(), np_img.strides[0],
+                                  QtGui.QImage.Format_Grayscale16)
+        # self.image = image
         self.update()
 
     def sizeHint(self):
