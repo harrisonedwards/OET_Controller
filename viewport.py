@@ -122,9 +122,8 @@ class ViewPort(QtCore.QThread):
                 self.detection_overlay = cv2.cvtColor(self.detection_overlay, cv2.COLOR_GRAY2BGR)
                 # now make it red only
                 self.detection_overlay[:, :, 1:] = 0
-            # np_img = (np_img / 256)
-            np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
 
+            np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
             np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.5, 0)
             np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.5, 0)
 
@@ -141,13 +140,6 @@ class ViewPort(QtCore.QThread):
         # emit our array, whatever shape it may be
         if self.run_video:
             self.VideoSignal.emit(np_img)
-
-        # if self.detection:
-        #     self.qt_image = QtGui.QImage(np_img.data, window_w, window_h,
-        #                                  np_img.strides[0], QtGui.QImage.Format_RGB16)
-        # else:
-        #     self.qt_image = QtGui.QImage(np_img.data, window_w, window_h, np_img.strides[0],
-        #                                  QtGui.QImage.Format_Grayscale16)
 
     @QtCore.pyqtSlot()
     def run_detection_slot(self):
@@ -227,16 +219,15 @@ class ViewPort(QtCore.QThread):
 
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
     def resize_slot(self, size, running):
-        print('received resize')
+        # print('received resize')
+
+        self.detection = False
+        self.clear_overlay_slot()
+
         self.resize_lock.lock()
-        # print('resize locked')
         self.width = size.width()
         self.height = size.height()
         self.image = np.zeros((self.height, self.width), dtype=np.uint8)
-
-        self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
-                                     self.window_size.width(), QtGui.QImage.Format_Grayscale8)
-        # self.VideoSignal.emit(self.qt_image)
         self.VideoSignal.emit(self.image)
 
         if running:
@@ -248,34 +239,6 @@ class ViewPort(QtCore.QThread):
         if len(self.robots.items()) > 0:
             self.draw_paths()
         self.resize_lock.unlock()
-
-    # @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
-    # def resize_slot(self, size, running):
-    #     # print('received resize')
-    #     self.image = np.zeros((2060, 2048))
-    #     self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
-    #                                  self.window_size.width(), QtGui.QImage.Format_Grayscale16)
-    #     self.VideoSignal.emit(self.qt_image)
-    #     if running:
-    #         self.run_video = False
-    #         time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
-    #     else:
-    #         self.window_size = size
-    #         self.run_video = True
-    #         self.startVideo()
-
-    # # print('received resize')
-    # self.image = np.zeros((2060, 2048))
-    # self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
-    #                              self.window_size.width(), QtGui.QImage.Format_Grayscale16)
-    # self.VideoSignal.emit(self.qt_image)
-    # if running:
-    #     self.run_video = False
-    #     time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
-    # else:
-    #     self.window_size = size
-    #     self.run_video = True
-    #     self.startVideo()
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def set_exposure_slot(self, exposure):
