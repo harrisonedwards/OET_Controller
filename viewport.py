@@ -196,17 +196,17 @@ class ViewPort(QtCore.QThread):
         self.draw_paths()
 
     def draw_paths(self):
-        self.path_overlay = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+        self.path_overlay = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH, 3), dtype=np.uint8)
         # find closest contour, color the robot the same as the path, and draw it
         for robot in self.robots:
             if 'path_start_x' in self.robots[robot].keys():
-                start_x_scaled = int(self.robots[robot]['path_start_x'] * self.width)
-                start_y_scaled = int(self.robots[robot]['path_start_y'] * self.height)
-                end_x_scaled = int(self.robots[robot]['path_end_x'] * self.width)
-                end_y_scaled = int(self.robots[robot]['path_end_y'] * self.height)
+                start_x_scaled = int(self.robots[robot]['path_start_x'] * NATIVE_CAMERA_WIDTH)
+                start_y_scaled = int(self.robots[robot]['path_start_y'] * NATIVE_CAMERA_HEIGHT)
+                end_x_scaled = int(self.robots[robot]['path_end_x'] * NATIVE_CAMERA_WIDTH)
+                end_y_scaled = int(self.robots[robot]['path_end_y'] * NATIVE_CAMERA_HEIGHT)
                 cv2.line(self.path_overlay, (start_x_scaled, start_y_scaled),
                          (end_x_scaled, end_y_scaled), (0, 255, 0), 2)
-        self.path_overlay = cv2.resize(self.path_overlay, (self.width, self.height)).astype(np.uint8)
+
 
     @QtCore.pyqtSlot()
     def clear_overlay_slot(self):

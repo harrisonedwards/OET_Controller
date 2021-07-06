@@ -41,10 +41,8 @@ class ImageViewer(QtWidgets.QWidget):
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def setImage(self, np_img):
-        # print(self.image)
         if len(np_img.shape) > 2:
             # Format_RGB16
-            # np_img = (np_img * 256).astype(np.uint16)
             qt_img = qimage2ndarray.array2qimage(np_img)
             self.image = qt_img
         else:
