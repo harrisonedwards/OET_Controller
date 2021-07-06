@@ -49,6 +49,8 @@ class ImageViewer(QtWidgets.QWidget):
             self.image = QtGui.QImage(np_img.data, self.height(), self.width(), np_img.strides[0],
                                       QtGui.QImage.Format_Grayscale8)
         # self.image = image
+        self.image_width = self.image.width()
+        self.image_height = self.image.height()
         self.update()
 
     def sizeHint(self):
@@ -70,9 +72,11 @@ class ImageViewer(QtWidgets.QWidget):
             w = int(2060 / 2048 * h)
             self.resize_event_signal.emit(QtCore.QSize(h, w), True)
         if self.drawing:
-            self.payload['start_x'] = self.begin_path.x()
+            # subtract offsets for the x (due to black areas on sides of image)
+            offset = (self.width() - self.image_width)//2
+            self.payload['start_x'] = self.begin_path.x() - offset
             self.payload['start_y'] = self.begin_path.y()
-            self.payload['end_x'] = event.pos().x()
+            self.payload['end_x'] = event.pos().x() - offset
             self.payload['end_y'] = event.pos().y()
             self.path_signal.emit(copy.deepcopy(self.payload))
 

@@ -187,6 +187,7 @@ class ViewPort(QtCore.QThread):
         cx, cy, nearest_robot = self.find_closest_robot(payload)
 
         # unit normalize all
+        # need to add x-offsets for the black part of the scaled image...
         self.robots[nearest_robot]['path_start_x'] = cx / self.width
         self.robots[nearest_robot]['path_start_y'] = cy / self.height
         self.robots[nearest_robot]['path_end_x'] = payload['end_x'] / self.width
