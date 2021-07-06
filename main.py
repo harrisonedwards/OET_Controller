@@ -19,6 +19,7 @@ class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
     click_event_signal = QtCore.pyqtSignal(QtGui.QMouseEvent)
     path_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    calibration_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self, parent=None):
         super(ImageViewer, self).__init__(parent)
@@ -26,8 +27,10 @@ class ImageViewer(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
         self.ignore_release = True
         self.drawing = False
+        self.calibrating = False
         self.robot_paths = []
-        self.payload = {}
+        self.path_payload = {}
+        self.calibration_payload = []
         self.begin_path = None
 
     def paintEvent(self, event):
@@ -74,17 +77,29 @@ class ImageViewer(QtWidgets.QWidget):
         if self.drawing:
             # subtract offsets for the x (due to black areas on sides of image)
             offset = (self.width() - self.image_width)//2
-            self.payload['start_x'] = self.begin_path.x() - offset
-            self.payload['start_y'] = self.begin_path.y()
-            self.payload['end_x'] = event.pos().x() - offset
-            self.payload['end_y'] = event.pos().y()
-            self.path_signal.emit(copy.deepcopy(self.payload))
+            self.path_payload['start_x'] = self.begin_path.x() - offset
+            self.path_payload['start_y'] = self.begin_path.y()
+            self.path_payload['end_x'] = event.pos().x() - offset
+            self.path_payload['end_y'] = event.pos().y()
+            self.path_signal.emit(copy.deepcopy(self.path_payload))
+
 
     def mousePressEvent(self, event):
         self.ignore_release = True
         self.click_event_signal.emit(event)
         if self.drawing:
             self.begin_path = event.pos()
+        if self.calibrating:
+            # just scale this one here...probably could be neater
+            offset = (self.width() - self.image_width) // 2
+            x_scaled = (event.pos().x() - offset) / self.image_width
+            y_scaled = event.pos().y() / self.image_height
+            self.calibration_payload.append((x_scaled, y_scaled))
+            print('point marked:', x_scaled, y_scaled)
+            if len(self.calibration_payload) > 2:
+                QtWidgets.QMessageBox.about(self, 'Calibration', 'Calibration Complete')
+                # now emit
+                # self.calibration_signal.emit(self.calibration_payload)
 
 
 class Window(QtWidgets.QWidget):
@@ -328,6 +343,7 @@ class Window(QtWidgets.QWidget):
         self.VBoxLayout.addWidget(self.takeScreenshotPushButton)
 
         self.image_viewer = ImageViewer()
+        # self.image_viewer.calibration_signal.connect(self.dmd.calibration_slot)
 
         self.camera = ViewPort()
         self.camera_thread = QThread()
@@ -335,6 +351,7 @@ class Window(QtWidgets.QWidget):
 
         self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
         self.image_viewer.path_signal.connect(self.camera.path_slot)
+
         self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
 
         self.camera.VideoSignal.connect(self.image_viewer.setImage)
@@ -397,14 +414,19 @@ class Window(QtWidgets.QWidget):
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
 
+
         # self.dmd.turn_on_led()
 
     def calibrate_dmd(self):
         print('calibrating dmd...')
         # no we want to project 3 circles on the dmd for the user to click so that we can calibrate
         QtWidgets.QMessageBox.about(self, 'Calibration',
-                                    'Please click the center of the 3 projected circles to calibrate the DMD.')
+                                    'Please click the center of the 3 projected circles in a CLOCKWISE fashion \
+                                    to calibrate the DMD.')
         self.dmd.set_image()
+        self.image_viewer.calibration_payload = []
+        self.image_viewer.calibrating = True
+
 
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()

@@ -3,6 +3,7 @@ from ctypes import *
 import numpy as np
 from pyglet.gl import *
 import cv2
+from PyQt5 import QtCore
 import matplotlib.pyplot as plt
 
 
@@ -141,6 +142,10 @@ class Polygon1000():
         offs = np.zeros((self.height, self.width * 2), dtype=np.uint8)
         # offs[::2] = True
         return offs
+
+    @QtCore.pyqtSlot()
+    def calibration_slot(self, payload):
+        print('calibration:', payload)
 
     def set_image(self):
 
