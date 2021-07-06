@@ -122,8 +122,8 @@ class ViewPort(QtCore.QThread):
                 self.detection_overlay[:, :, 1:] = 0
 
             np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
-            np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.5, 0)
-            np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.5, 0)
+            np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.8, 0)
+            np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.8, 0)
 
         window_h = self.window_size.height()
         window_w = self.window_size.width()

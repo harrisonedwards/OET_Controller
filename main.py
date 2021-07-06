@@ -232,10 +232,12 @@ class Window(QtWidgets.QWidget):
         self.drawPathsPushButton = QtWidgets.QPushButton('Draw Paths')
         self.drawPathsPushButton.setCheckable(True)
         self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Overlay')
-        self.oetActivatePushButton = QtWidgets.QPushButton('Activate')
+        self.oetCalibratePushButton = QtWidgets.QPushButton('Calibrate')
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
         self.oetSpeedLabel = QtWidgets.QLabel('Speed')
         self.oetSpeedDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.oetProjectCirclePushButton = QtWidgets.QPushButton('Circle Touch')
+        self.oetProjectCirclePushButton.setCheckable(True)
 
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout()
@@ -316,6 +318,8 @@ class Window(QtWidgets.QWidget):
         self.oetLayout.addWidget(self.oetRunPushButton)
         self.oetLayout.addWidget(self.oetSpeedLabel)
         self.oetLayout.addWidget(self.oetSpeedDoubleSpinBox)
+        self.oetLayout.addWidget(self.oetCalibratePushButton)
+        self.oetLayout.addWidget(self.oetProjectCirclePushButton)
         self.oetLayout.setAlignment(QtCore.Qt.AlignLeft)
         # if not self.dmd:
         #     self.oetGroupBox.setEnabled(False)
@@ -391,8 +395,16 @@ class Window(QtWidgets.QWidget):
         self.detectRobotsPushButton.clicked.connect(self.camera.run_detection_slot)
         self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_overlay_slot)
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
+        self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
 
         # self.dmd.turn_on_led()
+
+    def calibrate_dmd(self):
+        print('calibrating dmd...')
+        # no we want to project 3 circles on the dmd for the user to click so that we can calibrate
+        QtWidgets.QMessageBox.about(self, 'Calibration',
+                                    'Please click the center of the 3 projected circles to calibrate the DMD.')
+        self.dmd.set_image()
 
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()

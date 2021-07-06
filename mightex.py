@@ -3,7 +3,7 @@ from ctypes import *
 import numpy as np
 from pyglet.gl import *
 import cv2
-
+import matplotlib.pyplot as plt
 
 
 class Polygon1000():
@@ -116,39 +116,43 @@ class Polygon1000():
         # data = (c_byte*len(self.image_bytes1))(*self.image_bytes1)
         self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1))
 
+    def project_calibration_pattern(self):
+        print('projecting calibration pattern...')
+        numpy_image = np.zeros((self.height, self.width), dtype=bool)
+        self.draw_square(numpy_image, 50,50)
+        self.draw_square(numpy_image, 50, 500)
+        self.draw_square(numpy_image, 500, 500)
+
     def draw_square(self, img, x, y):
-        w = 100
-        # x, y = self.height//2, self.width//2
+        w = 50
+        # for some reason the column dimension is elongated by 2x
         img[x-w:x+w, y-w//2:y+w//2] = True
         return img
 
-    def set_image(self, image):
-
+    def get_blank_image(self):
         numpy_image = np.zeros((self.height, self.width), dtype=bool)
         numpy_image[::2] = True
         self.image_bytes1 = np.packbits(numpy_image).tobytes()
         self.buff1 = (c_byte * len(self.image_bytes1))(*self.image_bytes1)
-
-
         offs = np.zeros((self.height, self.width), dtype=bool)
         offs[::2] = True
+        return offs
+
+    def set_image(self):
+
+        offs = self.get_blank_image()
         ons = np.ones((self.height, self.width), dtype=bool)
 
-        # image = cv2.resize(image, (self.width, self.height))
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        # img = np.where(image != 0, ons, offs)
-        x, y = np.random.randint(50, self.height-50), np.random.randint(50, self.width-50)
-        x = 1140//2
-        y = 912//2
-        print(f'drawing square at {x}, {y}')
-        img = self.draw_square(np.copy(ons), x, y).T.flatten()
+        # x = 1140//2
+        # y = 912//2
+
+        img = self.draw_square(offs, 50, 50)
+        img = self.draw_square(img, 50, 500)
+        img = self.draw_square(img, 500, 500)
+        img = np.copy(img).T.flatten()
 
         image_bytes = np.packbits(img).tobytes()
         data = (c_byte * len(image_bytes))(*image_bytes)
-        #     *np.packbits(np.reshape(np.frombuffer(image_bytes, dtype=np.uint8), (self.height, self.width)
-        #                             ).T.flatten()[self.mask]).tobytes()
-        # )
-
 
         print('changing dmd:', self.tog,
               self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1)))
