@@ -91,15 +91,15 @@ class Polygon1000():
 
     def turn_on_led(self):
         print('init leds:', self.led_clib.MTUSB_BLSDriverInitDevices())
-        # print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
-        # print('reset device led:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
-        # print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
-        # print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
-        # for channel in range(1,5):
-        #     print(f'set led mode for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
-        #     print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
-        #     print(f'set led current for channel {channel}:',
-        #           self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
+        print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        print('reset device led:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
+        print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
+        for channel in range(1,5):
+            print(f'set led mode for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
+            print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
+            print(f'set led current for channel {channel}:',
+                  self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
 
 
     def draw_pyglet(self):
@@ -119,9 +119,9 @@ class Polygon1000():
     def project_calibration_pattern(self):
         print('projecting calibration pattern...')
         numpy_image = np.zeros((self.height, self.width), dtype=bool)
-        self.draw_square(numpy_image, 50,50)
-        self.draw_square(numpy_image, 50, 500)
-        self.draw_square(numpy_image, 500, 500)
+        self.draw_square(numpy_image, 25, 25)
+        self.draw_square(numpy_image, 25, 25)
+        self.draw_square(numpy_image, 912-25, 1140-25)
 
     def draw_square(self, img, x, y):
         w = 50
@@ -129,26 +129,32 @@ class Polygon1000():
         img[x-w:x+w, y-w//2:y+w//2] = True
         return img
 
+    def img_to_dmd(self):
+        # transforms an input image to the proper mightex input
+        pass
+
     def get_blank_image(self):
-        numpy_image = np.zeros((self.height, self.width), dtype=bool)
-        numpy_image[::2] = True
-        self.image_bytes1 = np.packbits(numpy_image).tobytes()
-        self.buff1 = (c_byte * len(self.image_bytes1))(*self.image_bytes1)
-        offs = np.zeros((self.height, self.width), dtype=bool)
-        offs[::2] = True
+        # numpy_image = np.zeros((self.height, self.width), dtype=bool)
+        # numpy_image[::2] = True
+        # self.image_bytes1 = np.packbits(numpy_image).tobytes()
+        # self.buff1 = (c_byte * len(self.image_bytes1))(*self.image_bytes1)
+        offs = np.zeros((self.height, self.width * 2), dtype=np.uint8)
+        # offs[::2] = True
         return offs
 
     def set_image(self):
 
         offs = self.get_blank_image()
-        ons = np.ones((self.height, self.width), dtype=bool)
+        ons = np.ones((self.height, self.width * 2), dtype=bool)
 
         # x = 1140//2
         # y = 912//2
 
-        img = self.draw_square(offs, 50, 50)
-        img = self.draw_square(img, 50, 500)
-        img = self.draw_square(img, 500, 500)
+        img = cv2.circle(offs, (25, 25), 25, 255, -1)
+        img = cv2.circle(img, (912*2 - 25, 25), 25, 255, -1)
+        img = cv2.circle(img, (912*2 - 25, 1140 - 25), 25, 255, -1)
+        img = img[:, 0::2]
+
         img = np.copy(img).T.flatten()
 
         image_bytes = np.packbits(img).tobytes()
