@@ -13,7 +13,8 @@ from mightex import Polygon1000
 import cv2
 import qimage2ndarray
 import matplotlib.pyplot as plt
-import  numpy as np
+import numpy as np
+
 
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
@@ -76,13 +77,12 @@ class ImageViewer(QtWidgets.QWidget):
             self.resize_event_signal.emit(QtCore.QSize(h, w), True)
         if self.drawing:
             # subtract offsets for the x (due to black areas on sides of image)
-            offset = (self.width() - self.image_width)//2
+            offset = (self.width() - self.image_width) // 2
             self.path_payload['start_x'] = self.begin_path.x() - offset
             self.path_payload['start_y'] = self.begin_path.y()
             self.path_payload['end_x'] = event.pos().x() - offset
             self.path_payload['end_y'] = event.pos().y()
             self.path_signal.emit(copy.deepcopy(self.path_payload))
-
 
     def mousePressEvent(self, event):
         self.ignore_release = True
@@ -92,12 +92,13 @@ class ImageViewer(QtWidgets.QWidget):
         if self.calibrating:
             # just scale this one here...probably could be neater
             offset = (self.width() - self.image_width) // 2
-            x_scaled = (event.pos().x() - offset) / self.image_width
-            y_scaled = event.pos().y() / self.image_height
+            x_scaled = event.pos().x() / self.width()
+            y_scaled = event.pos().y() / self.height()
             self.calibration_payload.append((x_scaled, y_scaled))
             print('point marked:', x_scaled, y_scaled)
             if len(self.calibration_payload) > 2:
                 QtWidgets.QMessageBox.about(self, 'Calibration', 'Calibration Complete')
+                self.calibrating = False
                 # now emit
                 # self.calibration_signal.emit(self.calibration_payload)
 
@@ -149,6 +150,7 @@ class Window(QtWidgets.QWidget):
         self.test_image = cv2.imread(r'C:\Users\Mohamed\Desktop\Harrison\5.png')
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
+        self.project_circle_mode = False
 
         self.takeScreenshotPushButton = QtWidgets.QPushButton(text='Screenshot')
 
@@ -343,6 +345,8 @@ class Window(QtWidgets.QWidget):
         self.VBoxLayout.addWidget(self.takeScreenshotPushButton)
 
         self.image_viewer = ImageViewer()
+
+        # TODO: fix this...
         # self.image_viewer.calibration_signal.connect(self.dmd.calibration_slot)
 
         self.camera = ViewPort()
@@ -413,7 +417,7 @@ class Window(QtWidgets.QWidget):
         self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_overlay_slot)
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
-
+        self.oetProjectCirclePushButton.clicked.connect(self.toggle_circle_draw)
 
         # self.dmd.turn_on_led()
 
@@ -427,6 +431,32 @@ class Window(QtWidgets.QWidget):
         self.image_viewer.calibration_payload = []
         self.image_viewer.calibrating = True
 
+    @QtCore.pyqtSlot(QtGui.QMouseEvent)
+    def handle_click(self, event):
+        if self.project_circle_mode and len(self.image_viewer.calibration_payload) > 2:
+            x = event.pos().x()
+            y = event.pos().y()
+            # scale everything
+            scaled_x = x / self.image_viewer.width()
+            scaled_y = y / self.image_viewer.height()
+
+            # check if we can illuminate the clicked area with the dmd
+            check = self.check_if_in_dmd_area(scaled_x, scaled_y)
+            if check:
+                FS_x = self.image_viewer.calibration_payload[-1][0] - self.image_viewer.calibration_payload[0][0]
+                FS_y = self.image_viewer.calibration_payload[-1][1] - self.image_viewer.calibration_payload[0][1]
+
+                # subtract out our top left calibration spot
+                dmd_scaled_x = (scaled_x - self.image_viewer.calibration_payload[0][0]) / FS_x
+                dmd_scaled_y = (scaled_y - self.image_viewer.calibration_payload[0][1]) / FS_y
+                self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
+            else:
+                print('not within DMD area!')
+
+    def changeOETPattern(self):
+        self.dmd.set_image(self.test_image)
+    def toggle_circle_draw(self):
+        self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
 
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()
@@ -448,6 +478,7 @@ class Window(QtWidgets.QWidget):
                 else:
                     childQWidget.setFocusPolicy(policy)
                 recursiveSetChildFocusPolicy(childQWidget)
+
         recursiveSetChildFocusPolicy(self)
 
     def keyPressEvent(self, event):
@@ -478,12 +509,20 @@ class Window(QtWidgets.QWidget):
     def keyReleaseEvent(self, event):
         pass
 
-    @QtCore.pyqtSlot(QtGui.QMouseEvent)
-    def handle_click(self, event):
-        print(event.x(), event.y())
+    def check_if_in_dmd_area(self, scaled_x, scaled_y):
+        # define bounds
+        min_x = self.image_viewer.calibration_payload[0][0]
+        max_x = self.image_viewer.calibration_payload[-1][0]
 
-    def changeOETPattern(self):
-        self.dmd.set_image(self.test_image)
+        min_y = self.image_viewer.calibration_payload[0][1]
+        max_y = self.image_viewer.calibration_payload[-1][1]
+
+        if min_x < scaled_x < max_x and min_y < scaled_y < max_y:
+            return True
+        else:
+            return False
+
+
 
     def startAmountDispenseMode(self):
         self.dispenseMode = 'amount'

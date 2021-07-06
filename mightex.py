@@ -143,9 +143,24 @@ class Polygon1000():
         # offs[::2] = True
         return offs
 
-    @QtCore.pyqtSlot()
+    @QtCore.pyqtSlot('PyQt_PyObject')
     def calibration_slot(self, payload):
         print('calibration:', payload)
+
+    def project_circle(self, dmd_scaled_x, dmd_scaled_y):
+
+        x = int(dmd_scaled_x * 912 * 2)
+        y = int(dmd_scaled_y * 1140)
+
+        offs = self.get_blank_image()
+        img = cv2.circle(offs, (x, y), 25, 255, -1)
+        img = img[:, 0::2]
+        img = np.copy(img).T.flatten()
+        image_bytes = np.packbits(img).tobytes()
+        data = (c_byte * len(image_bytes))(*image_bytes)
+
+        print('changing dmd:', self.tog,
+              self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1)))
 
     def set_image(self):
 
@@ -155,9 +170,9 @@ class Polygon1000():
         # x = 1140//2
         # y = 912//2
 
-        img = cv2.circle(offs, (25, 25), 25, 255, -1)
-        img = cv2.circle(img, (912*2 - 25, 25), 25, 255, -1)
-        img = cv2.circle(img, (912*2 - 25, 1140 - 25), 25, 255, -1)
+        img = cv2.circle(offs, (0, 0), 25, 255, -1)
+        img = cv2.circle(img, (912*2, 0), 25, 255, -1)
+        img = cv2.circle(img, (912*2, 1140), 25, 255, -1)
         img = img[:, 0::2]
 
         img = np.copy(img).T.flatten()
