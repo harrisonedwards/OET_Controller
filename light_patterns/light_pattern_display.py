@@ -8,7 +8,8 @@ class LightPatternDisplay:
     lps = []
     update_funcs = []
 
-    def __init__(self, screen=1, fps=False):
+    def __init__(self, screen=1, fps=False, function_generator=None):
+        self.function_generator = function_generator
         self.logging = False
         self.running = False
         display = pyglet.canvas.get_display()
@@ -74,6 +75,9 @@ class LightPatternDisplay:
         moving = self.moving()
         if not moving:
             self.lps = []
+            self.batch = pyglet.graphics.Batch()
+            if self.function_generator is not None:
+                self.function_generator.OFF()
         for lp in self.lps:
             lp.update(time)
             #self.window.close()
@@ -97,8 +101,8 @@ class LightPatternDisplay:
 
 def test(lpdisplay:LightPatternDisplay, lp:LightPattern):
     from time import sleep
-    while not lpdisplay.running:
-        sleep(1)
+    #while not lpdisplay.running:
+    sleep(5)
     poses = [lp.pose,Pose(300,100,0)]#,Pose(500,500,-90)]
     for start, goal in zip(poses[:-1],poses[1:]):
         move = Move(start=start, goal=goal, max_velocity_t=100, max_velocity_r=100, acceleration_t=10, acceleration_r=10)
@@ -111,8 +115,8 @@ if __name__ == '__main__':
     folder = r'C:\Users\micro\Desktop\test'
     prefix = 'test'
     tp = ThreadPoolExecutor(1)
-    lpdisplay = LightPatternDisplay(screen=0)
+    lpdisplay = LightPatternDisplay(screen=1)
     lp = lpdisplay.add_light_pattern(100,100,open_gear=False)
-    #tp.submit(partial(test, lpdisplay, lp))
+    tp.submit(partial(test, lpdisplay, lp))
     lpdisplay.run()
 

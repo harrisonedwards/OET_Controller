@@ -5,6 +5,7 @@ import PyQt5.QtWidgets
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from function_generator import FunctionGenerator
+from control.function_generators import WG33509B
 from pump import Pump
 #from microscope import Microscope
 from fluorescence_controller import FluorescenceController
@@ -103,6 +104,13 @@ class Window(QtWidgets.QWidget):
             print(f'Function generator control not available: {e}')
             self.function_generator = False
 
+        if self.function_generator == False:
+            try:
+                self.function_generator = WG33509B()
+            except Exception as e:
+                print(f'Function generator control not available: {e}')
+                self.function_generator = False
+
         try:
             self.pump = Pump()
         except Exception as e:
@@ -135,7 +143,7 @@ class Window(QtWidgets.QWidget):
 
         if self.dmd == False:
             try:
-                self.dmd = LightPatternDisplay(0)
+                self.dmd = LightPatternDisplay(screen=1, function_generator=self.function_generator, fps=False)
             except Exception as e:
                 print(f'unable to connect to projector: {e}')
                 self.dmd = False
@@ -191,8 +199,9 @@ class Window(QtWidgets.QWidget):
         # FUNCTION GENERATOR
         self.voltageLabel = QtWidgets.QLabel(text='Voltage:')
         self.voltageDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.voltageDoubleSpinBox.setMaximum(10)
-        self.voltageDoubleSpinBox.setMinimum(-10)
+        self.voltageDoubleSpinBox.setMaximum(1.5)
+        self.voltageDoubleSpinBox.setMinimum(0.0)
+        self.voltageDoubleSpinBox.setValue(1.25)
         self.voltageDoubleSpinBox.setSuffix('V')
         self.frequencyLabel = QtWidgets.QLabel(text='Frequency:')
         self.frequencyDoubleSpinBox = QtWidgets.QDoubleSpinBox()
@@ -201,9 +210,11 @@ class Window(QtWidgets.QWidget):
         self.frequencyDoubleSpinBox.setSuffix('Hz')
         self.frequencyDoubleSpinBox.setFixedWidth(80)
         self.frequencyDoubleSpinBox.setMaximum(100000000)
+        self.frequencyDoubleSpinBox.setValue(20000)
         self.waveformComboBox = QtWidgets.QComboBox()
         self.waveformComboBox.addItems(['SIN', 'SQU'])
         self.waveformComboBox.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.waveformComboBox.setCurrentIndex(1)
         self.fgOutputCombobox = QtWidgets.QComboBox()
         self.fgOutputCombobox.addItems(['OFF', 'ON'])
         self.fgOutputCombobox.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -250,8 +261,9 @@ class Window(QtWidgets.QWidget):
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
         self.oetSpeedLabel = QtWidgets.QLabel('Speed')
         self.oetSpeedDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.oetSpeedDoubleSpinBox.setMaximum(100.0)
+        self.oetSpeedDoubleSpinBox.setMaximum(500.0)
         self.oetSpeedDoubleSpinBox.setMinimum(0.1)
+        self.oetSpeedDoubleSpinBox.setValue(100.0)
 
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout()
@@ -291,7 +303,7 @@ class Window(QtWidgets.QWidget):
         self.functionGeneratorLayout.addWidget(self.setFunctionGeneratorPushButton)
         self.functionGeneratorLayout.addWidget(self.fgOutputCombobox)
         self.functionGeneratorLayout.setAlignment(QtCore.Qt.AlignLeft)
-        # self.VBoxLayout.addWidget(self.functionGeneratorGroupBox)
+        self.VBoxLayout.addWidget(self.functionGeneratorGroupBox)
         if not self.function_generator:
             self.functionGeneratorGroupBox.setEnabled(False)
 
@@ -403,9 +415,9 @@ class Window(QtWidgets.QWidget):
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
 
         self.oetRunPushButton.clicked.connect(self.runLightPatterns)
-        # if self.function_generator:
+        if self.function_generator:
             # self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
-        # self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
+            self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
         # self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
         # self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
         # self.pumpAmountRadioButton.clicked.connect(self.startAmountDispenseMode)
@@ -480,6 +492,7 @@ class Window(QtWidgets.QWidget):
             return np.rad2deg(np.arctan2(p2[1]-p1[1],p2[0]-p1[0]))
 
         paths = self.camera.robots
+        moving = False
         for path in paths.values():
             if len(path)<6:
                 continue
@@ -492,12 +505,21 @@ class Window(QtWidgets.QWidget):
             end = self.cam2proj.convert(*end)
             start_angle = -np.rad2deg(path['angle'])
 
-            if (not np.isnan(start[0])) and (not np.isnan(end[0])):
-                print(np.rad2deg(path['angle']))
+            print(start_angle,end_angle)
+
+            if (not np.isnan(start[0])) and (not np.isnan(end[0])) and (not np.isnan(start_angle)):
+                moving = True
                 lp = self.dmd.add_light_pattern(start[0],start[1],rotation=start_angle,colour='white')
                 move = Move(lp.pose,Pose(end[0],end[1],end_angle),max_velocity_t=self.oetSpeedDoubleSpinBox.value(),
-                            max_velocity_r=10,acceleration_t=10,acceleration_r=10)
+                            max_velocity_r=100,acceleration_t=10,acceleration_r=10)
                 lp.move_to(move)
+            else:
+                print('Invalid path')
+        if moving and isinstance(self.function_generator,WG33509B):
+            v = self.voltageDoubleSpinBox.value()
+            f = self.frequencyDoubleSpinBox.value()
+            self.function_generator.ON(freq=f,amp=v)
+
 
 
     def changeOETPattern(self):
@@ -535,9 +557,15 @@ class Window(QtWidgets.QWidget):
         v = self.voltageDoubleSpinBox.value()
         f = self.frequencyDoubleSpinBox.value()
         w = self.waveformComboBox.currentText()
-        self.function_generator.set_voltage(v)
-        self.function_generator.set_frequency(f)
-        self.function_generator.set_waveform(w)
+        if isinstance(self.function_generator,FunctionGenerator):
+            self.function_generator.set_voltage(v)
+            self.function_generator.set_frequency(f)
+            self.function_generator.set_waveform(w)
+        elif isinstance(self.function_generator,WG33509B):
+            if self.fgOutputCombobox.currentIndex()==1: # function generator on
+                self.function_generator.ON(freq=f,amp=v) #only square wave
+            else:
+                self.function_generator.OFF()
 
     def changeMagnification(self, text):
         idx_dict = {k: v for k, v in zip(self.objectives, range(1, 7))}

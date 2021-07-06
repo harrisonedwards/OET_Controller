@@ -40,26 +40,45 @@ class Pose:
         return cls(x, y, r)
 
     def at_location(self, pose, direction):
-        direction_x, direction_y = direction
+        #direction_x, direction_y = direction
 
-        if direction_x == 1:
-            at_x = pose.x <= self.x
-        else:
-            at_x = pose.x >= self.x
-
-        if direction_y == 1:
-            at_y = pose.y <= self.y
-        else:
-            at_y = pose.y >= self.y
-
+        # if direction_x == 1:
+        #     at_x = pose.x <= self.x
+        # else:
+        #     at_x = pose.x >= self.x
+        # if not at_x:
+        #     at_x = np.isclose(pose.x,self.x)
+        #
+        # if direction_y == 1:
+        #     at_y = pose.y <= self.y
+        # else:
+        #     at_y = pose.y >= self.y
+        # if not at_y:
+        #     at_y = np.isclose(pose.y,self.y)
+        at_x = np.isclose(self.x, pose.x,atol=1e-5)
+        at_y = np.isclose(self.y, pose.y,atol=1e-5)
         return at_x and at_y
 
     def at_rotation(self, pose, direction):
-        if direction == 1:
-            return pose.rotation <= self.rotation
-        else:
-            return pose.rotation >= self.rotation
 
+        # if direction == 1:
+        #     at_rot = pose.rotation <= self.rotation
+        # else:
+        #     at_rot = pose.rotation >= self.rotation
+        # if not at_rot:
+        #     at_rot = np.isclose(pose.rotation,self.rotation)
+        pose_rot = pose.rotation
+        rot = self.rotation
+        while pose_rot<-180:
+            pose_rot+=360
+        while pose_rot>180:
+            pose_rot-=360
+        while rot<-180:
+            rot+=360
+        while rot>180:
+            rot-=360
+        at_rot = np.isclose(rot,pose_rot,atol=1e-5)
+        return at_rot
 
 @dataclass
 class Move:
@@ -86,9 +105,9 @@ class Move:
             self.max_velocity_distance_t = 0
 
         self.total_distance_r = self.goal.rotation - self.start.rotation
-        if self.total_distance_r > 180:
+        while self.total_distance_r > 180:
             self.total_distance_r -= 360
-        elif self.total_distance_r < -180:
+        while self.total_distance_r < -180:
             self.total_distance_r += 360
 
         self.direction_r = np.sign(self.total_distance_r)
@@ -140,7 +159,7 @@ class Move:
             displacement = self.displacement_constant(self.acceleration_t, self.max_velocity_t,
                                                       self.max_velocity_distance_t, self.total_distance_t)
         else:
-            displacement = (self.max_velocity_t * self.t) / self.total_distance_t
+            displacement = min(1,(self.max_velocity_t * self.t) / self.total_distance_t)
         x = self.start.x + (self.total_distance_x * displacement)
         y = self.start.y + (self.total_distance_y * displacement)
         return x, y
@@ -151,8 +170,9 @@ class Move:
             displacement = self.displacement_constant(self.acceleration_r, self.max_velocity_r,
                                                       self.max_velocity_distance_r, self.total_distance_r)
         else:
-            displacement = (self.max_velocity_r * t) / self.total_distance_r
+            displacement = min(1,(self.max_velocity_r * t) / self.total_distance_r)
         r = self.start.rotation + (self.total_distance_r * displacement)
+        print(r)
         return r
 
     def update(self, dt, pose):
@@ -165,7 +185,7 @@ class Move:
             x, y = self.translation()
             moved = True
         else:
-            x, y = pose.x, pose.y
+            x, y = self.goal.x, self.goal.y
         if not pose.at_rotation(self.goal,self.direction_r):
             r = self.rotation(self.t)
             moved = True
@@ -177,7 +197,7 @@ class Move:
         pose.rotation = r
         if not moved:
             self.finished = True
-        print(pose)
+        #print(pose)
         return pose
 
 

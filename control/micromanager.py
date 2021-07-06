@@ -42,15 +42,33 @@ class ProcessWorker(QtCore.QObject):
         self.running = True
 
     def doWork(self):
-
+        parent = self.cam.parent
         while self.running:
             frame = self.cam.next_image()
-            frame = (frame/65535)*255
-            rgbImage = cv2.cvtColor(frame.astype(np.uint8),cv2.COLOR_GRAY2BGR)
-            # h, w, ch = rgbImage.shape
-            # bytesPerLine = ch * w
-            # convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
-            self.imageChanged.emit(rgbImage)
+            upper_value = np.percentile(frame,99.99)
+            frame[frame>upper_value] = upper_value
+            frame = (frame/upper_value)*255
+            #frame = cv2.normalize(frame,None,alpha=0,beta=255,norm_type=cv2.NORM_MINMAX,dtype=cv2.CV_8U)
+            np_img = cv2.cvtColor(frame.astype(np.uint8),cv2.COLOR_GRAY2BGR)
+            parent.image = np.copy(np_img)
+
+            if parent.detection and parent.detection_lock.tryLock(10):
+                if parent.detection_overlay.shape[-1] != 3:
+                    parent.detection_overlay = cv2.cvtColor(parent.detection_overlay, cv2.COLOR_GRAY2BGR)
+                    # make it red only
+                    parent.detection_overlay[:, :, 1:] = 0
+
+                np_img = cv2.addWeighted(np_img, 1, parent.detection_overlay, 0.5, 0)
+                parent.detection_lock.unlock()
+            # print('image locking')
+            parent.resize_lock.lock()
+            # print('image locked')
+            np_img = cv2.resize(np_img, (parent.width, parent.height)).astype(np.uint8)
+
+            np_img = cv2.addWeighted(np_img, 1, parent.path_overlay, 0.5, 0)
+            # print('image unlocking')
+            parent.resize_lock.unlock()
+            self.imageChanged.emit(np_img)
         self.thread().quit()
 
 class Camera():
@@ -58,7 +76,8 @@ class Camera():
     height = 0
     width = 0
 
-    def __init__(self):
+    def __init__(self,parent=None):
+        self.parent = parent
         mm = MicroManager()
         self.mmc = mm.mmc
         self.mmc.setCameraDevice('HamamatsuHam_DCAM')
@@ -160,10 +179,13 @@ if __name__ == '__main__':
         cv2.waitKey(1)
 
     c = Camera()
-    c.start_sequence_with_callback(view)
-    time.sleep(5)
-    c.set_exposure(100)
-    time.sleep(5)
-    c.stop_sequence()
+    c.set_exposure(16.6)
+    frame = c.next_image()
+    print()
+    # c.start_sequence_with_callback(view)
+    # time.sleep(5)
+    # c.set_exposure(100)
+    # time.sleep(5)
+    # c.stop_sequence()
 
 

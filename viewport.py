@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import cv2
 import time
 from detection import get_robot_control
+from object_detection.microrobots import detect_microrobots, draw_microrobots
 import enum
 
 class CameraType(enum.Enum):
@@ -42,11 +43,7 @@ class ViewPort(QtCore.QThread):
         self.detection = False
         self.robots = {}
 
-        print('initializing camera...')
-        if camera_type is CameraType.TOUPCAM:
-            self.init_toupcam()
-        if camera_type is CameraType.HAMAMATSU:
-            self.init_hamamatsu()
+
 
         self.run_video = True
         self.rotation = False
@@ -55,15 +52,19 @@ class ViewPort(QtCore.QThread):
         self.robot_control_mask = np.zeros((self.height, self.width, 3)).astype(np.uint8)
         self.path_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
         self.detection_overlay = np.zeros((self.height, self.width, 3)).astype(np.uint8)
-        print(self.detection_overlay.shape)
+        print('initializing camera...')
+        if camera_type is CameraType.TOUPCAM:
+            self.init_toupcam()
+        if camera_type is CameraType.HAMAMATSU:
+            self.init_hamamatsu()
         self.qt_image = QtGui.QImage(self.image.data, self.window_size.height(),
                                      self.window_size.width(), QtGui.QImage.Format_RGB888)
 
     def init_hamamatsu(self):
-        self.hcam = Camera()
+        self.hcam = Camera(parent=self)
         self.width = self.hcam.width
         self.height = self.hcam.height
-        self.hcam.start_sequence_qt(self.process_and_emit_image)
+        self.hcam.start_sequence_qt(self.VideoSignal.emit)
 
     def init_toupcam(self):
         a = toupcam.Toupcam.EnumV2()
@@ -141,15 +142,19 @@ class ViewPort(QtCore.QThread):
     @QtCore.pyqtSlot()
     def run_detection_slot(self):
         print('running detection...')
-        self.clear_overlay_slot()
-        self.detection = True
-        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image,100,200)
         if self.detection_lock.tryLock(10):
-            self.detection_overlay = np.copy(self.robot_control_mask)
-            for i in range(len(robot_contours)):
+            self.clear_overlay_slot()
+            self.detection = True
+            #self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image,100,200)
+            robots, _ = detect_microrobots(self.image,'intensity')
+
+            self.detection_overlay = np.ones((self.image.shape[0],self.image.shape[1]),dtype=self.image.dtype)
+            self.detection_overlay = draw_microrobots(self.detection_overlay,robots,as_mask=False,draw_value=255,thickness=5)
+
+            for i in range(len(robots)):
                 name = f'robot_{i}'
-                self.robots[name] = {'contour': robot_contours[i], 'angle': robot_angles[i]}
-            print(f'found {len(robot_contours)} robots')
+                self.robots[name] = {'centre': robots[i,:2], 'radius':robots[i,2], 'angle': robots[i,3]}
+            print(f'found {len(robots)} robots')
             self.detection_lock.unlock()
 
     def find_closest_robot(self, payload):
@@ -158,12 +163,13 @@ class ViewPort(QtCore.QThread):
         nearest_robot_cx = None
         nearest_robot_cy = None
         for robot in self.robots:
-            contour = self.robots[robot]['contour']
-            M = cv2.moments(contour)
-
-            # unit normalize our native image width and the window width for comparison
-            cx = int(M["m10"] / M["m00"]) / NATIVE_CAMERA_WIDTH
-            cy = int(M["m01"] / M["m00"]) / NATIVE_CAMERA_HEIGHT
+            # contour = self.robots[robot]['contour']
+            # M = cv2.moments(contour)
+            #
+            # # unit normalize our native image width and the window width for comparison
+            # cx = int(M["m10"] / M["m00"]) / NATIVE_CAMERA_WIDTH
+            # cy = int(M["m01"] / M["m00"]) / NATIVE_CAMERA_HEIGHT
+            cx,cy = self.robots[robot]['centre']/[NATIVE_CAMERA_WIDTH,NATIVE_CAMERA_HEIGHT]
             click_x = payload['start_x'] / self.width
             click_y = payload['start_y'] / self.height
 

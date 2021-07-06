@@ -36,6 +36,8 @@ class Function_Generator:
         print('Function Generator',self.status)
 
     def OFF(self):
+        if self.status == 'OFF':
+            return
         self.FunctionGenerator.write("OUTP OFF")
         self.status = 'OFF'
         print('Function Generator',self.status)
@@ -64,9 +66,7 @@ class WG33509B(Function_Generator):
 
 if __name__=="__main__":
     a=WG33509B()
-    #a.ON()
 
-    open('test.txt')
 
 
 

@@ -18,8 +18,10 @@ def get_large_contours(detect):
     contours, hier = cv2.findContours(detect, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     large_contours = []
     contour_area_minimum = 2000
+    contour_area_maximum = 10000
     for c in contours:
-        if cv2.contourArea(c) > contour_area_minimum:
+        area = cv2.contourArea(c)
+        if contour_area_minimum < area < contour_area_maximum:
             large_contours.append(c)
 
     return large_contours
@@ -49,7 +51,7 @@ def get_robot_control_mask(large_contours, detect):
     dilation_size = 20
 
     # for drawing detected robot direction:
-    line_length = 200
+    line_length = 100
     line_width = 20
 
     for contour in large_contours:
@@ -64,8 +66,8 @@ def get_robot_control_mask(large_contours, detect):
                 contours_towards_center.append(contour)
                 cv2.circle(inner_circle_mask, (cx, cy), robot_center_radius, 1, -1)
                 angle = get_robot_angle(contour, (cx, cy))
-
-                # cv2.line(inner_circle_mask, (cx, cy), (cx + int(line_length*np.cos(angle)), cy + int(line_length*np.sin(angle))), 1, line_width)
+                if not np.isnan(angle):
+                    cv2.line(inner_circle_mask, (cx, cy), (cx + int(line_length*np.cos(angle)), cy + int(line_length*np.sin(angle))), 1, line_width)
                 robot_angles.append(angle)
 
     # draw the contours on our control mask
