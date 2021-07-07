@@ -3,7 +3,7 @@ from ctypes import *
 import numpy as np
 from pyglet.gl import *
 import cv2
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 import matplotlib.pyplot as plt
 
 
@@ -57,6 +57,7 @@ class Polygon1000():
             # else:
             #     self.mask[h,1::2] = True
         self.mask = self.mask.flatten()
+        self.projection_image = None
 
 
         uninit = self.dmd_clib.MTPLG_UnInitDevice()
@@ -161,6 +162,10 @@ class Polygon1000():
 
         print('changing dmd:', self.tog,
               self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1)))
+
+    def load_projection_image(self, file_name):
+        self.projection_image = cv2.imread(file_name)
+        print(self.projection_image)
 
     def project_loaded_image(self):
         pass

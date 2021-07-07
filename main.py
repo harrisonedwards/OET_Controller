@@ -151,6 +151,7 @@ class Window(QtWidgets.QWidget):
         self.setWindowTitle('OET System Control')
         self.dispenseMode = None
         self.project_circle_mode = False
+        self.project_image_mode = False
 
         self.takeScreenshotPushButton = QtWidgets.QPushButton(text='Screenshot')
 
@@ -256,6 +257,8 @@ class Window(QtWidgets.QWidget):
         self.oetProjectCirclePushButton = QtWidgets.QPushButton('Circle Touch')
         self.oetProjectCirclePushButton.setCheckable(True)
         self.oetLoadProjectionImagePushButton = QtWidgets.QPushButton('Load Projection')
+        self.oetProjectImagePushButton = QtWidgets.QPushButton('Project Image')
+        self.oetProjectImagePushButton.setCheckable(True)
 
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout()
@@ -339,6 +342,7 @@ class Window(QtWidgets.QWidget):
         self.oetLayout.addWidget(self.oetCalibratePushButton)
         self.oetLayout.addWidget(self.oetProjectCirclePushButton)
         self.oetLayout.addWidget(self.oetLoadProjectionImagePushButton)
+        self.oetLayout.addWidget(self.oetProjectImagePushButton)
         self.oetLayout.setAlignment(QtCore.Qt.AlignLeft)
         # if not self.dmd:
         #     self.oetGroupBox.setEnabled(False)
@@ -421,12 +425,18 @@ class Window(QtWidgets.QWidget):
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
         self.oetProjectCirclePushButton.clicked.connect(self.toggle_circle_draw)
         self.oetLoadProjectionImagePushButton.clicked.connect(self.load_oet_projection)
+        self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
 
         # self.dmd.turn_on_led()
 
+    def toggle_project_image(self):
+        state = self.oetProjectImagePushButton.isChecked()
+        self.project_image_mode = state
+
+
     def load_oet_projection(self):
-        file_name = QtWidgets.QFileDialog.getOpenFileName(self, 'OpenFile')
-        print(file_name)
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'OpenFile')
+        self.dmd.load_projection_image(file_name)
 
     def calibrate_dmd(self):
         print('calibrating dmd...')
@@ -459,9 +469,9 @@ class Window(QtWidgets.QWidget):
                 self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
             else:
                 print('not within DMD area!')
+        elif self.project_image_mode and len(self.image_viewer.calibration_payload) > 2:
+            pass
 
-    def changeOETPattern(self):
-        self.dmd.set_image(self.test_image)
     def toggle_circle_draw(self):
         self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
 
