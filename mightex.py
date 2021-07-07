@@ -162,13 +162,12 @@ class Polygon1000():
         print('changing dmd:', self.tog,
               self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1)))
 
-    def set_image(self):
+    def project_loaded_image(self):
+        pass
+
+    def project_calibration_image(self):
 
         offs = self.get_blank_image()
-        ons = np.ones((self.height, self.width * 2), dtype=bool)
-
-        # x = 1140//2
-        # y = 912//2
 
         img = cv2.circle(offs, (0, 0), 25, 255, -1)
         img = cv2.circle(img, (912*2, 0), 25, 255, -1)

@@ -255,6 +255,7 @@ class Window(QtWidgets.QWidget):
         self.oetSpeedDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.oetProjectCirclePushButton = QtWidgets.QPushButton('Circle Touch')
         self.oetProjectCirclePushButton.setCheckable(True)
+        self.oetLoadProjectionImagePushButton = QtWidgets.QPushButton('Load Projection')
 
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout()
@@ -337,6 +338,7 @@ class Window(QtWidgets.QWidget):
         self.oetLayout.addWidget(self.oetSpeedDoubleSpinBox)
         self.oetLayout.addWidget(self.oetCalibratePushButton)
         self.oetLayout.addWidget(self.oetProjectCirclePushButton)
+        self.oetLayout.addWidget(self.oetLoadProjectionImagePushButton)
         self.oetLayout.setAlignment(QtCore.Qt.AlignLeft)
         # if not self.dmd:
         #     self.oetGroupBox.setEnabled(False)
@@ -418,15 +420,20 @@ class Window(QtWidgets.QWidget):
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
         self.oetProjectCirclePushButton.clicked.connect(self.toggle_circle_draw)
+        self.oetLoadProjectionImagePushButton.clicked.connect(self.load_oet_projection)
 
         # self.dmd.turn_on_led()
+
+    def load_oet_projection(self):
+        file_name = QtWidgets.QFileDialog.getOpenFileName(self, 'OpenFile')
+        print(file_name)
 
     def calibrate_dmd(self):
         print('calibrating dmd...')
         # no we want to project 3 circles on the dmd for the user to click so that we can calibrate
         QtWidgets.QMessageBox.about(self, 'Calibration',
-                                    'Please click the center of the 3 projected circles in a CLOCKWISE fashion \
-                                    to calibrate the DMD.')
+                                    'Please click the center of the 3 (clipped) projected circles in a CLOCKWISE \
+                                    fashion to calibrate the DMD.')
         self.dmd.set_image()
         self.image_viewer.calibration_payload = []
         self.image_viewer.calibrating = True
