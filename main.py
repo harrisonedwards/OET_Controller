@@ -251,11 +251,18 @@ class Window(QtWidgets.QWidget):
         self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Overlay')
         self.oetCalibratePushButton = QtWidgets.QPushButton('Calibrate')
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
-        self.oetScaleLabel = QtWidgets.QLabel('Scale')
+        self.oetScaleLabel = QtWidgets.QLabel('Scale:')
         self.oetScaleDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.oetScaleDoubleSpinBox.setSuffix('%')
         self.oetScaleDoubleSpinBox.setSingleStep(5)
         self.oetScaleDoubleSpinBox.setMinimum(5)
+        self.oetScaleDoubleSpinBox.setDecimals(0)
+        self.oetRotationLabel = QtWidgets.QLabel('Rotation:')
+        self.oetRotationDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.oetRotationDoubleSpinBox.setSuffix('°')
+        self.oetRotationDoubleSpinBox.setDecimals(0)
+        self.oetRotationDoubleSpinBox.setMinimum(5)
+        self.oetRotationDoubleSpinBox.setSingleStep(5)
         self.oetScaleUpPushButton = QtWidgets.QPushButton('Scale Up')
         self.oetScaleDownPushButton = QtWidgets.QPushButton('Scale Down')
         self.oetProjectCirclePushButton = QtWidgets.QPushButton('Project Circle')
@@ -355,6 +362,8 @@ class Window(QtWidgets.QWidget):
         self.oetLayoutLower.addWidget(self.oetScaleDoubleSpinBox)
         self.oetLayoutLower.addWidget(self.oetScaleUpPushButton)
         self.oetLayoutLower.addWidget(self.oetScaleDownPushButton)
+        self.oetLayoutLower.addWidget(self.oetRotationLabel)
+        self.oetLayoutLower.addWidget(self.oetRotationDoubleSpinBox)
         self.oetLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
         self.oetLayout.addLayout(self.oetLayoutLower)
         # if not self.dmd:
@@ -536,6 +545,12 @@ class Window(QtWidgets.QWidget):
 
     def keyPressEvent(self, event):
         key = event.key()
+        if self.project_image_mode:
+            amt = self.oetRotationDoubleSpinBox.value()
+            if key == QtCore.Qt.Key_Q:
+                self.dmd.rotate_projection_image(amt)
+            elif key == QtCore.Qt.Key_E:
+                self.dmd.rotate_projection_image(-amt)
         if self.cameraRotationPushButton.isChecked():
             if key == QtCore.Qt.Key_Up:
                 self.stage.step('r')

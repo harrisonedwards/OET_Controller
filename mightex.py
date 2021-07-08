@@ -148,13 +148,23 @@ class Polygon1000():
         # scale both the circle and projection image
         h, w = self.projection_image.shape
         self.projection_image = cv2.resize(self.projection_image, (int(w * scale), int(h * scale)))
+        # self.circle_radius *= scale
         # threshold again to binarize
         ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
         # re-project the image in the location it was in
         self.project_loaded_image(self.cx, self.cy, inplace=True)
 
+    @staticmethod
+    def rotate_image(image, angle):
+        image_center = tuple(np.array(image.shape[1::-1]) / 2)
+        rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+        result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
+        return result
+
     def rotate_projection_image(self, rotation):
-        pass
+        self.projection_image = self.rotate_image(self.projection_image, rotation)
+        ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
+        self.project_loaded_image(self.cx, self.cy, inplace=True)
 
     def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, inplace=False):
         if not inplace:
