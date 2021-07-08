@@ -59,7 +59,6 @@ class Polygon1000():
         self.mask = self.mask.flatten()
         self.projection_image = None
 
-
         uninit = self.dmd_clib.MTPLG_UnInitDevice()
         if uninit != 0:
             raise Exception('Unable to uninitialise Polygon 1000')
@@ -97,12 +96,11 @@ class Polygon1000():
         print('reset device led:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
         print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
         print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
-        for channel in range(1,5):
+        for channel in range(1, 5):
             print(f'set led mode for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
             print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
             print(f'set led current for channel {channel}:',
                   self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
-
 
     def draw_pyglet(self):
 
@@ -123,70 +121,71 @@ class Polygon1000():
         numpy_image = np.zeros((self.height, self.width), dtype=bool)
         self.draw_square(numpy_image, 25, 25)
         self.draw_square(numpy_image, 25, 25)
-        self.draw_square(numpy_image, 912-25, 1140-25)
-
-    def draw_square(self, img, x, y):
-        w = 50
-        # for some reason the column dimension is elongated by 2x
-        img[x-w:x+w, y-w//2:y+w//2] = True
-        return img
-
-    def img_to_dmd(self):
-        # transforms an input image to the proper mightex input
-        pass
+        self.draw_square(numpy_image, 912 - 25, 1140 - 25)
 
     def get_blank_image(self):
-        # numpy_image = np.zeros((self.height, self.width), dtype=bool)
-        # numpy_image[::2] = True
-        # self.image_bytes1 = np.packbits(numpy_image).tobytes()
-        # self.buff1 = (c_byte * len(self.image_bytes1))(*self.image_bytes1)
         offs = np.zeros((self.height, self.width * 2), dtype=np.uint8)
-        # offs[::2] = True
         return offs
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def calibration_slot(self, payload):
         print('calibration:', payload)
 
-    def project_circle(self, dmd_scaled_x, dmd_scaled_y):
-
-        x = int(dmd_scaled_x * 912 * 2)
-        y = int(dmd_scaled_y * 1140)
-
-        offs = self.get_blank_image()
-        img = cv2.circle(offs, (x, y), 25, 255, -1)
-        img = img[:, 0::2]
-        img = np.copy(img).T.flatten()
-        image_bytes = np.packbits(img).tobytes()
-        data = (c_byte * len(image_bytes))(*image_bytes)
-
-        print('changing dmd:', self.tog,
-              self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1)))
-
     def load_projection_image(self, file_name):
         self.projection_image = cv2.imread(file_name)
-        print(self.projection_image)
+        print(f'loaded image of size {self.projection_image.shape}')
 
-    def project_loaded_image(self):
+        # convert to grayscale and binarize
+        self.projection_image = cv2.cvtColor(self.projection_image, cv2.COLOR_BGR2GRAY)
+        ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
+        print(f'image converted to binary. shape: {self.projection_image.shape}')
+
+    def scale_projection(self, scale):
+        # scale both the circle and projection image
         pass
+
+    def rotate_projection_image(self, rotation):
+        pass
+
+    def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y):
+        cx = int(dmd_scaled_x * 912 * 2)
+        cy = int(dmd_scaled_y * 1140)
+        img = self.get_blank_image()
+
+        # project as much of the image as possible, and clip as necessary to fit within the dmd working area
+        w, h = self.projection_image.shape
+
+        # this is the ideal case
+        img[cx - w // 2: cx + w // 2, cy - h // 2: cy + h // 2] = self.projection_image
+
+        self.render_to_dmd(img)
+
+    def project_circle(self, dmd_scaled_x, dmd_scaled_y):
+        cx = int(dmd_scaled_x * 912 * 2)
+        cy = int(dmd_scaled_y * 1140)
+        offs = self.get_blank_image()
+        img = cv2.circle(offs, (cx, cy), 25, 255, -1)
+        self.render_to_dmd(img)
 
     def project_calibration_image(self):
         offs = self.get_blank_image()
 
         img = cv2.circle(offs, (0, 0), 25, 255, -1)
-        img = cv2.circle(img, (912*2, 0), 25, 255, -1)
-        img = cv2.circle(img, (912*2, 1140), 25, 255, -1)
+        img = cv2.circle(img, (912 * 2, 0), 25, 255, -1)
+        img = cv2.circle(img, (912 * 2, 1140), 25, 255, -1)
+
+        self.render_to_dmd(img)
+
+    def render_to_dmd(self, img):
         img = img[:, 0::2]
-
+        img = np.rot90(np.rot90(img))
         img = np.copy(img).T.flatten()
-
         image_bytes = np.packbits(img).tobytes()
         data = (c_byte * len(image_bytes))(*image_bytes)
-
-        print('changing dmd:', self.tog,
+        print('rendering to dmd:', self.tog,
               self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1)))
+
 
 if __name__ == '__main__':
     poly = Polygon1000(100, 100)
     poly.turn_on_led()
-

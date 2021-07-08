@@ -459,10 +459,10 @@ class Window(QtWidgets.QWidget):
     def handle_click(self, event):
         # see if we are calibrated
         if len(self.image_viewer.calibration_payload) < 3:
-            print('not calibrated. ignoring click')
             return
         x = event.pos().x()
         y = event.pos().y()
+
         # scale everything
         scaled_x = x / self.image_viewer.width()
         scaled_y = y / self.image_viewer.height()
@@ -470,7 +470,7 @@ class Window(QtWidgets.QWidget):
         # check if we can illuminate the clicked area with the dmd
         check = self.check_if_in_dmd_area(scaled_x, scaled_y)
         if not check:
-            print('not within DMD area! ignoring click')
+            print('not within DMD area. ignoring click')
             return
 
         # get the full scale of our dmd area
@@ -485,14 +485,15 @@ class Window(QtWidgets.QWidget):
         if self.project_circle_mode:
             self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
         elif self.project_image_mode:
-            self.dmd.project_image
+            self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y)
 
     def toggle_project_circle(self):
         self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
+        self.oetProjectImagePushButton.setChecked(False)
 
     def toggle_project_image(self):
-        state = self.oetProjectImagePushButton.isChecked()
-        self.project_image_mode = state
+        self.project_image_mode = self.oetProjectImagePushButton.isChecked()
+        self.oetProjectCirclePushButton.setChecked(False)
 
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()
