@@ -262,6 +262,7 @@ class Window(QtWidgets.QWidget):
         self.oetRotationDoubleSpinBox.setSuffix('°')
         self.oetRotationDoubleSpinBox.setDecimals(0)
         self.oetRotationDoubleSpinBox.setMinimum(5)
+        self.oetRotationDoubleSpinBox.setMaximum(180)
         self.oetRotationDoubleSpinBox.setSingleStep(5)
         self.oetScaleUpPushButton = QtWidgets.QPushButton('Scale Up')
         self.oetScaleDownPushButton = QtWidgets.QPushButton('Scale Down')
@@ -562,13 +563,13 @@ class Window(QtWidgets.QWidget):
                 self.stage.step('l')
         else:
             if key == QtCore.Qt.Key_Up:
-                self.stage.step('u')
-            elif key == QtCore.Qt.Key_Left:
-                self.stage.step('l')
-            elif key == QtCore.Qt.Key_Right:
                 self.stage.step('r')
-            elif key == QtCore.Qt.Key_Down:
+            elif key == QtCore.Qt.Key_Left:
+                self.stage.step('u')
+            elif key == QtCore.Qt.Key_Right:
                 self.stage.step('d')
+            elif key == QtCore.Qt.Key_Down:
+                self.stage.step('l')
         if key == QtCore.Qt.Key_PageUp:
             self.microscope.move_rel_z(self.zstageStepSizeDoubleSpinBox.value())
         elif key == QtCore.Qt.Key_PageDown:

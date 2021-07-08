@@ -232,8 +232,9 @@ class Polygon1000():
         img = np.copy(img).T.flatten()
         image_bytes = np.packbits(img).tobytes()
         data = (c_byte * len(image_bytes))(*image_bytes)
-        print('rendering to dmd:', self.tog,
-              self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1)))
+        self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1))
+        # print('rendering to dmd:', self.tog,
+        #       )
 
 
 if __name__ == '__main__':
