@@ -155,8 +155,32 @@ class Polygon1000():
         # project as much of the image as possible, and clip as necessary to fit within the dmd working area
         w, h = self.projection_image.shape
 
-        # this is the ideal case
-        img[cx - w // 2: cx + w // 2, cy - h // 2: cy + h // 2] = self.projection_image
+        cropped_projection = np.copy(self.projection_image)
+
+        start_x = cx - w // 2
+        end_x = cx + w // 2
+        start_y = cy - h // 2
+        end_y = cy + h // 2
+
+        if start_x < 0:
+            cropped_projection = cropped_projection[w // 2 - cx:, :]
+            start_x = 0
+            # end_x = cropped_projection.shape[0]  # dont need
+        if start_y < 0:
+            cropped_projection = cropped_projection[:, h // 2 - cy:]
+            start_y = 0
+            # end_y = cropped_projection.shape[1]  # dont need
+
+        if end_x > img.shape[0]:
+            cropped_projection = cropped_projection[:w // 2 + int(img.shape[0] - cx), :]
+            # start_x = cx - w // 2  # dont need
+            end_x = img.shape[0]
+        if end_y > img.shape[1]:
+            cropped_projection = cropped_projection[:, :h // 2 + int(img.shape[1] - cy)]
+            # start_y = cy - h // 2  # dont need
+            end_y = img.shape[1]
+
+        img[start_x:end_x, start_y:end_y] = cropped_projection
 
         self.render_to_dmd(img)
 

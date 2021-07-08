@@ -263,6 +263,7 @@ class Window(QtWidgets.QWidget):
         self.oetLoadProjectionImagePushButton = QtWidgets.QPushButton('Load Projection Image')
         self.oetProjectImagePushButton = QtWidgets.QPushButton('Project Image')
         self.oetProjectImagePushButton.setCheckable(True)
+        self.oetProjectImagePushButton.setEnabled(False)
 
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout()
@@ -443,7 +444,10 @@ class Window(QtWidgets.QWidget):
 
     def load_oet_projection(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file for projection')
-        self.dmd.load_projection_image(file_name)
+        if file_name != '':
+            self.dmd.load_projection_image(file_name)
+            self.oetProjectImagePushButton.setEnabled(True)
+
 
     def calibrate_dmd(self):
         print('calibrating dmd...')
@@ -490,10 +494,12 @@ class Window(QtWidgets.QWidget):
     def toggle_project_circle(self):
         self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
         self.oetProjectImagePushButton.setChecked(False)
+        self.project_image_mode = False
 
     def toggle_project_image(self):
         self.project_image_mode = self.oetProjectImagePushButton.isChecked()
         self.oetProjectCirclePushButton.setChecked(False)
+        self.project_circle_mode = False
 
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()
