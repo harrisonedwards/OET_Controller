@@ -31,7 +31,11 @@ class Polygon1000():
     def __init__(self, height, width):
         self.height = height
         self.width = width
+        self.cx = width // 2
+        self.cy = height // 2
+        self.circle_radius = 25
         self.tog = False
+
 
         numpy_image = np.zeros((self.height, self.width), dtype=bool)
         numpy_image[::2] = True
@@ -142,14 +146,23 @@ class Polygon1000():
 
     def scale_projection(self, scale):
         # scale both the circle and projection image
-        pass
+        h, w = self.projection_image.shape
+        self.projection_image = cv2.resize(self.projection_image, (int(h * scale), int(w * scale)))
+        # threshold again to binarize
+        ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
+        # re-project the image in the location it was in
+        self.project_loaded_image(self.cx, self.cy, inplace=True)
 
     def rotate_projection_image(self, rotation):
         pass
 
-    def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y):
-        cx = int(dmd_scaled_x * 912 * 2)
-        cy = int(dmd_scaled_y * 1140)
+    def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, inplace=False):
+        if not inplace:
+            cx = int(dmd_scaled_x * 912 * 2)
+            cy = int(dmd_scaled_y * 1140)
+        else:
+            cx = dmd_scaled_x
+            cy = dmd_scaled_y
         img = self.get_blank_image()
 
         # project as much of the image as possible, and clip as necessary to fit within the dmd working area
@@ -174,16 +187,25 @@ class Polygon1000():
         if end_y > img.shape[0]:
             cropped_projection = cropped_projection[:h // 2 + int(img.shape[0] - cy), :]
             end_y = img.shape[0]
+
+        if end_x - start_x < cropped_projection.shape[1]:
+            start_x -= 1
+        if end_y - start_y < cropped_projection.shape[0]:
+            start_y -= 1
         img[start_y:end_y, start_x:end_x] = cropped_projection
 
         self.render_to_dmd(img)
+        self.cx = cx
+        self.cy = cy
 
     def project_circle(self, dmd_scaled_x, dmd_scaled_y):
         cx = int(dmd_scaled_x * 912 * 2)
         cy = int(dmd_scaled_y * 1140)
         offs = self.get_blank_image()
-        img = cv2.circle(offs, (cx, cy), 25, 255, -1)
+        img = cv2.circle(offs, (cx, cy), self.circle_radius, 255, -1)
         self.render_to_dmd(img)
+        self.cx = cx
+        self.cy = cy
 
     def project_calibration_image(self):
         offs = self.get_blank_image()

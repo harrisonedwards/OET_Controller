@@ -439,8 +439,18 @@ class Window(QtWidgets.QWidget):
         self.oetProjectCirclePushButton.clicked.connect(self.toggle_project_circle)
         self.oetLoadProjectionImagePushButton.clicked.connect(self.load_oet_projection)
         self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
+        self.oetScaleUpPushButton.clicked.connect(self.scale_up_oet_projection)
+        self.oetScaleDownPushButton.clicked.connect(self.scale_down_oet_projection)
 
         # self.dmd.turn_on_led()
+
+    def scale_up_oet_projection(self):
+        amt = self.oetScaleDoubleSpinBox.value()
+        self.dmd.scale_projection(1 + amt / 100)
+
+    def scale_down_oet_projection(self):
+        amt = self.oetScaleDoubleSpinBox.value()
+        self.dmd.scale_projection(1 - amt / 100)
 
     def load_oet_projection(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file for projection')
