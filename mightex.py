@@ -171,7 +171,6 @@ class Polygon1000():
         pass
 
     def project_calibration_image(self):
-
         offs = self.get_blank_image()
 
         img = cv2.circle(offs, (0, 0), 25, 255, -1)

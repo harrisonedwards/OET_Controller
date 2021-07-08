@@ -179,7 +179,6 @@ class Window(QtWidgets.QWidget):
         self.filterLabel = QtWidgets.QLabel(text='Filter:')
         self.filterComboBoxWidget = QtWidgets.QComboBox()
         self.filterComboBoxWidget.addItems(self.filter_positions)
-
         self.diaPushButton = QtWidgets.QPushButton('DIA')
         self.diaPushButton.setCheckable(True)
         self.cameraExposureLabel = QtWidgets.QLabel('Exposure:')
@@ -252,17 +251,21 @@ class Window(QtWidgets.QWidget):
         self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Overlay')
         self.oetCalibratePushButton = QtWidgets.QPushButton('Calibrate')
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
-        self.oetSpeedLabel = QtWidgets.QLabel('Speed')
-        self.oetSpeedDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.oetProjectCirclePushButton = QtWidgets.QPushButton('Circle Touch')
+        self.oetScaleLabel = QtWidgets.QLabel('Scale')
+        self.oetScaleDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.oetScaleDoubleSpinBox.setSuffix('%')
+        self.oetScaleDoubleSpinBox.setSingleStep(5)
+        self.oetScaleDoubleSpinBox.setMinimum(5)
+        self.oetScaleUpPushButton = QtWidgets.QPushButton('Scale Up')
+        self.oetScaleDownPushButton = QtWidgets.QPushButton('Scale Down')
+        self.oetProjectCirclePushButton = QtWidgets.QPushButton('Project Circle')
         self.oetProjectCirclePushButton.setCheckable(True)
-        self.oetLoadProjectionImagePushButton = QtWidgets.QPushButton('Load Projection')
+        self.oetLoadProjectionImagePushButton = QtWidgets.QPushButton('Load Projection Image')
         self.oetProjectImagePushButton = QtWidgets.QPushButton('Project Image')
         self.oetProjectImagePushButton.setCheckable(True)
 
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout()
-
         self.HBoxLayout = QtWidgets.QHBoxLayout(self)
 
         self.microscopeGroupBox = QtWidgets.QGroupBox('Microscope')
@@ -331,19 +334,28 @@ class Window(QtWidgets.QWidget):
             self.pumpGroupBox.setEnabled(False)
 
         self.oetGroupBox = QtWidgets.QGroupBox('OET Controls')
-        self.oetLayout = QtWidgets.QHBoxLayout()
+        self.oetLayout = QtWidgets.QVBoxLayout()
         self.oetGroupBox.setLayout(self.oetLayout)
-        self.oetLayout.addWidget(self.detectRobotsPushButton)
-        self.oetLayout.addWidget(self.drawPathsPushButton)
-        self.oetLayout.addWidget(self.oetClearOverlayPushButton)
-        self.oetLayout.addWidget(self.oetRunPushButton)
-        self.oetLayout.addWidget(self.oetSpeedLabel)
-        self.oetLayout.addWidget(self.oetSpeedDoubleSpinBox)
-        self.oetLayout.addWidget(self.oetCalibratePushButton)
-        self.oetLayout.addWidget(self.oetProjectCirclePushButton)
-        self.oetLayout.addWidget(self.oetLoadProjectionImagePushButton)
-        self.oetLayout.addWidget(self.oetProjectImagePushButton)
-        self.oetLayout.setAlignment(QtCore.Qt.AlignLeft)
+
+        self.oetLayoutUpper = QtWidgets.QHBoxLayout()
+        self.oetLayoutUpper.addWidget(self.detectRobotsPushButton)
+        self.oetLayoutUpper.addWidget(self.drawPathsPushButton)
+        self.oetLayoutUpper.addWidget(self.oetClearOverlayPushButton)
+        self.oetLayoutUpper.addWidget(self.oetRunPushButton)
+        self.oetLayoutUpper.addWidget(self.oetCalibratePushButton)
+        self.oetLayoutUpper.setAlignment(QtCore.Qt.AlignLeft)
+        self.oetLayout.addLayout(self.oetLayoutUpper)
+
+        self.oetLayoutLower = QtWidgets.QHBoxLayout()
+        self.oetLayoutLower.addWidget(self.oetProjectCirclePushButton)
+        self.oetLayoutLower.addWidget(self.oetLoadProjectionImagePushButton)
+        self.oetLayoutLower.addWidget(self.oetProjectImagePushButton)
+        self.oetLayoutLower.addWidget(self.oetScaleLabel)
+        self.oetLayoutLower.addWidget(self.oetScaleDoubleSpinBox)
+        self.oetLayoutLower.addWidget(self.oetScaleUpPushButton)
+        self.oetLayoutLower.addWidget(self.oetScaleDownPushButton)
+        self.oetLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
+        self.oetLayout.addLayout(self.oetLayoutLower)
         # if not self.dmd:
         #     self.oetGroupBox.setEnabled(False)
 
@@ -423,19 +435,14 @@ class Window(QtWidgets.QWidget):
         self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_overlay_slot)
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
-        self.oetProjectCirclePushButton.clicked.connect(self.toggle_circle_draw)
+        self.oetProjectCirclePushButton.clicked.connect(self.toggle_project_circle)
         self.oetLoadProjectionImagePushButton.clicked.connect(self.load_oet_projection)
         self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
 
         # self.dmd.turn_on_led()
 
-    def toggle_project_image(self):
-        state = self.oetProjectImagePushButton.isChecked()
-        self.project_image_mode = state
-
-
     def load_oet_projection(self):
-        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'OpenFile')
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file for projection')
         self.dmd.load_projection_image(file_name)
 
     def calibrate_dmd(self):
@@ -444,36 +451,48 @@ class Window(QtWidgets.QWidget):
         QtWidgets.QMessageBox.about(self, 'Calibration',
                                     'Please click the center of the 3 (clipped) projected circles in a CLOCKWISE \
                                     fashion to calibrate the DMD.')
-        self.dmd.set_image()
+        self.dmd.project_calibration_image()
         self.image_viewer.calibration_payload = []
         self.image_viewer.calibrating = True
 
     @QtCore.pyqtSlot(QtGui.QMouseEvent)
     def handle_click(self, event):
-        if self.project_circle_mode and len(self.image_viewer.calibration_payload) > 2:
-            x = event.pos().x()
-            y = event.pos().y()
-            # scale everything
-            scaled_x = x / self.image_viewer.width()
-            scaled_y = y / self.image_viewer.height()
+        # see if we are calibrated
+        if len(self.image_viewer.calibration_payload) < 3:
+            print('not calibrated. ignoring click')
+            return
+        x = event.pos().x()
+        y = event.pos().y()
+        # scale everything
+        scaled_x = x / self.image_viewer.width()
+        scaled_y = y / self.image_viewer.height()
 
-            # check if we can illuminate the clicked area with the dmd
-            check = self.check_if_in_dmd_area(scaled_x, scaled_y)
-            if check:
-                FS_x = self.image_viewer.calibration_payload[-1][0] - self.image_viewer.calibration_payload[0][0]
-                FS_y = self.image_viewer.calibration_payload[-1][1] - self.image_viewer.calibration_payload[0][1]
+        # check if we can illuminate the clicked area with the dmd
+        check = self.check_if_in_dmd_area(scaled_x, scaled_y)
+        if not check:
+            print('not within DMD area! ignoring click')
+            return
 
-                # subtract out our top left calibration spot
-                dmd_scaled_x = (scaled_x - self.image_viewer.calibration_payload[0][0]) / FS_x
-                dmd_scaled_y = (scaled_y - self.image_viewer.calibration_payload[0][1]) / FS_y
-                self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
-            else:
-                print('not within DMD area!')
-        elif self.project_image_mode and len(self.image_viewer.calibration_payload) > 2:
-            pass
+        # get the full scale of our dmd area
+        FS_x = self.image_viewer.calibration_payload[-1][0] - self.image_viewer.calibration_payload[0][0]
+        FS_y = self.image_viewer.calibration_payload[-1][1] - self.image_viewer.calibration_payload[0][1]
 
-    def toggle_circle_draw(self):
+        # subtract out our top left calibration spot and divide by full scale
+        dmd_scaled_x = (scaled_x - self.image_viewer.calibration_payload[0][0]) / FS_x
+        dmd_scaled_y = (scaled_y - self.image_viewer.calibration_payload[0][1]) / FS_y
+
+        # project in the proper mode
+        if self.project_circle_mode:
+            self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
+        elif self.project_image_mode:
+            self.dmd.project_image
+
+    def toggle_project_circle(self):
         self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
+
+    def toggle_project_image(self):
+        state = self.oetProjectImagePushButton.isChecked()
+        self.project_image_mode = state
 
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()
