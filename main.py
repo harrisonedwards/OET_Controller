@@ -171,10 +171,13 @@ class Window(QtWidgets.QWidget):
         self.xystageStepSizeDoubleSpinBox.setValue(25000)
         self.stageXYSpeedLabel = QtWidgets.QLabel('XY Step Speed:')
         self.stageXYSpeedDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.stageXYSpeedDoubleSpinBox.setSingleStep(0.05)
         self.stageXYStartAccelerationLabel = QtWidgets.QLabel('XY Start Acceleration:')
         self.stageXYStartAccelerationDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.stageXYStartAccelerationDoubleSpinBox.setSingleStep(0.05)
         self.stageXYStopAccelerationLabel = QtWidgets.QLabel('XY Stop Acceleration:')
         self.stageXYStopAccelerationDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.stageXYStopAccelerationDoubleSpinBox.setSingleStep(0.05)
         self.zstageStepSizeLabel = QtWidgets.QLabel('Z Step Size:')
         self.zstageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.zstageStepSizeDoubleSpinBox.setSingleStep(1000)
@@ -441,9 +444,15 @@ class Window(QtWidgets.QWidget):
         dia_state = self.microscope.status.iSHUTTER_DIA
         self.diaPushButton.setChecked(dia_state)
 
+
+        xy_vel = self.stage.get_xy_vel()
+        self.stageXYSpeedDoubleSpinBox.setValue(xy_vel)
+        self.stageXYSpeedDoubleSpinBox.valueChanged.connect(self.stage.set_xy_vel)
         xy_start_accel, xy_stop_accel = self.stage.get_xy_accels()
         self.stageXYStartAccelerationDoubleSpinBox.setValue(xy_start_accel)
         self.stageXYStopAccelerationDoubleSpinBox.setValue(xy_stop_accel)
+        self.stageXYStopAccelerationDoubleSpinBox.valueChanged.connect(self.stage.set_xy_stop_accel)
+        self.stageXYStartAccelerationDoubleSpinBox.valueChanged.connect(self.stage.set_xy_start_accel)
 
 
         # connect all of our control signals
