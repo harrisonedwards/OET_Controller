@@ -171,8 +171,10 @@ class Window(QtWidgets.QWidget):
         self.xystageStepSizeDoubleSpinBox.setValue(25000)
         self.stageXYSpeedLabel = QtWidgets.QLabel('XY Step Speed:')
         self.stageXYSpeedDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.stageXYAccelerationLabel = QtWidgets.QLabel('XY Acceleration:')
-        self.stageXYAccelerationDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.stageXYStartAccelerationLabel = QtWidgets.QLabel('XY Start Acceleration:')
+        self.stageXYStartAccelerationDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.stageXYStopAccelerationLabel = QtWidgets.QLabel('XY Stop Acceleration:')
+        self.stageXYStopAccelerationDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.zstageStepSizeLabel = QtWidgets.QLabel('Z Step Size:')
         self.zstageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.zstageStepSizeDoubleSpinBox.setSingleStep(1000)
@@ -290,8 +292,10 @@ class Window(QtWidgets.QWidget):
         self.microscopeLayoutUpper.addWidget(self.xystageStepSizeDoubleSpinBox)
         self.microscopeLayoutUpper.addWidget(self.stageXYSpeedLabel)
         self.microscopeLayoutUpper.addWidget(self.stageXYSpeedDoubleSpinBox)
-        self.microscopeLayoutUpper.addWidget(self.stageXYAccelerationLabel)
-        self.microscopeLayoutUpper.addWidget(self.stageXYAccelerationDoubleSpinBox)
+        self.microscopeLayoutUpper.addWidget(self.stageXYStartAccelerationLabel)
+        self.microscopeLayoutUpper.addWidget(self.stageXYStartAccelerationDoubleSpinBox)
+        self.microscopeLayoutUpper.addWidget(self.stageXYStopAccelerationLabel)
+        self.microscopeLayoutUpper.addWidget(self.stageXYStopAccelerationDoubleSpinBox)
         self.microscopeLayoutUpper.addWidget(self.zstageStepSizeLabel)
         self.microscopeLayoutUpper.addWidget(self.zstageStepSizeDoubleSpinBox)
         self.microscopeLayoutUpper.setAlignment(QtCore.Qt.AlignLeft)
@@ -437,6 +441,11 @@ class Window(QtWidgets.QWidget):
         dia_state = self.microscope.status.iSHUTTER_DIA
         self.diaPushButton.setChecked(dia_state)
 
+        xy_start_accel, xy_stop_accel = self.stage.get_xy_accels()
+        self.stageXYStartAccelerationDoubleSpinBox.setValue(xy_start_accel)
+        self.stageXYStopAccelerationDoubleSpinBox.setValue(xy_stop_accel)
+
+
         # connect all of our control signals
         self.takeScreenshotPushButton.clicked.connect(self.camera.take_screenshot_slot)
         self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
@@ -467,6 +476,8 @@ class Window(QtWidgets.QWidget):
         self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
         self.oetScaleUpPushButton.clicked.connect(self.scale_up_oet_projection)
         self.oetScaleDownPushButton.clicked.connect(self.scale_down_oet_projection)
+
+
 
         self.dmd.turn_on_led()
 

@@ -45,7 +45,6 @@ class Stage():
         elif direction == 'd':
             self.move_relative(x=self.step_size)
 
-
     def move_absolute(self, x=0, y=0):
         ret = self.read_write(f'moa {x} {y} 0')
         if ret != b'':
@@ -55,6 +54,23 @@ class Stage():
         print(f'xy step size set to: {value}')
         self.step_size = value
 
+    def set_xy_speed(self, value):
+        self.speed = value
+
+    def get_xy_speed(self):
+        speeds = self.read_write('?speed?')
+        return speeds
+
+    def get_xy_accels(self):
+        start_accels = self.read_write('?accel').decode('utf-8')
+        stop_accels = self.read_write('?stopaccel').decode('utf-8')
+        xy_start_accel = start_accels.split(' ')[0]
+        xy_stop_accel = stop_accels.split(' ')[0]
+        return float(xy_start_accel), float(xy_stop_accel)
+
 if __name__ == '__main__':
     s = Stage()
-    s.move_absolute(0,0)
+    # print(s.get_xy_speed())
+
+    print(s.get_xy_accels())
+    # s.move_absolute(0, 0)
