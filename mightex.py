@@ -35,6 +35,7 @@ class Polygon1000():
         self.cy = height // 2
         self.circle_radius = 25
         self.tog = False
+        self.angle = 0
 
 
         numpy_image = np.zeros((self.height, self.width), dtype=bool)
@@ -91,19 +92,25 @@ class Polygon1000():
         # os.chdir(current_dir)
 
     def __del__(self):
+        for channel in range(1, 5):
+            print(f'set led current to 0 for channel: {channel}:',
+                  self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 0))
+            print(f'set led mode to disable for channel {channel}:',
+                  self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 0))
+        print('close leds:', self.led_clib.MTUSB_BLSDriverCloseDevice(0))
         print('closing DMD connection:', self.dmd_clib.MTPLG_DisconnectDev(c_int(self.dev_id)),
               self.dmd_clib.MTPLG_UnInitDevice())
 
     def turn_on_led(self):
         print('init leds:', self.led_clib.MTUSB_BLSDriverInitDevices())
-        print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
-        print('reset device led:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
-        print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        print('open leds:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        # print('reset device leds:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
+        # print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
         print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
         for channel in range(1, 5):
-            print(f'set led mode for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
-            print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
-            print(f'set led current for channel {channel}:',
+            print(f'set led mode to enable for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
+            # print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
+            print(f'set led current to 100% for channel {channel}:',
                   self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
 
     def draw_pyglet(self):
