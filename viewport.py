@@ -71,9 +71,12 @@ class ViewPort(QtCore.QThread):
         self.mmc.initializeAllDevices()
         self.mmc.setCameraDevice('camera')
         properties = self.mmc.getDevicePropertyNames('camera')
+        self.mmc.setProperty('camera', 'PixelRate', 'fast scan')
+        self.mmc.setProperty('camera', 'Noisefilter', 'Off')
+        self.mmc.setProperty('camera', 'Exposure', self.exposure)
+        # self.mmc.setProperty('camera', 'PixelType', '8bit')
         for p in properties:
             print(p, self.mmc.getProperty('camera', p), self.mmc.getAllowedPropertyValues('camera', p))
-        self.mmc.setProperty('camera', 'Exposure', self.exposure)
         self.mmc.startContinuousSequenceAcquisition(1)
         self.run_video = True
 
@@ -91,8 +94,8 @@ class ViewPort(QtCore.QThread):
     @QtCore.pyqtSlot()
     def startVideo(self):
         print('starting video stream...')
-
         count = 0
+        t0 = time.time()
         QtWidgets.QApplication.processEvents()
         while self.run_video:
             # TODO fix, if possible
@@ -101,11 +104,18 @@ class ViewPort(QtCore.QThread):
             if self.mmc.getRemainingImageCount() > 0:
                 try:
                     img = self.mmc.getLastImage()
-                    img = (img / 256).astype(np.uint8)
+                    img = (img/256).astype(np.uint8)
                     self.image = img
                 except Exception as e:
                     print(f'camera dropped frame {count}, {e}')
+                # self.VideoSignal.emit(img)
                 self.process_and_emit_image(img)
+                count += 1
+                if count % 200 == 0:
+                    t1 = time.time()
+                    fps = 200 / (t1 - t0)
+                    t0 = t1
+                    print(f'fps: {fps}')
             else:
                 count += 1
                 print('Camera dropped frame:', count)
