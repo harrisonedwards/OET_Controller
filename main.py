@@ -162,7 +162,7 @@ class Window(QtWidgets.QWidget):
         self.magnificationLabel = QtWidgets.QLabel(text='Magnification:')
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
         self.magnificationComboBoxWidget.addItems(self.objectives)
-        self.stageStepSizeLabel = QtWidgets.QLabel('XY Step Size:')
+        self.stageStepSizeLabel = QtWidgets.QLabel('XY Step Size (mm):')
         self.xystageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.xystageStepSizeDoubleSpinBox.setSingleStep(0.005)
         self.xystageStepSizeDoubleSpinBox.setMinimum(0.001)
@@ -571,7 +571,7 @@ class Window(QtWidgets.QWidget):
     def setChildrenFocusPolicy(self, policy):
         def recursiveSetChildFocusPolicy(parentQWidget):
             for childQWidget in parentQWidget.findChildren(QtWidgets.QWidget):
-                if isinstance(childQWidget, QtWidgets.QComboBox):
+                if isinstance(childQWidget, QtWidgets.QComboBox) or isinstance(childQWidget, QtWidgets.QComboBox):
                     # make all comboboxes respond to nothing at all
                     childQWidget.setFocusPolicy(QtCore.Qt.NoFocus)
                 else:

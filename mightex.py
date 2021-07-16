@@ -156,6 +156,7 @@ class Polygon1000():
         h, w = self.projection_image.shape
         self.projection_image = cv2.resize(self.projection_image, (int(w * scale), int(h * scale)))
         # self.circle_radius *= scale
+
         # threshold again to binarize
         ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
         # re-project the image in the location it was in

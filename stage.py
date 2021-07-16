@@ -10,6 +10,7 @@ class Stage():
         self.step_size = 0.005
         print(f'stage initial position: {self.pos}')
         self.read_write('!axis 1 1 1')
+        self.read_write('!dim 2 2')
         print(self.read_write('!autostatus 2'))
 
     def find_port(self):
