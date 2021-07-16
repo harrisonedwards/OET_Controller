@@ -138,10 +138,6 @@ class Polygon1000():
         offs = np.zeros((self.height, self.width * 2), dtype=np.uint8)
         return offs
 
-    @QtCore.pyqtSlot('PyQt_PyObject')
-    def calibration_slot(self, payload):
-        print('calibration:', payload)
-
     def load_projection_image(self, file_name):
         self.projection_image = cv2.imread(file_name)
         print(f'loaded image of size {self.projection_image.shape}')
@@ -152,27 +148,32 @@ class Polygon1000():
         print(f'image converted to binary. shape: {self.projection_image.shape}')
 
     def scale_projection(self, scale):
-        # scale both the circle and projection image
         h, w = self.projection_image.shape
         self.projection_image = cv2.resize(self.projection_image, (int(w * scale), int(h * scale)))
-        # self.circle_radius *= scale
 
-        # threshold again to binarize
+        # threshold to binarize
         ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
+
         # re-project the image in the location it was in
         self.project_loaded_image(self.cx, self.cy, inplace=True)
 
-    def move_forward(self):
-        pass
+    @staticmethod
+    def pol2cart(rho, phi):
+        x = rho * np.cos(phi)
+        y = rho * np.sin(phi)
+        return (x, y)
 
-    def move_backward(self):
-        pass
+    def translate(self, amt):
+        amt_x, amt_y = self.pol2cart(amt, self.angle)
+        self.cx += amt_x
+        self.cy += amt_y
+        self.project_loaded_image(self.cx, self.cy, inplace=True)
 
-    def strafe_left(self):
-        pass
-
-    def strafe_right(self):
-        pass
+    def strafe(self, amt):
+        amt_x, amt_y = self.pol2cart(amt, self.angle + np.pi / 2)
+        self.cx += amt_x
+        self.cy += amt_y
+        self.project_loaded_image(self.cx, self.cy, inplace=True)
 
     @staticmethod
     def rotate_image(image, angle):
@@ -187,12 +188,13 @@ class Polygon1000():
         self.project_loaded_image(self.cx, self.cy, inplace=True)
 
     def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, inplace=False):
-        if not inplace:
+        if inplace:
+            cx = int(dmd_scaled_x)
+            cy = int(dmd_scaled_y)
+        else:
             cx = int(dmd_scaled_x * 912 * 2)
             cy = int(dmd_scaled_y * 1140)
-        else:
-            cx = dmd_scaled_x
-            cy = dmd_scaled_y
+
         img = self.get_blank_image()
 
         # project as much of the image as possible, and clip as necessary to fit within the dmd working area

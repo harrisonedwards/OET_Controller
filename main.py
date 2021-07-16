@@ -279,6 +279,7 @@ class Window(QtWidgets.QWidget):
         self.oetRotationDoubleSpinBox.setSingleStep(5)
         self.oetTranslateLabel = QtWidgets.QLabel('Translation:')
         self.oetTranslateDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.oetTranslateDoubleSpinBox.setValue(5)
         self.oetScaleUpPushButton = QtWidgets.QPushButton('Scale Up')
         self.oetScaleDownPushButton = QtWidgets.QPushButton('Scale Down')
         self.oetProjectCirclePushButton = QtWidgets.QPushButton('Project Circle')
@@ -598,13 +599,13 @@ class Window(QtWidgets.QWidget):
             elif key == QtCore.Qt.Key_E:
                 self.dmd.rotate_projection_image(-rotate_amt)
             elif key == QtCore.Qt.Key_W:
-                self.dmd.move_forward(translate_amt)
+                self.dmd.translate(-translate_amt)
             elif key == QtCore.Qt.Key_S:
-                self.dmd.move_backward(translate_amt)
+                self.dmd.translate(+translate_amt)
             elif key == QtCore.Qt.Key_A:
-                self.dmd.strafe_left(translate_amt)
+                self.dmd.strafe(translate_amt)
             elif key == QtCore.Qt.Key_D:
-                self.dmd.strafe_right(translate_amt)
+                self.dmd.strafe(-translate_amt)
         if self.cameraRotationPushButton.isChecked():
             if key == QtCore.Qt.Key_Up:
                 self.stage.step('r')
