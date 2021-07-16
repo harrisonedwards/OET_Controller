@@ -277,6 +277,8 @@ class Window(QtWidgets.QWidget):
         self.oetRotationDoubleSpinBox.setMinimum(5)
         self.oetRotationDoubleSpinBox.setMaximum(180)
         self.oetRotationDoubleSpinBox.setSingleStep(5)
+        self.oetTranslateLabel = QtWidgets.QLabel('Translation:')
+        self.oetTranslateDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.oetScaleUpPushButton = QtWidgets.QPushButton('Scale Up')
         self.oetScaleDownPushButton = QtWidgets.QPushButton('Scale Down')
         self.oetProjectCirclePushButton = QtWidgets.QPushButton('Project Circle')
@@ -392,6 +394,8 @@ class Window(QtWidgets.QWidget):
         self.oetLayoutLower.addWidget(self.oetScaleDownPushButton)
         self.oetLayoutLower.addWidget(self.oetRotationLabel)
         self.oetLayoutLower.addWidget(self.oetRotationDoubleSpinBox)
+        self.oetLayoutLower.addWidget(self.oetTranslateLabel)
+        self.oetLayoutLower.addWidget(self.oetTranslateDoubleSpinBox)
         self.oetLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
         self.oetLayout.addLayout(self.oetLayoutLower)
         # if not self.dmd:
@@ -587,11 +591,20 @@ class Window(QtWidgets.QWidget):
     def keyPressEvent(self, event):
         key = event.key()
         if self.project_image_mode:
-            amt = self.oetRotationDoubleSpinBox.value()
+            rotate_amt = self.oetRotationDoubleSpinBox.value()
+            translate_amt = self.oetTranslateDoubleSpinBox.value()
             if key == QtCore.Qt.Key_Q:
-                self.dmd.rotate_projection_image(amt)
+                self.dmd.rotate_projection_image(rotate_amt)
             elif key == QtCore.Qt.Key_E:
-                self.dmd.rotate_projection_image(-amt)
+                self.dmd.rotate_projection_image(-rotate_amt)
+            elif key == QtCore.Qt.Key_W:
+                self.dmd.move_forward(translate_amt)
+            elif key == QtCore.Qt.Key_S:
+                self.dmd.move_backward(translate_amt)
+            elif key == QtCore.Qt.Key_A:
+                self.dmd.strafe_left(translate_amt)
+            elif key == QtCore.Qt.Key_D:
+                self.dmd.strafe_right(translate_amt)
         if self.cameraRotationPushButton.isChecked():
             if key == QtCore.Qt.Key_Up:
                 self.stage.step('r')

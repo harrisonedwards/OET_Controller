@@ -162,6 +162,18 @@ class Polygon1000():
         # re-project the image in the location it was in
         self.project_loaded_image(self.cx, self.cy, inplace=True)
 
+    def move_forward(self):
+        pass
+
+    def move_backward(self):
+        pass
+
+    def strafe_left(self):
+        pass
+
+    def strafe_right(self):
+        pass
+
     @staticmethod
     def rotate_image(image, angle):
         image_center = tuple(np.array(image.shape[1::-1]) / 2)
