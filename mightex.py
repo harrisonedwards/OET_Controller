@@ -185,6 +185,7 @@ class Polygon1000():
     def rotate_projection_image(self, rotation):
         self.projection_image = self.rotate_image(self.projection_image, rotation)
         ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
+        self.angle -= rotation / 180 * np.pi
         self.project_loaded_image(self.cx, self.cy, inplace=True)
 
     def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, inplace=False):
