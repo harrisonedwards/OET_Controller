@@ -6,6 +6,7 @@ import cv2
 import enum
 from control.micromanager import Camera
 from detection import get_robot_control
+import imageio
 import matplotlib.pyplot as plt
 
 
@@ -37,6 +38,10 @@ class ViewPort(QtCore.QThread):
         self.height = 0
         self.detection = False
         self.robots = {}
+        self.recording = False
+        self.writer = None
+        self.video_dir = 'C:\\Users\\Mohamed\\Desktop\\Harrison\\Videos\\'
+        self.vid_name = ''
 
         print('initializing camera...')
         if camera_type is CameraType.NIKON:
@@ -92,6 +97,24 @@ class ViewPort(QtCore.QThread):
         self.mmc.reset()
 
     @QtCore.pyqtSlot()
+    def start_recording_video_slot(self):
+        self.recording = True
+        self.vid_name = self.video_dir + strftime('%Y_%m_%d_%H_%M_%S.avi', time.gmtime())
+        print(f'recording video: {self.vid_name}')
+        self.writer = imageio.get_writer(self.vid_name, mode='I')
+
+
+
+
+
+    @QtCore.pyqtSlot()
+    def stop_video_slot(self):
+        self.recording = False
+        self.writer.close()
+        print(f'video: {self.vid_name} finished recording')
+
+
+    @QtCore.pyqtSlot()
     def startVideo(self):
         print('starting video stream...')
         count = 0
@@ -105,6 +128,8 @@ class ViewPort(QtCore.QThread):
                 try:
                     img = self.mmc.getLastImage()
                     img = (img/256).astype(np.uint8)
+                    if self.recording:
+                        self.writer.append_data(img)
                     self.image = img
                 except Exception as e:
                     print(f'camera dropped frame {count}, {e}')

@@ -92,7 +92,7 @@ class Polygon1000():
         # os.chdir(current_dir)
 
     def __del__(self):
-        for channel in range(1, 5):
+        for channel in range(1, 2):
             print(f'set led current to 0 for channel: {channel}:',
                   self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 0))
             print(f'set led mode to disable for channel {channel}:',
@@ -101,17 +101,26 @@ class Polygon1000():
         print('closing DMD connection:', self.dmd_clib.MTPLG_DisconnectDev(c_int(self.dev_id)),
               self.dmd_clib.MTPLG_UnInitDevice())
 
-    def turn_on_led(self):
-        print('init leds:', self.led_clib.MTUSB_BLSDriverInitDevices())
-        print('open leds:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
-        # print('reset device leds:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
-        # print('open led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
-        print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
-        for channel in range(1, 5):
-            print(f'set led mode to enable for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
-            # print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
-            print(f'set led current to 100% for channel {channel}:',
-                  self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
+    def initialize_dmd(self):
+        print('init dmd leds:', self.led_clib.MTUSB_BLSDriverInitDevices())
+        print('open dmd leds:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        print('reset dmd device:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
+        print('open dmd led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        # print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
+        # for channel in range(1, 2): # there are 4 total channels, but we will forget about them for now
+        #     print(f'set led mode to enable for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
+        #     # print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
+        #     print(f'set led current to 100% for channel {channel}:',
+        #           self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
+
+    def set_dmd_current(self, current):
+        current *= 10
+        current = int(current)
+        print(f'set led current to {current} for channel 1:',
+              self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, 1, current))
+
+    def toggle_dmd_light(self, state):
+        print(f'set led mode to enable for channel:', self.led_clib.MTUSB_BLSDriverSetMode(0, 1, int(state)))
 
     def draw_pyglet(self):
 
@@ -137,6 +146,10 @@ class Polygon1000():
     def get_blank_image(self):
         offs = np.zeros((self.height, self.width * 2), dtype=np.uint8)
         return offs
+
+    def clear_oet_projection(self):
+        blank = self.get_blank_image()
+        self.render_to_dmd(blank)
 
     def load_projection_image(self, file_name):
         self.projection_image = cv2.imread(file_name)
@@ -262,4 +275,4 @@ class Polygon1000():
 
 if __name__ == '__main__':
     poly = Polygon1000(100, 100)
-    poly.turn_on_led()
+    poly.initialize_dmd()

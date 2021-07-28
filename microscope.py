@@ -97,6 +97,8 @@ class Microscope():
     def __del__(self):
         self.close_microscope()
 
+
+
     def get_status(self):
         data_in = MIC_Data()
         data_in.uiDataUsageMask = default_mask
@@ -188,6 +190,14 @@ class Microscope():
         data_in = MIC_Data()
         data_in.uiDataUsageMask = 0x0000000000010000
         data_in.iSHUTTER_DIA = state
+        self.issue_command(data_in)
+
+    def toggle_dia_light(self, state):
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000000040000
+
+        data_in.iDIALAMP_VOLTAGE = ctypes.c_int(state * 100)
+        print_fields(data_in)
         self.issue_command(data_in)
 
     def set_filter(self, filter):

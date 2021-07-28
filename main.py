@@ -21,6 +21,7 @@ class ImageViewer(QtWidgets.QWidget):
     click_event_signal = QtCore.pyqtSignal(QtGui.QMouseEvent)
     path_signal = QtCore.pyqtSignal('PyQt_PyObject')
     calibration_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    enable_dmd_signal = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super(ImageViewer, self).__init__(parent)
@@ -99,6 +100,7 @@ class ImageViewer(QtWidgets.QWidget):
             if len(self.calibration_payload) > 2:
                 QtWidgets.QMessageBox.about(self, 'Calibration', 'Calibration Complete')
                 self.calibrating = False
+                self.enable_dmd_signal.emit()
                 # now emit
                 # self.calibration_signal.emit(self.calibration_payload)
 
@@ -107,6 +109,8 @@ class Window(QtWidgets.QWidget):
     start_video_signal = QtCore.pyqtSignal()
     set_camera_expsure_signal = QtCore.pyqtSignal('PyQt_PyObject')
     screenshot_signal = QtCore.pyqtSignal()
+    start_record_video_signal = QtCore.pyqtSignal()
+    stop_record_video_signal = QtCore.pyqtSignal()
 
     def __init__(self):
         super(Window, self).__init__()
@@ -156,7 +160,6 @@ class Window(QtWidgets.QWidget):
         self.takeScreenshotPushButton = QtWidgets.QPushButton(text='Screenshot')
 
         # MICROSCOPE
-        # TODO: query all of these positions and set them correctly initially
         self.filter_positions = ['DAPI', 'GFP', 'Red', 'Brightfield', 'Cy5', 'PE-Cy7']
         self.objectives = ['2x', '4x', '10x', '20x', '40x', 'empty']
         self.magnificationLabel = QtWidgets.QLabel(text='Magnification:')
@@ -192,8 +195,10 @@ class Window(QtWidgets.QWidget):
         self.filterLabel = QtWidgets.QLabel(text='Filter:')
         self.filterComboBoxWidget = QtWidgets.QComboBox()
         self.filterComboBoxWidget.addItems(self.filter_positions)
-        self.diaPushButton = QtWidgets.QPushButton('DIA')
-        self.diaPushButton.setCheckable(True)
+        self.diaShutterPushButton = QtWidgets.QPushButton('Dia Shutter')
+        self.diaShutterPushButton.setCheckable(True)
+        self.diaLightPushbutton = QtWidgets.QPushButton('Dia Lamp')
+        self.diaLightPushbutton.setCheckable(True)
         self.cameraExposureLabel = QtWidgets.QLabel('Exposure:')
         self.cameraExposureDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.cameraExposureDoubleSpinBox.setSuffix('ms')
@@ -229,11 +234,13 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceIntensityLabel = QtWidgets.QLabel(text='Intensity')
         self.fluorescenceIntensityDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.fluorescenceIntensityDoubleSpinBox.setSuffix('%')
-        self.fluorescenceIntensityDoubleSpinBox.setMinimum(0)
+        self.fluorescenceIntensityDoubleSpinBox.setMinimum(5)
         self.fluorescenceIntensityDoubleSpinBox.setMaximum(100)
         self.fluorescenceIntensityDoubleSpinBox.setSingleStep(5)
         self.fluorescenceShutterPushButton = QtWidgets.QPushButton('Shutter')
         self.fluorescenceShutterPushButton.setCheckable(True)
+        self.fluorescenceToggleLampPushButton = QtWidgets.QPushButton('Lamp')
+        self.fluorescenceToggleLampPushButton.setCheckable(True)
 
         # PUMP
         self.pumpSpeedLabel = QtWidgets.QLabel(text='Rate')
@@ -287,7 +294,15 @@ class Window(QtWidgets.QWidget):
         self.oetLoadProjectionImagePushButton = QtWidgets.QPushButton('Load Projection Image')
         self.oetProjectImagePushButton = QtWidgets.QPushButton('Project Image')
         self.oetProjectImagePushButton.setCheckable(True)
-        self.oetProjectImagePushButton.setEnabled(False)
+        self.oetClearPushButton = QtWidgets.QPushButton('Clear Projection')
+        self.oetToggleLampPushButton = QtWidgets.QPushButton('Lamp')
+        self.oetToggleLampPushButton.setCheckable(True)
+        self.oetLampIntesnsityLabel = QtWidgets.QLabel('Intensity:')
+        self.oetLampIntesnsityDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.oetLampIntesnsityDoubleSpinBox.setSuffix('%')
+        self.oetLampIntesnsityDoubleSpinBox.setMaximum(100)
+        self.oetLampIntesnsityDoubleSpinBox.setDecimals(1)
+        self.oetLampIntesnsityDoubleSpinBox.setSingleStep(5)
 
         # arrange the widgets
         self.VBoxLayout = QtWidgets.QVBoxLayout()
@@ -316,7 +331,8 @@ class Window(QtWidgets.QWidget):
         self.microscopeLayoutLower.addWidget(self.magnificationComboBoxWidget)
         self.microscopeLayoutLower.addWidget(self.filterLabel)
         self.microscopeLayoutLower.addWidget(self.filterComboBoxWidget)
-        self.microscopeLayoutLower.addWidget(self.diaPushButton)
+        self.microscopeLayoutLower.addWidget(self.diaShutterPushButton)
+        self.microscopeLayoutLower.addWidget(self.diaLightPushbutton)
         self.microscopeLayoutLower.addWidget(self.cameraExposureLabel)
         self.microscopeLayoutLower.addWidget(self.cameraExposureDoubleSpinBox)
         self.microscopeLayoutLower.addWidget(self.cameraRotationPushButton)
@@ -346,6 +362,7 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceLayout = QtWidgets.QHBoxLayout()
         self.fluorescenceGroupBox.setLayout(self.fluorescenceLayout)
         self.fluorescenceLayout.addWidget(self.fluorescenceShutterPushButton)
+        self.fluorescenceLayout.addWidget(self.fluorescenceToggleLampPushButton)
         self.fluorescenceLayout.addWidget(self.fluorescenceIntensityLabel)
         self.fluorescenceLayout.addWidget(self.fluorescenceIntensityDoubleSpinBox)
         self.fluorescenceLayout.setAlignment(QtCore.Qt.AlignLeft)
@@ -382,6 +399,10 @@ class Window(QtWidgets.QWidget):
         self.oetLayoutUpper.addWidget(self.oetClearOverlayPushButton)
         self.oetLayoutUpper.addWidget(self.oetRunPushButton)
         self.oetLayoutUpper.addWidget(self.oetCalibratePushButton)
+        self.oetLayoutUpper.addWidget(self.oetClearPushButton)
+        self.oetLayoutUpper.addWidget(self.oetToggleLampPushButton)
+        self.oetLayoutUpper.addWidget(self.oetLampIntesnsityLabel)
+        self.oetLayoutUpper.addWidget(self.oetLampIntesnsityDoubleSpinBox)
         self.oetLayoutUpper.setAlignment(QtCore.Qt.AlignLeft)
         self.oetLayout.addLayout(self.oetLayoutUpper)
 
@@ -402,8 +423,12 @@ class Window(QtWidgets.QWidget):
         # if not self.dmd:
         #     self.oetGroupBox.setEnabled(False)
 
+        self.takeVideoPushbutton = QtWidgets.QPushButton('Record Video')
+        self.takeVideoPushbutton.setCheckable(True)
+
         self.VBoxLayout.addWidget(self.oetGroupBox)
         self.VBoxLayout.addWidget(self.takeScreenshotPushButton)
+        self.VBoxLayout.addWidget(self.takeVideoPushbutton)
 
         self.image_viewer = ImageViewer()
 
@@ -451,7 +476,7 @@ class Window(QtWidgets.QWidget):
         self.fluorescenceShutterPushButton.setChecked(fluor_shutter_state)
 
         dia_state = self.microscope.status.iSHUTTER_DIA
-        self.diaPushButton.setChecked(dia_state)
+        self.diaShutterPushButton.setChecked(dia_state)
 
 
         xy_vel = self.stage.get_xy_vel()
@@ -466,17 +491,23 @@ class Window(QtWidgets.QWidget):
 
         # connect all of our control signals
         self.takeScreenshotPushButton.clicked.connect(self.camera.take_screenshot_slot)
+        self.start_record_video_signal.connect(self.camera.start_recording_video_slot)
+        self.stop_record_video_signal.connect(self.camera.stop_video_slot)
+        self.takeVideoPushbutton.clicked.connect(self.toggleVideoRecording)
+
         self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
         self.xystageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_xystep_size)
         self.zstageStepSizeDoubleSpinBox.valueChanged.connect(self.microscope.set_zstep_size)
         self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
-        self.diaPushButton.clicked.connect(self.toggleDia)
+        self.diaShutterPushButton.clicked.connect(self.toggleDiaShutter)
+        self.diaLightPushbutton.clicked.connect(self.toggleDiaLamp)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
         if self.function_generator:
             self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
         self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
+        self.fluorescenceToggleLampPushButton.clicked.connect(self.toggleFLuorescenceLamp)
         self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
         self.pumpAmountRadioButton.clicked.connect(self.startAmountDispenseMode)
         self.pumpTimeRadioButton.clicked.connect(self.startTimeDispenseMode)
@@ -485,19 +516,64 @@ class Window(QtWidgets.QWidget):
         self.pumpStopPushButton.clicked.connect(self.pump.halt)
         self.pumpTimeRadioButton.click()
 
+        self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         self.detectRobotsPushButton.clicked.connect(self.camera.run_detection_slot)
         self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_overlay_slot)
-        self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
+
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
+        self.oetClearPushButton.clicked.connect(self.dmd.clear_oet_projection)
         self.oetProjectCirclePushButton.clicked.connect(self.toggle_project_circle)
         self.oetLoadProjectionImagePushButton.clicked.connect(self.load_oet_projection)
         self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
         self.oetScaleUpPushButton.clicked.connect(self.scale_up_oet_projection)
         self.oetScaleDownPushButton.clicked.connect(self.scale_down_oet_projection)
+        self.oetToggleLampPushButton.clicked.connect(self.toggle_dmd_lamp)
+        self.oetLampIntesnsityDoubleSpinBox.valueChanged.connect(self.dmd.set_dmd_current)
 
+        self.image_viewer.enable_dmd_signal.connect(self.enable_dmd_controls)
 
+        self.oetScaleDownPushButton.setEnabled(False)
+        self.oetProjectCirclePushButton.setEnabled(False)
+        self.oetLoadProjectionImagePushButton.setEnabled(False)
+        self.oetProjectImagePushButton.setEnabled(False)
+        self.oetScaleDoubleSpinBox.setEnabled(False)
+        self.oetRotationDoubleSpinBox.setEnabled(False)
+        self.oetTranslateDoubleSpinBox.setEnabled(False)
+        self.oetScaleUpPushButton.setEnabled(False)
 
-        self.dmd.turn_on_led()
+        self.dmd.initialize_dmd()
+        self.fluorescence_controller.turn_all_off()
+
+    def toggleVideoRecording(self):
+        state = self.takeVideoPushbutton.isChecked()
+        if state:
+            self.takeVideoPushbutton.setStyleSheet('background-color : lightblue')
+        else:
+            self.takeVideoPushbutton.setStyleSheet('background-color : lightgrey')
+        if state:
+            print('emitting start recording signal...')
+            self.start_record_video_signal.emit()
+        else:
+            self.stop_record_video_signal.emit()
+
+    def toggleFLuorescenceLamp(self):
+        state = self.fluorescenceToggleLampPushButton.isChecked()
+        if state:
+            self.fluorescenceToggleLampPushButton.setStyleSheet('background-color : lightblue')
+        else:
+            self.fluorescenceToggleLampPushButton.setStyleSheet('background-color : lightgrey')
+        if state:
+            self.fluorescence_controller.turn_led_on()
+        else:
+            self.fluorescence_controller.turn_all_off()
+
+    def toggle_dmd_lamp(self):
+        state = self.oetToggleLampPushButton.isChecked()
+        if state:
+            self.oetToggleLampPushButton.setStyleSheet('background-color : lightblue')
+        else:
+            self.oetToggleLampPushButton.setStyleSheet('background-color : lightgrey')
+        self.dmd.toggle_dmd_light(state)
 
     def scale_up_oet_projection(self):
         amt = self.oetScaleDoubleSpinBox.value()
@@ -523,6 +599,17 @@ class Window(QtWidgets.QWidget):
         self.dmd.project_calibration_image()
         self.image_viewer.calibration_payload = []
         self.image_viewer.calibrating = True
+
+    @QtCore.pyqtSlot()
+    def enable_dmd_controls(self):
+        self.oetScaleDownPushButton.setEnabled(True)
+        self.oetProjectCirclePushButton.setEnabled(True)
+        self.oetLoadProjectionImagePushButton.setEnabled(True)
+        self.oetProjectImagePushButton.setEnabled(True)
+        self.oetScaleDoubleSpinBox.setEnabled(True)
+        self.oetRotationDoubleSpinBox.setEnabled(True)
+        self.oetTranslateDoubleSpinBox.setEnabled(True)
+        self.oetScaleUpPushButton.setEnabled(True)
 
     @QtCore.pyqtSlot(QtGui.QMouseEvent)
     def handle_click(self, event):
@@ -697,13 +784,21 @@ class Window(QtWidgets.QWidget):
             self.fluorescenceShutterPushButton.setStyleSheet('background-color : lightgrey')
         self.microscope.set_turret_shutter(state)
 
-    def toggleDia(self):
-        state = self.diaPushButton.isChecked()
+    def toggleDiaShutter(self):
+        state = self.diaShutterPushButton.isChecked()
         if state:
-            self.diaPushButton.setStyleSheet('background-color : lightblue')
+            self.diaShutterPushButton.setStyleSheet('background-color : lightblue')
         else:
-            self.diaPushButton.setStyleSheet('background-color : lightgrey')
+            self.diaShutterPushButton.setStyleSheet('background-color : lightgrey')
         self.microscope.set_dia_shutter(state)
+
+    def toggleDiaLamp(self):
+        state = self.diaLightPushbutton.isChecked()
+        if state:
+            self.diaLightPushbutton.setStyleSheet('background-color : lightblue')
+        else:
+            self.diaLightPushbutton.setStyleSheet('background-color : lightgrey')
+        self.microscope.toggle_dia_light(state)
 
     def toggleRotation(self):
         state = self.cameraRotationPushButton.isChecked()
