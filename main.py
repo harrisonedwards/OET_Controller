@@ -199,6 +199,12 @@ class Window(QtWidgets.QWidget):
         self.diaShutterPushButton.setCheckable(True)
         self.diaLightPushbutton = QtWidgets.QPushButton('Dia Lamp')
         self.diaLightPushbutton.setCheckable(True)
+        self.diaVoltageLabel = QtWidgets.QLabel('Voltage:')
+        self.diaVoltageDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.diaVoltageDoubleSpinBox.setMinimum(5)
+        self.diaVoltageDoubleSpinBox.setMaximum(100)
+        self.diaVoltageDoubleSpinBox.setSingleStep(5)
+        self.diaVoltageDoubleSpinBox.setSuffix('%')
         self.cameraExposureLabel = QtWidgets.QLabel('Exposure:')
         self.cameraExposureDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.cameraExposureDoubleSpinBox.setSuffix('ms')
@@ -206,6 +212,7 @@ class Window(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.setMinimum(5)
         self.cameraExposureDoubleSpinBox.setSingleStep(20)
         self.cameraExposureDoubleSpinBox.setValue(200)
+
         self.cameraRotationPushButton = QtWidgets.QPushButton('Rotate')
         self.cameraRotationPushButton.setCheckable(True)
 
@@ -333,6 +340,8 @@ class Window(QtWidgets.QWidget):
         self.microscopeLayoutLower.addWidget(self.filterComboBoxWidget)
         self.microscopeLayoutLower.addWidget(self.diaShutterPushButton)
         self.microscopeLayoutLower.addWidget(self.diaLightPushbutton)
+        self.microscopeLayoutLower.addWidget(self.diaVoltageLabel)
+        self.microscopeLayoutLower.addWidget(self.diaVoltageDoubleSpinBox)
         self.microscopeLayoutLower.addWidget(self.cameraExposureLabel)
         self.microscopeLayoutLower.addWidget(self.cameraExposureDoubleSpinBox)
         self.microscopeLayoutLower.addWidget(self.cameraRotationPushButton)
@@ -501,6 +510,7 @@ class Window(QtWidgets.QWidget):
         self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
         self.diaShutterPushButton.clicked.connect(self.toggleDiaShutter)
         self.diaLightPushbutton.clicked.connect(self.toggleDiaLamp)
+        self.diaVoltageDoubleSpinBox.valueChanged.connect(self.microscope.set_dia_voltage)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
         if self.function_generator:
@@ -543,6 +553,7 @@ class Window(QtWidgets.QWidget):
 
         self.dmd.initialize_dmd()
         self.fluorescence_controller.turn_all_off()
+
 
     def toggleVideoRecording(self):
         state = self.takeVideoPushbutton.isChecked()

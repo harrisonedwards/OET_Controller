@@ -71,7 +71,7 @@ class ViewPort(QtCore.QThread):
 
         import MMCorePy
         self.mmc = MMCorePy.CMMCore()
-        self.mmc.setCircularBufferMemoryFootprint(1000)
+        self.mmc.setCircularBufferMemoryFootprint(500)
         self.mmc.loadDevice('camera', 'PCO_Camera', 'pco_camera')
         self.mmc.initializeAllDevices()
         self.mmc.setCameraDevice('camera')
@@ -103,16 +103,11 @@ class ViewPort(QtCore.QThread):
         print(f'recording video: {self.vid_name}')
         self.writer = imageio.get_writer(self.vid_name, mode='I')
 
-
-
-
-
     @QtCore.pyqtSlot()
     def stop_video_slot(self):
         self.recording = False
         self.writer.close()
         print(f'video: {self.vid_name} finished recording')
-
 
     @QtCore.pyqtSlot()
     def startVideo(self):
@@ -122,12 +117,13 @@ class ViewPort(QtCore.QThread):
         QtWidgets.QApplication.processEvents()
         while self.run_video:
             # TODO fix, if possible
-            time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
+            # time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
             QtWidgets.QApplication.processEvents()
             if self.mmc.getRemainingImageCount() > 0:
                 try:
                     img = self.mmc.getLastImage()
-                    img = (img/256).astype(np.uint8)
+                    # img = np.right_shift(img, 1)
+                    img = (img / 256).astype(np.uint8)
                     if self.recording:
                         self.writer.append_data(img)
                     self.image = img
@@ -242,7 +238,6 @@ class ViewPort(QtCore.QThread):
                 end_y_scaled = int(self.robots[robot]['path_end_y'] * NATIVE_CAMERA_HEIGHT)
                 cv2.line(self.path_overlay, (start_x_scaled, start_y_scaled),
                          (end_x_scaled, end_y_scaled), (0, 255, 0), 2)
-
 
     @QtCore.pyqtSlot()
     def clear_overlay_slot(self):

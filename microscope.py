@@ -89,15 +89,37 @@ class Microscope():
 
     def __init__(self):
         self.open_microscope()
+        self.step_size = 25000
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000000100000 | 0x0000000000040000
+        data_in.iDIALAMP_CTRLMODE = 1
+        data_in.iDIALAMP_VOLTAGE = int(5)
+        self.issue_command(data_in)
         self.status = self.get_status()
         print_fields(self.status)
-        self.step_size = 25000
-        print('initial z position:', self.status.iZPOSITION)
 
     def __del__(self):
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000000100000 | 0x0000000000080000
+        data_in.iDIALAMP_CTRLMODE = 0
+        data_in.iDIALAMP_SWITCH = 0
+        self.issue_command(data_in)
         self.close_microscope()
 
+    def toggle_dia_light(self, state):
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000000080000
+        if state:
+            data_in.iDIALAMP_SWITCH = 1
+        else:
+            data_in.iDIALAMP_SWITCH = 0
+        self.issue_command(data_in)
 
+    def set_dia_voltage(self, voltage):
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000000040000
+        data_in.iDIALAMP_VOLTAGE = int(voltage)
+        self.issue_command(data_in)
 
     def get_status(self):
         data_in = MIC_Data()
@@ -192,13 +214,7 @@ class Microscope():
         data_in.iSHUTTER_DIA = state
         self.issue_command(data_in)
 
-    def toggle_dia_light(self, state):
-        data_in = MIC_Data()
-        data_in.uiDataUsageMask = 0x0000000000040000
 
-        data_in.iDIALAMP_VOLTAGE = ctypes.c_int(state * 100)
-        print_fields(data_in)
-        self.issue_command(data_in)
 
     def set_filter(self, filter):
         data_in = MIC_Data()
