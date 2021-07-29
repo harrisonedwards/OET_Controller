@@ -69,7 +69,7 @@ def get_robot_control_mask(large_contours, detect):
                 robot_angles.append(angle)
 
     # draw the contours on our control mask
-    robot_control_mask = cv2.drawContours(robot_control_mask, contours_towards_center, -1, 1, -1)  # .astype(np.uint8)
+    robot_control_mask = cv2.drawContours(robot_control_mask, contours_towards_center, -1, 1, 15)  # .astype(np.uint8)
     robot_control_mask = np.logical_or(inner_circle_mask, robot_control_mask).astype(np.uint8)
 
     # subtract a dilation from outside of the periphery

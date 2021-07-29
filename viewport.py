@@ -154,15 +154,14 @@ class ViewPort(QtCore.QThread):
                 self.detection_overlay[:, :, 1:] = 0
 
             np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
-            # self.detection_overlay = np.transpose(self.detection_overlay, (1, 0, 2))
             np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.8, 0)
-            # np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.8, 0)
+            np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.8, 0)
 
         window_h = self.window_size.height()
         window_w = self.window_size.width()
 
-        self.resize_lock.lock()
         # resize and rotate
+        self.resize_lock.lock()
         if self.rotation:
             np_img = cv2.rotate(np_img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
         np_img = cv2.resize(np_img, (window_h, window_w))
@@ -176,18 +175,35 @@ class ViewPort(QtCore.QThread):
     def enable_detection_slot(self, state):
         self.detection = state
         if not self.detection:
-            self.clear_overlay_slot()
+            self.clear_paths_overlay_slot()
+            self.robots = {}
 
 
     def run_detection(self):
-        # print('running detection...')
-        self.clear_overlay_slot()
         self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image)
+        if len(robot_contours) == 0:
+            # no robots found
+            return
+
         self.detection_overlay = np.copy(self.robot_control_mask)
-        for i in range(len(robot_contours)):
-            name = f'robot_{i}'
-            self.robots[name] = {'contour': robot_contours[i], 'angle': robot_angles[i]}
-        # print(f'found {len(robot_contours)} robots')
+
+        # first time finding robots, so lets update our finding them
+        if self.robots == {}:
+            for i in range(len(robot_contours)):
+                name = f'robot_{i}'
+                self.robots[name] = {'contour': robot_contours[i], 'angle': robot_angles[i]}
+        else:
+            self.check_robot_consistency(robot_contours)
+
+    def check_robot_consistency(self, robot_contours):
+        # we want to see if our newly detected robots are similar to our old robots, given a distance threshold
+        similarity_threshold = .125
+        consistent_robot_count = 0
+        for k, v in self.robots.items():
+            old_contour = self.robots[k]['contour']
+            for new_contour in robot_contours:
+                if cv2.matchShapes(new_contour, old_contour, 2, 0) < similarity_threshold:
+                    consistent_robot_count += 1
 
     def find_closest_robot(self, payload):
         min_d = np.inf
@@ -235,7 +251,7 @@ class ViewPort(QtCore.QThread):
         self.draw_paths()
 
     def draw_paths(self):
-        self.path_overlay = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH, 3), dtype=np.uint8)
+        self.path_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
         # find closest contour, color the robot the same as the path, and draw it
         for robot in self.robots:
             if 'path_start_x' in self.robots[robot].keys():
@@ -247,18 +263,15 @@ class ViewPort(QtCore.QThread):
                          (end_x_scaled, end_y_scaled), (0, 255, 0), 2)
 
     @QtCore.pyqtSlot()
-    def clear_overlay_slot(self):
-        self.robots = {}
-        self.path_overlay[:, :, :] = 0
-        self.detection_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
-
+    def clear_paths_overlay_slot(self):
+        self.path_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
 
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
     def resize_slot(self, size, running):
         # print('received resize')
 
         # self.detection = False
-        self.clear_overlay_slot()
+        self.clear_paths_overlay_slot()
 
         self.resize_lock.lock()
         self.width = size.width()

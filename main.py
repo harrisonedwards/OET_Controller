@@ -276,7 +276,7 @@ class Window(QtWidgets.QWidget):
         self.detectRobotsPushButton = QtWidgets.QPushButton('Detect Robots')
         self.drawPathsPushButton = QtWidgets.QPushButton('Draw Paths')
         self.drawPathsPushButton.setCheckable(True)
-        self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Overlay')
+        self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Paths')
         self.oetCalibratePushButton = QtWidgets.QPushButton('Calibrate')
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
         self.oetScaleLabel = QtWidgets.QLabel('Scale:')
@@ -531,7 +531,7 @@ class Window(QtWidgets.QWidget):
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         self.detectRobotsPushButton.clicked.connect(self.turn_on_robot_detection)
         self.enable_robot_detection_signal.connect(self.camera.enable_detection_slot)
-        self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_overlay_slot)
+        self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_paths_overlay_slot)
 
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
         self.oetClearPushButton.clicked.connect(self.dmd.clear_oet_projection)
@@ -724,6 +724,7 @@ class Window(QtWidgets.QWidget):
             elif key == QtCore.Qt.Key_Down:
                 self.stage.step('l')
         else:
+
             if key == QtCore.Qt.Key_Up:
                 self.stage.step('r')
             elif key == QtCore.Qt.Key_Left:
