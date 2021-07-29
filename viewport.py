@@ -18,8 +18,8 @@ class CameraType(enum.Enum):
 camera_type = CameraType.NIKON
 
 if camera_type is CameraType.NIKON:
-    NATIVE_CAMERA_WIDTH = 2060
-    NATIVE_CAMERA_HEIGHT = 2048
+    NATIVE_CAMERA_WIDTH = 2048
+    NATIVE_CAMERA_HEIGHT = 2060
 if camera_type == 'hamamatsu':
     NATIVE_CAMERA_WIDTH = 2048
     NATIVE_CAMERA_HEIGHT = 2048
@@ -54,11 +54,11 @@ class ViewPort(QtCore.QThread):
         self.window_size = QtCore.QSize(self.height, self.width)
 
         # initialize all of our empty masks
-        self.robot_control_mask = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH), dtype=np.uint8)
-        self.path_overlay = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH, 3), dtype=np.uint8)
-        self.detection_overlay = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH, 3), dtype=np.uint8)
+        self.robot_control_mask = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT), dtype=np.uint8)
+        self.path_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
+        self.detection_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
 
-        self.image = np.zeros((NATIVE_CAMERA_HEIGHT, NATIVE_CAMERA_WIDTH))
+        self.image = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT))
         self.window_size = QtCore.QSize(self.height, self.width)  # original image size
         self.qt_image = QtGui.QImage(self.image.data, self.height,
                                      self.width, QtGui.QImage.Format_Grayscale8)
@@ -132,6 +132,8 @@ class ViewPort(QtCore.QThread):
                 # self.VideoSignal.emit(img)
                 self.process_and_emit_image(img)
                 count += 1
+                if count % 5 == 0 and self.detection:
+                    self.run_detection()
                 if count % 200 == 0:
                     t1 = time.time()
                     fps = 200 / (t1 - t0)
@@ -144,7 +146,6 @@ class ViewPort(QtCore.QThread):
 
     def process_and_emit_image(self, np_img):
         # np_img is native resolution from camera
-
         if self.detection:
             # if its not in color, convert to color
             if self.detection_overlay.shape[-1] != 3:
@@ -153,8 +154,9 @@ class ViewPort(QtCore.QThread):
                 self.detection_overlay[:, :, 1:] = 0
 
             np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
+            # self.detection_overlay = np.transpose(self.detection_overlay, (1, 0, 2))
             np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.8, 0)
-            np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.8, 0)
+            # np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.8, 0)
 
         window_h = self.window_size.height()
         window_w = self.window_size.width()
@@ -170,17 +172,22 @@ class ViewPort(QtCore.QThread):
         if self.run_video:
             self.VideoSignal.emit(np_img)
 
-    @QtCore.pyqtSlot()
-    def run_detection_slot(self):
-        print('running detection...')
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def enable_detection_slot(self, state):
+        self.detection = state
+        if not self.detection:
+            self.clear_overlay_slot()
+
+
+    def run_detection(self):
+        # print('running detection...')
         self.clear_overlay_slot()
-        self.detection = True
         self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image)
         self.detection_overlay = np.copy(self.robot_control_mask)
         for i in range(len(robot_contours)):
             name = f'robot_{i}'
             self.robots[name] = {'contour': robot_contours[i], 'angle': robot_angles[i]}
-        print(f'found {len(robot_contours)} robots')
+        # print(f'found {len(robot_contours)} robots')
 
     def find_closest_robot(self, payload):
         min_d = np.inf
@@ -243,14 +250,14 @@ class ViewPort(QtCore.QThread):
     def clear_overlay_slot(self):
         self.robots = {}
         self.path_overlay[:, :, :] = 0
-        self.detection_overlay[:, :, :] = 0
-        self.detection = False
+        self.detection_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
+
 
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
     def resize_slot(self, size, running):
         # print('received resize')
 
-        self.detection = False
+        # self.detection = False
         self.clear_overlay_slot()
 
         self.resize_lock.lock()

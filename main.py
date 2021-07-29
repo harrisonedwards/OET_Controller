@@ -111,6 +111,7 @@ class Window(QtWidgets.QWidget):
     screenshot_signal = QtCore.pyqtSignal()
     start_record_video_signal = QtCore.pyqtSignal()
     stop_record_video_signal = QtCore.pyqtSignal()
+    enable_robot_detection_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self):
         super(Window, self).__init__()
@@ -404,6 +405,7 @@ class Window(QtWidgets.QWidget):
 
         self.oetLayoutUpper = QtWidgets.QHBoxLayout()
         self.oetLayoutUpper.addWidget(self.detectRobotsPushButton)
+        self.detectRobotsPushButton.setCheckable(True)
         self.oetLayoutUpper.addWidget(self.drawPathsPushButton)
         self.oetLayoutUpper.addWidget(self.oetClearOverlayPushButton)
         self.oetLayoutUpper.addWidget(self.oetRunPushButton)
@@ -527,7 +529,8 @@ class Window(QtWidgets.QWidget):
         self.pumpTimeRadioButton.click()
 
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
-        self.detectRobotsPushButton.clicked.connect(self.camera.run_detection_slot)
+        self.detectRobotsPushButton.clicked.connect(self.turn_on_robot_detection)
+        self.enable_robot_detection_signal.connect(self.camera.enable_detection_slot)
         self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_overlay_slot)
 
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
@@ -554,6 +557,14 @@ class Window(QtWidgets.QWidget):
         self.dmd.initialize_dmd()
         self.fluorescence_controller.turn_all_off()
 
+    def turn_on_robot_detection(self):
+        state = self.detectRobotsPushButton.isChecked()
+        if state:
+            self.detectRobotsPushButton.setStyleSheet('background-color : lightblue')
+        else:
+            self.detectRobotsPushButton.setStyleSheet('background-color : lightgrey')
+        self.enable_robot_detection_signal.emit(state)
+
 
     def toggleVideoRecording(self):
         state = self.takeVideoPushbutton.isChecked()
@@ -562,7 +573,6 @@ class Window(QtWidgets.QWidget):
         else:
             self.takeVideoPushbutton.setStyleSheet('background-color : lightgrey')
         if state:
-            print('emitting start recording signal...')
             self.start_record_video_signal.emit()
         else:
             self.stop_record_video_signal.emit()

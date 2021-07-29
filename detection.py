@@ -42,28 +42,29 @@ def get_robot_control_mask(large_contours, detect):
 
     robot_angles = []
     contours_towards_center = []
-    contour_range_border_limit = 200
-    robot_center_radius = 70//2
-
-    dilation_size = 20
-
-    # for drawing detected robot direction:
+    contour_range_border_limit = 100
+    robot_center_radius = 70 // 4
     line_length = 200
     line_width = 20
+    dilation_size = 10
 
+    contours_in_limits = []
     for contour in large_contours:
-        # find centers
-        M = cv2.moments(contour)
-        cx = int(M["m10"] / M["m00"])
-        cy = int(M["m01"] / M["m00"])
-
+        xs = np.squeeze(contour)[:, 0]
+        ys = np.squeeze(contour)[:, 1]
         # check that our contours are within acceptable limits, draw their circle if they are
-        if cx > contour_range_border_limit and cx < large_contour_image.shape[0] - contour_range_border_limit:
-            if cy > contour_range_border_limit and cy < large_contour_image.shape[1] - contour_range_border_limit:
+        if np.all(xs > contour_range_border_limit) and np.all(
+                xs < large_contour_image.shape[0] - contour_range_border_limit):
+            if np.all(ys > contour_range_border_limit) and np.all(
+                    ys < large_contour_image.shape[0] - contour_range_border_limit):
+                contours_in_limits.append(contour)
+                M = cv2.moments(contour)
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+
                 contours_towards_center.append(contour)
                 cv2.circle(inner_circle_mask, (cx, cy), robot_center_radius, 1, -1)
                 angle = get_robot_angle(contour, (cx, cy))
-
                 # cv2.line(inner_circle_mask, (cx, cy), (cx + int(line_length*np.cos(angle)), cy + int(line_length*np.sin(angle))), 1, line_width)
                 robot_angles.append(angle)
 
@@ -76,7 +77,8 @@ def get_robot_control_mask(large_contours, detect):
     dilation = cv2.dilate(dilation, np.ones((dilation_size, dilation_size)))
     robot_control_mask -= dilation
 
-    return robot_control_mask, contours_towards_center, robot_angles
+    return robot_control_mask, contours_in_limits, robot_angles
+
 
 def get_robot_control(img):
     detected = detect(img)
