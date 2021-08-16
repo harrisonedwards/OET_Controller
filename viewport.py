@@ -190,7 +190,7 @@ class ViewPort(QtCore.QThread):
         consistent_robot_count = 0
         for k, v in self.robots.items():
             old_contour = self.robots[k]['contour']
-            for new_contour, new_angle in zip(new_robot_contours):
+            for new_contour, new_angle in zip(new_robot_contours, new_robot_angles):
                 if cv2.matchShapes(new_contour, old_contour, 2, 0) < similarity_threshold:
                     # they are a match! let's update the robot internal dictionary
                     consistent_robot_count += 1
