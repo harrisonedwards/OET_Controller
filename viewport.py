@@ -97,19 +97,6 @@ class ViewPort(QtCore.QThread):
         self.mmc.reset()
 
     @QtCore.pyqtSlot()
-    def start_recording_video_slot(self):
-        self.recording = True
-        self.vid_name = self.video_dir + strftime('%Y_%m_%d_%H_%M_%S.avi', time.gmtime())
-        print(f'recording video: {self.vid_name}')
-        self.writer = imageio.get_writer(self.vid_name, mode='I')
-
-    @QtCore.pyqtSlot()
-    def stop_video_slot(self):
-        self.recording = False
-        self.writer.close()
-        print(f'video: {self.vid_name} finished recording')
-
-    @QtCore.pyqtSlot()
     def startVideo(self):
         print('starting video stream...')
         count = 0
@@ -172,38 +159,42 @@ class ViewPort(QtCore.QThread):
             self.VideoSignal.emit(np_img)
 
     @QtCore.pyqtSlot('PyQt_PyObject')
-    def enable_detection_slot(self, state):
+    def toggle_detection_slot(self, state):
         self.detection = state
         if not self.detection:
             self.clear_paths_overlay_slot()
             self.robots = {}
 
-
     def run_detection(self):
+        # process current image to find robots
         self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image)
+
         if len(robot_contours) == 0:
             # no robots found
             return
 
         self.detection_overlay = np.copy(self.robot_control_mask)
 
-        # first time finding robots, so lets update our finding them
         if self.robots == {}:
+            # first time finding robots, so lets update our finding them
             for i in range(len(robot_contours)):
                 name = f'robot_{i}'
                 self.robots[name] = {'contour': robot_contours[i], 'angle': robot_angles[i]}
         else:
-            self.check_robot_consistency(robot_contours)
+            # update our understanding of the robots
+            self.update_robot_information(robot_contours, robot_angles)
 
-    def check_robot_consistency(self, robot_contours):
+    def update_robot_information(self, new_robot_contours, new_robot_angles):
         # we want to see if our newly detected robots are similar to our old robots, given a distance threshold
         similarity_threshold = .125
         consistent_robot_count = 0
         for k, v in self.robots.items():
             old_contour = self.robots[k]['contour']
-            for new_contour in robot_contours:
+            for new_contour, new_angle in zip(new_robot_contours):
                 if cv2.matchShapes(new_contour, old_contour, 2, 0) < similarity_threshold:
+                    # they are a match! let's update the robot internal dictionary
                     consistent_robot_count += 1
+                    self.robots[k] = {'contour': new_contour, 'angle': new_angle}
 
     def find_closest_robot(self, payload):
         min_d = np.inf
@@ -300,3 +291,16 @@ class ViewPort(QtCore.QThread):
         cv2.imwrite(
             'C:\\Users\\Mohamed\\Desktop\\Harrison\\Screenshots\\' + strftime('%Y_%m_%d_%H_%M_%S.png', time.gmtime()),
             self.image)
+
+    @QtCore.pyqtSlot()
+    def start_recording_video_slot(self):
+        self.recording = True
+        self.vid_name = self.video_dir + strftime('%Y_%m_%d_%H_%M_%S.avi', time.gmtime())
+        print(f'recording video: {self.vid_name}')
+        self.writer = imageio.get_writer(self.vid_name, mode='I')
+
+    @QtCore.pyqtSlot()
+    def stop_video_slot(self):
+        self.recording = False
+        self.writer.close()
+        print(f'video: {self.vid_name} finished recording')

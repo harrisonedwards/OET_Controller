@@ -530,7 +530,7 @@ class Window(QtWidgets.QWidget):
 
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         self.detectRobotsPushButton.clicked.connect(self.turn_on_robot_detection)
-        self.enable_robot_detection_signal.connect(self.camera.enable_detection_slot)
+        self.enable_robot_detection_signal.connect(self.camera.toggle_detection_slot)
         self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_paths_overlay_slot)
 
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
