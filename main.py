@@ -145,22 +145,22 @@ class Window(GUI):
         y = event.pos().y()
 
         # scale everything
-        scaled_x = x / self.image_viewer.width()
-        scaled_y = y / self.image_viewer.height()
+        unit_scaled_viewer_x = x / self.image_viewer.width()
+        unit_scaled_viewer_y = y / self.image_viewer.height()
 
         # check if we can illuminate the clicked area with the dmd
-        check = self.check_if_in_dmd_area(scaled_x, scaled_y)
+        check = self.check_if_in_dmd_area(unit_scaled_viewer_x, unit_scaled_viewer_y)
         if not check:
             print('not within DMD area. ignoring click')
             return
 
         # get the full scale of our dmd area
-        FS_x = self.image_viewer.calibration_payload[-1][0] - self.image_viewer.calibration_payload[0][0]
-        FS_y = self.image_viewer.calibration_payload[-1][1] - self.image_viewer.calibration_payload[0][1]
+        dmd_fs_x = self.image_viewer.calibration_payload[-1][0] - self.image_viewer.calibration_payload[0][0]
+        dmd_fs_y = self.image_viewer.calibration_payload[-1][1] - self.image_viewer.calibration_payload[0][1]
 
         # subtract out our top left calibration spot and divide by full scale
-        dmd_scaled_x = (scaled_x - self.image_viewer.calibration_payload[0][0]) / FS_x
-        dmd_scaled_y = (scaled_y - self.image_viewer.calibration_payload[0][1]) / FS_y
+        dmd_scaled_x = (unit_scaled_viewer_x - self.image_viewer.calibration_payload[0][0]) / dmd_fs_x
+        dmd_scaled_y = (unit_scaled_viewer_y - self.image_viewer.calibration_payload[0][1]) / dmd_fs_y
 
         # project in the proper mode
         if self.project_circle_mode:
@@ -169,10 +169,34 @@ class Window(GUI):
             self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y)
 
     def run_oet_commands(self):
+        if self.detectRobotsPushButton.isChecked():
+            self.detectRobotsPushButton.click()
+
         # grab our current controlled robots, project a control dmd image around them, and stop detection
         img = self.image_processing.robot_control_mask
-        # first project an initial control pattern
-        self.detectRobotsPushButton.setChecked(False)
+
+        # resize to our viewer window, because that is how things are calibrated
+        img = cv2.resize(img, (self.image_viewer.width(), int(self.image_viewer.width() * 2048//2060)))
+        _, img = cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)
+
+        # now we crop out the sections that cannot be illuminated by the dmd
+        dmd_start_x = int(self.image_viewer.calibration_payload[0][0] * self.image_viewer.width())
+        dmd_end_x = int(self.image_viewer.calibration_payload[-1][0] * self.image_viewer.width())
+        dmd_start_y = int(self.image_viewer.calibration_payload[0][1] * self.image_viewer.height())
+        dmd_end_y = int(self.image_viewer.calibration_payload[-1][1] * self.image_viewer.height())
+        img = img[dmd_start_y:dmd_end_y, dmd_start_x:dmd_end_x]
+
+        # final resize to adjust to exact dimensions for dmd projection
+        img = cv2.resize(img, (912 * 2, 1140))
+        _, img = cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)
+
+        # finally, render it
+        print('rendering to dmd...')
+        self.dmd.render_to_dmd(img)
+
+    def camera_to_dmd_conversion(self, camera_view):
+        # takes a camera image as input and maps it to the DMD projector. TODO: MOVE TO IMAGE PROCESSOR
+        pass
 
     def check_if_in_dmd_area(self, scaled_x, scaled_y):
         # define bounds

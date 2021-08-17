@@ -263,7 +263,6 @@ class GUI(QtWidgets.QWidget):
         self.detectRobotsPushButton.setCheckable(True)
         self.oetLayoutUpper.addWidget(self.drawPathsPushButton)
         self.oetLayoutUpper.addWidget(self.oetClearOverlayPushButton)
-        self.oetLayoutUpper.addWidget(self.oetRunPushButton)
         self.oetLayoutUpper.addWidget(self.oetCalibratePushButton)
         self.oetLayoutUpper.addWidget(self.oetClearPushButton)
         self.oetLayoutUpper.addWidget(self.oetToggleLampPushButton)
@@ -276,6 +275,7 @@ class GUI(QtWidgets.QWidget):
         self.oetLayoutLower.addWidget(self.oetProjectCirclePushButton)
         self.oetLayoutLower.addWidget(self.oetLoadProjectionImagePushButton)
         self.oetLayoutLower.addWidget(self.oetProjectImagePushButton)
+        self.oetLayoutLower.addWidget(self.oetRunPushButton)
         self.oetLayoutLower.addWidget(self.oetScaleLabel)
         self.oetLayoutLower.addWidget(self.oetScaleDoubleSpinBox)
         self.oetLayoutLower.addWidget(self.oetScaleUpPushButton)
@@ -402,6 +402,7 @@ class GUI(QtWidgets.QWidget):
         self.oetRotationDoubleSpinBox.setEnabled(False)
         self.oetTranslateDoubleSpinBox.setEnabled(False)
         self.oetScaleUpPushButton.setEnabled(False)
+        self.oetRunPushButton.setEnabled(False)
 
         self.dmd.initialize_dmd()
         self.fluorescence_controller.turn_all_off()
@@ -416,6 +417,7 @@ class GUI(QtWidgets.QWidget):
         self.oetRotationDoubleSpinBox.setEnabled(True)
         self.oetTranslateDoubleSpinBox.setEnabled(True)
         self.oetScaleUpPushButton.setEnabled(True)
+        self.oetRunPushButton.setEnabled(True)
 
     def setChildrenFocusPolicy(self, policy):
         def recursiveSetChildFocusPolicy(parentQWidget):

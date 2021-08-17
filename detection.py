@@ -65,7 +65,8 @@ def get_robot_control_mask(large_contours, detect):
                 contours_towards_center.append(contour)
                 cv2.circle(inner_circle_mask, (cx, cy), robot_center_radius, 1, -1)
                 angle = get_robot_angle(contour, (cx, cy))
-                cv2.line(inner_circle_mask, (cx, cy), (cx + int(line_length*np.cos(angle)), cy + int(line_length*np.sin(angle))), 1, line_width)
+                # cv2.line(inner_circle_mask, (cx, cy),
+                # (cx + int(line_length*np.cos(angle)), cy + int(line_length*np.sin(angle))), 1, line_width)
                 robot_angles.append(angle)
 
     # draw the contours on our control mask
