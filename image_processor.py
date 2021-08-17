@@ -151,7 +151,7 @@ class imageProcessor(QtCore.QThread):
         self.resize_lock.lock()
         if self.rotation:
             np_img = cv2.rotate(np_img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
-        np_img = cv2.resize(np_img, (window_h, window_w))
+        np_img = cv2.resize(np_img, (window_w, window_h))
         self.resize_lock.unlock()
 
         # emit our array, whatever shape it may be
