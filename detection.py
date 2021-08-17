@@ -46,7 +46,7 @@ def get_robot_control_mask(large_contours, detect):
     robot_center_radius = 70 // 4
     line_length = 200
     line_width = 20
-    dilation_size = 10
+    dilation_size = 50
 
     contours_in_limits = []
     for contour in large_contours:

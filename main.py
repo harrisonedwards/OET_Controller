@@ -175,15 +175,17 @@ class Window(GUI):
         # grab our current controlled robots, project a control dmd image around them, and stop detection
         img = self.image_processing.robot_control_mask
 
-        # resize to our viewer window, because that is how things are calibrated
-        img = cv2.resize(img, (self.image_viewer.width(), self.image_viewer.width() * 2048 // 2060))
+        # resize to our viewer window image size
+        img = cv2.resize(img, (self.image_viewer.height() * 2060 // 2048, self.image_viewer.height()))
         _, img = cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)
 
         # now we crop out the sections that cannot be illuminated by the dmd
-        dmd_start_x = int(self.image_viewer.calibration_payload[0][0] * self.image_viewer.width())
-        dmd_end_x = int(self.image_viewer.calibration_payload[-1][0] * self.image_viewer.width())
-        dmd_start_y = int(self.image_viewer.calibration_payload[0][1] * self.image_viewer.width() * 2048 // 2060)
-        dmd_end_y = int(self.image_viewer.calibration_payload[-1][1] * self.image_viewer.width() * 2048 // 2060)
+        # need an offset (difference between image width and viewer width)
+        offset = int(0.5 * (self.image_viewer.width() - img.shape[0]))
+        dmd_start_x = int(self.image_viewer.calibration_payload[0][0] * self.image_viewer.width() - offset)
+        dmd_end_x = int(self.image_viewer.calibration_payload[-1][0] * self.image_viewer.width() - offset)
+        dmd_start_y = int(self.image_viewer.calibration_payload[0][1] * self.image_viewer.height())
+        dmd_end_y = int(self.image_viewer.calibration_payload[-1][1] * self.image_viewer.height())
         img = img[dmd_start_y:dmd_end_y, dmd_start_x:dmd_end_x]
 
         # final resize to adjust to exact dimensions for dmd projection
