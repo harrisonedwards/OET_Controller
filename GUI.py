@@ -2,7 +2,7 @@ import copy
 import qimage2ndarray
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QThread
-from viewport import ViewPort
+from image_processor import imageProcessor
 
 class GUI(QtWidgets.QWidget):
 
@@ -301,18 +301,18 @@ class GUI(QtWidgets.QWidget):
         # TODO: fix this...
         # self.image_viewer.calibration_signal.connect(self.dmd.calibration_slot)
 
-        self.camera = ViewPort()
-        self.camera_thread = QThread()
-        self.camera_thread.start()
+        self.image_processing = imageProcessor()
+        self.image_processing_thread = QThread()
+        self.image_processing_thread.start()
 
-        self.image_viewer.resize_event_signal.connect(self.camera.resize_slot)
-        self.image_viewer.path_signal.connect(self.camera.path_slot)
+        self.image_viewer.resize_event_signal.connect(self.image_processing.resize_slot)
+        self.image_viewer.path_signal.connect(self.image_processing.path_slot)
 
-        self.set_camera_expsure_signal.connect(self.camera.set_exposure_slot)
+        self.set_camera_expsure_signal.connect(self.image_processing.set_exposure_slot)
 
-        self.camera.VideoSignal.connect(self.image_viewer.setImage)
+        self.image_processing.VideoSignal.connect(self.image_viewer.setImage)
         self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-        self.camera.moveToThread(self.camera_thread)
+        self.image_processing.moveToThread(self.image_processing_thread)
 
         self.image_viewer.click_event_signal.connect(self.handle_click)
 
@@ -349,9 +349,9 @@ class GUI(QtWidgets.QWidget):
 
 
         # connect all of our control signals
-        self.takeScreenshotPushButton.clicked.connect(self.camera.take_screenshot_slot)
-        self.start_record_video_signal.connect(self.camera.start_recording_video_slot)
-        self.stop_record_video_signal.connect(self.camera.stop_video_slot)
+        self.takeScreenshotPushButton.clicked.connect(self.image_processing.take_screenshot_slot)
+        self.start_record_video_signal.connect(self.image_processing.start_recording_video_slot)
+        self.stop_record_video_signal.connect(self.image_processing.stop_video_slot)
         self.takeVideoPushbutton.clicked.connect(self.toggleVideoRecording)
 
         self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
@@ -378,8 +378,8 @@ class GUI(QtWidgets.QWidget):
 
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         self.detectRobotsPushButton.clicked.connect(self.turn_on_robot_detection)
-        self.enable_robot_detection_signal.connect(self.camera.toggle_detection_slot)
-        self.oetClearOverlayPushButton.clicked.connect(self.camera.clear_paths_overlay_slot)
+        self.enable_robot_detection_signal.connect(self.image_processing.toggle_detection_slot)
+        self.oetClearOverlayPushButton.clicked.connect(self.image_processing.clear_paths_overlay_slot)
 
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
         self.oetClearPushButton.clicked.connect(self.dmd.clear_oet_projection)
@@ -405,6 +405,28 @@ class GUI(QtWidgets.QWidget):
 
         self.dmd.initialize_dmd()
         self.fluorescence_controller.turn_all_off()
+
+    @QtCore.pyqtSlot()
+    def enable_dmd_controls(self):
+        self.oetScaleDownPushButton.setEnabled(True)
+        self.oetProjectCirclePushButton.setEnabled(True)
+        self.oetLoadProjectionImagePushButton.setEnabled(True)
+        self.oetProjectImagePushButton.setEnabled(True)
+        self.oetScaleDoubleSpinBox.setEnabled(True)
+        self.oetRotationDoubleSpinBox.setEnabled(True)
+        self.oetTranslateDoubleSpinBox.setEnabled(True)
+        self.oetScaleUpPushButton.setEnabled(True)
+
+    def setChildrenFocusPolicy(self, policy):
+        def recursiveSetChildFocusPolicy(parentQWidget):
+            for childQWidget in parentQWidget.findChildren(QtWidgets.QWidget):
+                if isinstance(childQWidget, QtWidgets.QComboBox) or isinstance(childQWidget, QtWidgets.QComboBox):
+                    # make all comboboxes respond to nothing at all
+                    childQWidget.setFocusPolicy(QtCore.Qt.NoFocus)
+                else:
+                    childQWidget.setFocusPolicy(policy)
+                recursiveSetChildFocusPolicy(childQWidget)
+        recursiveSetChildFocusPolicy(self)
 
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
@@ -482,11 +504,10 @@ class ImageViewer(QtWidgets.QWidget):
             self.begin_path = event.pos()
         if self.calibrating:
             # just scale this one here...probably could be neater
-            offset = (self.width() - self.image_width) // 2
             x_scaled = event.pos().x() / self.width()
             y_scaled = event.pos().y() / self.height()
             self.calibration_payload.append((x_scaled, y_scaled))
-            print('point marked:', x_scaled, y_scaled)
+            print('calibration point marked:', x_scaled, y_scaled)
             if len(self.calibration_payload) > 2:
                 QtWidgets.QMessageBox.about(self, 'Calibration', 'Calibration Complete')
                 self.calibrating = False

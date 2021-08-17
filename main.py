@@ -70,13 +70,9 @@ class Window(GUI):
         self.showMaximized()
 
         # connect to the video thread and start the video
-        self.start_video_signal.connect(self.camera.startVideo)
+        self.start_video_signal.connect(self.image_processing.startVideo)
         self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)
         self.start_video_signal.emit()
-
-    def run_oet_commands(self):
-        # first project an initial control pattern
-        pass
 
     def turn_on_robot_detection(self):
         state = self.detectRobotsPushButton.isChecked()
@@ -132,24 +128,13 @@ class Window(GUI):
 
     def calibrate_dmd(self):
         print('calibrating dmd...')
-        # no we want to project 3 circles on the dmd for the user to click so that we can calibrate
+        # now we want to project 3 circles on the dmd for the user to click so that we can calibrate
         QtWidgets.QMessageBox.about(self, 'Calibration',
                                     'Please click the center of the 3 (clipped) projected circles in a CLOCKWISE \
                                     fashion to calibrate the DMD.')
         self.dmd.project_calibration_image()
         self.image_viewer.calibration_payload = []
         self.image_viewer.calibrating = True
-
-    @QtCore.pyqtSlot()
-    def enable_dmd_controls(self):
-        self.oetScaleDownPushButton.setEnabled(True)
-        self.oetProjectCirclePushButton.setEnabled(True)
-        self.oetLoadProjectionImagePushButton.setEnabled(True)
-        self.oetProjectImagePushButton.setEnabled(True)
-        self.oetScaleDoubleSpinBox.setEnabled(True)
-        self.oetRotationDoubleSpinBox.setEnabled(True)
-        self.oetTranslateDoubleSpinBox.setEnabled(True)
-        self.oetScaleUpPushButton.setEnabled(True)
 
     @QtCore.pyqtSlot(QtGui.QMouseEvent)
     def handle_click(self, event):
@@ -183,6 +168,25 @@ class Window(GUI):
         elif self.project_image_mode:
             self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y)
 
+    def run_oet_commands(self):
+        # grab our current controlled robots, project a control dmd image around them, and stop detection
+        img = self.image_processing.robot_control_mask
+        # first project an initial control pattern
+        self.detectRobotsPushButton.setChecked(False)
+
+    def check_if_in_dmd_area(self, scaled_x, scaled_y):
+        # define bounds
+        min_x = self.image_viewer.calibration_payload[0][0]
+        max_x = self.image_viewer.calibration_payload[-1][0]
+
+        min_y = self.image_viewer.calibration_payload[0][1]
+        max_y = self.image_viewer.calibration_payload[-1][1]
+
+        if min_x < scaled_x < max_x and min_y < scaled_y < max_y:
+            return True
+        else:
+            return False
+
     def toggle_project_circle(self):
         self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
         self.oetProjectImagePushButton.setChecked(False)
@@ -203,18 +207,6 @@ class Window(GUI):
                          self.dmd, self.pump]:
             if hardware is not False:
                 hardware.__del__()
-
-    def setChildrenFocusPolicy(self, policy):
-        def recursiveSetChildFocusPolicy(parentQWidget):
-            for childQWidget in parentQWidget.findChildren(QtWidgets.QWidget):
-                if isinstance(childQWidget, QtWidgets.QComboBox) or isinstance(childQWidget, QtWidgets.QComboBox):
-                    # make all comboboxes respond to nothing at all
-                    childQWidget.setFocusPolicy(QtCore.Qt.NoFocus)
-                else:
-                    childQWidget.setFocusPolicy(policy)
-                recursiveSetChildFocusPolicy(childQWidget)
-
-        recursiveSetChildFocusPolicy(self)
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -259,19 +251,6 @@ class Window(GUI):
 
     def keyReleaseEvent(self, event):
         pass
-
-    def check_if_in_dmd_area(self, scaled_x, scaled_y):
-        # define bounds
-        min_x = self.image_viewer.calibration_payload[0][0]
-        max_x = self.image_viewer.calibration_payload[-1][0]
-
-        min_y = self.image_viewer.calibration_payload[0][1]
-        max_y = self.image_viewer.calibration_payload[-1][1]
-
-        if min_x < scaled_x < max_x and min_y < scaled_y < max_y:
-            return True
-        else:
-            return False
 
     def startAmountDispenseMode(self):
         self.dispenseMode = 'amount'
@@ -345,7 +324,7 @@ class Window(GUI):
             self.cameraRotationPushButton.setStyleSheet('background-color : lightblue')
         else:
             self.cameraRotationPushButton.setStyleSheet('background-color : lightgrey')
-        self.camera.rotation = state
+        self.image_processing.rotation = state
 
     def setCameraExposure(self, exposure):
         self.set_camera_expsure_signal.emit(exposure)
