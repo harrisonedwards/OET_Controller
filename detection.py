@@ -43,10 +43,11 @@ def get_robot_control_mask(large_contours, detect):
     robot_angles = []
     contours_towards_center = []
     contour_range_border_limit = 100
-    robot_center_radius = 70 // 4
+    robot_center_radius = 120 // 4
     line_length = 200
     line_width = 20
-    dilation_size = 50
+    dilation_size = 30
+    buffer_offset_size = 20
 
     contours_in_limits = []
     for contour in large_contours:
@@ -72,6 +73,7 @@ def get_robot_control_mask(large_contours, detect):
     # draw the contours on our control mask
     robot_control_mask = cv2.drawContours(robot_control_mask, contours_towards_center, -1, 1, -1)  # .astype(np.uint8)
     robot_control_mask = np.logical_or(inner_circle_mask, robot_control_mask).astype(np.uint8)
+    robot_control_mask = cv2.dilate(robot_control_mask, np.ones((buffer_offset_size, buffer_offset_size)))
 
     # subtract a dilation from outside of the periphery
     dilation = np.copy(robot_control_mask)  # .astype(np.uint8)
