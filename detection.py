@@ -36,19 +36,24 @@ def get_robot_angle(contour, center):
     return np.nanmean(np.where(val == 0, bin_centers, np.nan))
 
 
-def get_robot_control_mask(large_contours, detect, dilation_size, buffer_offset_size):
+def get_robot_control_mask(large_contours, detect, dilation_size, buffer_offset_size, objective):
     # get memory
     robot_control_mask, inner_circle_mask = np.zeros(detect.shape), np.zeros(detect.shape)
     large_contour_image = cv2.drawContours(np.copy(robot_control_mask), large_contours, -1, 1, -1)
 
+    # probably needs more adjustment in the future, so will make a dict for now
+    objective_calibration_dict = {'2x': [8, 4],
+                                  '4x': [4, 2],
+                                  '10x': [2, 1],
+                                  '20x': [1, 1],
+                                  '40x': [0.5, 1]}
+
     robot_angles = []
     contours_towards_center = []
-    contour_range_border_limit = 100
-    robot_center_radius = 120 // 2
+    contour_range_border_limit = 100 * objective_calibration_dict[objective][1]
+    robot_center_radius = 120 // objective_calibration_dict[objective][0]
     line_length = 200
     line_width = 20
-    # dilation_size = 30
-    # buffer_offset_size = 10
 
     contours_in_limits = []
     for contour in large_contours:
@@ -84,7 +89,7 @@ def get_robot_control_mask(large_contours, detect, dilation_size, buffer_offset_
     return robot_control_mask, contours_towards_center, robot_angles
 
 
-def get_robot_control(img, dilation_size, buffer_offset_size):
+def get_robot_control(img, dilation_size, buffer_offset_size, objective):
     detected = detect(img)
 
     large_contours = get_large_contours(detected)
@@ -92,6 +97,7 @@ def get_robot_control(img, dilation_size, buffer_offset_size):
     robot_control_mask, contours_towards_center, robot_angles = get_robot_control_mask(large_contours,
                                                                                        detected,
                                                                                        dilation_size,
-                                                                                       buffer_offset_size)
+                                                                                       buffer_offset_size,
+                                                                                       objective)
 
     return robot_control_mask, contours_towards_center, robot_angles

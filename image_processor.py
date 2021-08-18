@@ -102,6 +102,7 @@ class imageProcessor(QtCore.QThread):
     def update_detection_params_slot(self, params_dict):
         self.buffer_size = params_dict['buffer_size']
         self.dilation_size = params_dict['dilation_size']
+        self.objective = params_dict['objective']
         print('detection params updated:', params_dict)
 
     @QtCore.pyqtSlot()
@@ -177,7 +178,8 @@ class imageProcessor(QtCore.QThread):
         # process current image to find robots
         self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image,
                                                                                   self.dilation_size,
-                                                                                  self.buffer_size)
+                                                                                  self.buffer_size,
+                                                                                  self.objective)
 
         if len(robot_contours) == 0:
             # no robots found

@@ -38,7 +38,8 @@ class Stage():
         ret = self.read_write(f'!mor {x} {y} 0')
         # print(ret)
         if b'OK' not in ret:
-            raise Exception(f'Stage movement error: {ret}')
+            print('warning: stage still moving...additional movement command ignored')
+            # raise Exception(f'Stage movement error: {ret}')
 
     def halt(self):
         ret = self.read_write('!a')

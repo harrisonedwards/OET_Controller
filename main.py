@@ -75,6 +75,9 @@ class Window(GUI):
         self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)
         self.start_video_signal.emit()
 
+        # make our image processor aware of the system state
+        self.update_detection_params()
+
     def turn_on_robot_detection(self):
         state = self.detectRobotsPushButton.isChecked()
         self.enable_robot_detection_signal.emit(state)
@@ -116,15 +119,15 @@ class Window(GUI):
         # now we want to project 3 circles on the dmd for the user to click so that we can calibrate
         QtWidgets.QMessageBox.about(self, 'Calibration',
                                     'Please click the center of the 3 (clipped) projected circles in a CLOCKWISE \
-                                    fashion to calibrate the DMD.')
+                                    fashion to calibrate the DMD. Ensure that the DMD Lamp is on and visible.')
         self.dmd.project_calibration_image()
         self.image_viewer.calibration_payload = []
         self.image_viewer.calibrating = True
 
     def update_detection_params(self):
-        params_dict = {}
-        params_dict['buffer_size'] = int(self.bufferSizeDoubleSpinBox.value())
-        params_dict['dilation_size'] = int(self.dilationSizeDoubleSpinBox.value())
+        params_dict = {'buffer_size': int(self.bufferSizeDoubleSpinBox.value()),
+                       'dilation_size': int(self.dilationSizeDoubleSpinBox.value()),
+                       'objective': self.magnificationComboBoxWidget.currentText()}
         self.update_detection_params_signal.emit(params_dict)
 
     @QtCore.pyqtSlot(QtGui.QMouseEvent)
@@ -308,6 +311,7 @@ class Window(GUI):
     def changeMagnification(self, text):
         idx_dict = {k: v for k, v in zip(self.objectives, range(1, 7))}
         self.microscope.set_objective(idx_dict[text])
+        self.update_detection_params()
 
     def changeFilter(self, text):
         idx_dict = {k: v for k, v in zip(self.filter_positions, range(1, 7))}
