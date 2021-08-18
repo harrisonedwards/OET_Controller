@@ -171,6 +171,7 @@ class imageProcessor(QtCore.QThread):
 
         if len(robot_contours) == 0:
             # no robots found
+            self.detection_overlay.fill(0)
             return
 
         self.detection_overlay = np.copy(self.robot_control_mask)

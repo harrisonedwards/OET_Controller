@@ -4,6 +4,7 @@ import numpy as np
 
 def detect(img):
     # finds and fills the located robots
+    img = cv2.convertScaleAbs(img, 1, 1.5)
     structure = np.ones((3, 3))
     canny = np.copy(cv2.Canny(img, 20, 120))
     dilated = cv2.dilate(canny, structure)
