@@ -36,7 +36,7 @@ def get_robot_angle(contour, center):
     return np.nanmean(np.where(val == 0, bin_centers, np.nan))
 
 
-def get_robot_control_mask(large_contours, detect):
+def get_robot_control_mask(large_contours, detect, dilation_size, buffer_offset_size):
     # get memory
     robot_control_mask, inner_circle_mask = np.zeros(detect.shape), np.zeros(detect.shape)
     large_contour_image = cv2.drawContours(np.copy(robot_control_mask), large_contours, -1, 1, -1)
@@ -47,8 +47,8 @@ def get_robot_control_mask(large_contours, detect):
     robot_center_radius = 120 // 2
     line_length = 200
     line_width = 20
-    dilation_size = 30
-    buffer_offset_size = 10
+    # dilation_size = 30
+    # buffer_offset_size = 10
 
     contours_in_limits = []
     for contour in large_contours:
@@ -84,11 +84,14 @@ def get_robot_control_mask(large_contours, detect):
     return robot_control_mask, contours_towards_center, robot_angles
 
 
-def get_robot_control(img):
+def get_robot_control(img, dilation_size, buffer_offset_size):
     detected = detect(img)
 
     large_contours = get_large_contours(detected)
 
-    robot_control_mask, contours_towards_center, robot_angles = get_robot_control_mask(large_contours, detected)
+    robot_control_mask, contours_towards_center, robot_angles = get_robot_control_mask(large_contours,
+                                                                                       detected,
+                                                                                       dilation_size,
+                                                                                       buffer_offset_size)
 
     return robot_control_mask, contours_towards_center, robot_angles

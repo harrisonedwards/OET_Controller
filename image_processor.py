@@ -52,6 +52,8 @@ class imageProcessor(QtCore.QThread):
         self.run_video = True
         self.rotation = False
         self.window_size = QtCore.QSize(self.height, self.width)
+        self.buffer_size = 10
+        self.dilation_size = 30
 
         # initialize all of our empty masks
         self.robot_control_mask = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT), dtype=np.uint8)
@@ -95,6 +97,12 @@ class imageProcessor(QtCore.QThread):
         print('closing camera...')
         self.mmc.stopSequenceAcquisition()
         self.mmc.reset()
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def update_detection_params_slot(self, params_dict):
+        self.buffer_size = params_dict['buffer_size']
+        self.dilation_size = params_dict['dilation_size']
+        print('detection params updated:', params_dict)
 
     @QtCore.pyqtSlot()
     def startVideo(self):
@@ -167,7 +175,9 @@ class imageProcessor(QtCore.QThread):
 
     def run_detection(self):
         # process current image to find robots
-        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image)
+        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image,
+                                                                                  self.dilation_size,
+                                                                                  self.buffer_size)
 
         if len(robot_contours) == 0:
             # no robots found

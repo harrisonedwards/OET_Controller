@@ -397,6 +397,9 @@ class GUI(QtWidgets.QWidget):
 
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         self.detectRobotsPushButton.clicked.connect(self.turn_on_robot_detection)
+        self.dilationSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
+        self.bufferSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
+        self.update_detection_params_signal.connect(self.image_processing.update_detection_params_slot)
         self.enable_robot_detection_signal.connect(self.image_processing.toggle_detection_slot)
         self.oetClearOverlayPushButton.clicked.connect(self.image_processing.clear_paths_overlay_slot)
 

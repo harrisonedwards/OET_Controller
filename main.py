@@ -21,6 +21,7 @@ class Window(GUI):
     start_record_video_signal = QtCore.pyqtSignal()
     stop_record_video_signal = QtCore.pyqtSignal()
     enable_robot_detection_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    update_detection_params_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self):
         super(Window, self).__init__()
@@ -135,6 +136,12 @@ class Window(GUI):
         self.dmd.project_calibration_image()
         self.image_viewer.calibration_payload = []
         self.image_viewer.calibrating = True
+
+    def update_detection_params(self):
+        params_dict = {}
+        params_dict['buffer_size'] = int(self.bufferSizeDoubleSpinBox.value())
+        params_dict['dilation_size'] = int(self.dilationSizeDoubleSpinBox.value())
+        self.update_detection_params_signal.emit(params_dict)
 
     @QtCore.pyqtSlot(QtGui.QMouseEvent)
     def handle_click(self, event):
