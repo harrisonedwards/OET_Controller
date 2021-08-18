@@ -127,7 +127,8 @@ class Window(GUI):
     def update_detection_params(self):
         params_dict = {'buffer_size': int(self.bufferSizeDoubleSpinBox.value()),
                        'dilation_size': int(self.dilationSizeDoubleSpinBox.value()),
-                       'objective': self.magnificationComboBoxWidget.currentText()}
+                       'objective': self.magnificationComboBoxWidget.currentText(),
+                       'open_robots': self.oetOpenRobotsPushButton.isChecked()}
         self.update_detection_params_signal.emit(params_dict)
 
     @QtCore.pyqtSlot(QtGui.QMouseEvent)
@@ -309,6 +310,8 @@ class Window(GUI):
         self.function_generator.set_waveform(w)
 
     def changeMagnification(self, text):
+        if self.detectRobotsPushButton.isChecked():
+            self.detectRobotsPushButton.click()
         idx_dict = {k: v for k, v in zip(self.objectives, range(1, 7))}
         self.microscope.set_objective(idx_dict[text])
         self.update_detection_params()

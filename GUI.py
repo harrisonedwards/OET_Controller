@@ -151,6 +151,8 @@ class GUI(QtWidgets.QWidget):
         self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Paths')
         self.oetCalibratePushButton = QtWidgets.QPushButton('Calibrate')
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
+        self.oetOpenRobotsPushButton = QtWidgets.QPushButton('Open Robots')
+        self.oetOpenRobotsPushButton.setCheckable(True)
         self.oetScaleLabel = QtWidgets.QLabel('Scale:')
         self.oetScaleDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.oetScaleDoubleSpinBox.setSuffix('%')
@@ -274,7 +276,6 @@ class GUI(QtWidgets.QWidget):
         self.oetGroupBox = QtWidgets.QGroupBox('OET Controls')
         self.oetLayout = QtWidgets.QVBoxLayout()
         self.oetGroupBox.setLayout(self.oetLayout)
-
         self.oetLayoutUpper = QtWidgets.QHBoxLayout()
         self.oetLayoutUpper.addWidget(self.detectRobotsPushButton)
         self.oetLayoutUpper.addWidget(self.bufferSizeLabel)
@@ -297,6 +298,7 @@ class GUI(QtWidgets.QWidget):
         self.oetLayoutLower.addWidget(self.oetLoadProjectionImagePushButton)
         self.oetLayoutLower.addWidget(self.oetProjectImagePushButton)
         self.oetLayoutLower.addWidget(self.oetRunPushButton)
+        self.oetLayoutLower.addWidget(self.oetOpenRobotsPushButton)
         self.oetLayoutLower.addWidget(self.oetScaleLabel)
         self.oetLayoutLower.addWidget(self.oetScaleDoubleSpinBox)
         self.oetLayoutLower.addWidget(self.oetScaleUpPushButton)
@@ -411,6 +413,7 @@ class GUI(QtWidgets.QWidget):
         self.oetLoadProjectionImagePushButton.clicked.connect(self.load_oet_projection)
         self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
         self.oetRunPushButton.clicked.connect(self.run_oet_commands)
+        self.oetOpenRobotsPushButton.clicked.connect(self.update_detection_params)
         self.oetScaleUpPushButton.clicked.connect(self.scale_up_oet_projection)
         self.oetScaleDownPushButton.clicked.connect(self.scale_down_oet_projection)
         self.oetToggleLampPushButton.clicked.connect(self.toggle_dmd_lamp)
@@ -427,6 +430,7 @@ class GUI(QtWidgets.QWidget):
         self.oetTranslateDoubleSpinBox.setEnabled(False)
         self.oetScaleUpPushButton.setEnabled(False)
         self.oetRunPushButton.setEnabled(False)
+        self.oetOpenRobotsPushButton.setEnabled(False)
 
         self.dmd.initialize_dmd()
         self.fluorescence_controller.turn_all_off()
@@ -442,6 +446,7 @@ class GUI(QtWidgets.QWidget):
         self.oetTranslateDoubleSpinBox.setEnabled(True)
         self.oetScaleUpPushButton.setEnabled(True)
         self.oetRunPushButton.setEnabled(True)
+        self.oetOpenRobotsPushButton.setEnabled(True)
 
     def setChildrenFocusPolicy(self, policy):
         def recursiveSetChildFocusPolicy(parentQWidget):

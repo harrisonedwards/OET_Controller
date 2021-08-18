@@ -54,6 +54,7 @@ class imageProcessor(QtCore.QThread):
         self.window_size = QtCore.QSize(self.height, self.width)
         self.buffer_size = 10
         self.dilation_size = 30
+        self.open_robots = False
 
         # initialize all of our empty masks
         self.robot_control_mask = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT), dtype=np.uint8)
@@ -103,6 +104,7 @@ class imageProcessor(QtCore.QThread):
         self.buffer_size = params_dict['buffer_size']
         self.dilation_size = params_dict['dilation_size']
         self.objective = params_dict['objective']
+        self.open_robots = params_dict['open_robots']
         print('detection params updated:', params_dict)
 
     @QtCore.pyqtSlot()
@@ -179,7 +181,8 @@ class imageProcessor(QtCore.QThread):
         self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image,
                                                                                   self.dilation_size,
                                                                                   self.buffer_size,
-                                                                                  self.objective)
+                                                                                  self.objective,
+                                                                                  self.open_robots)
 
         if len(robot_contours) == 0:
             # no robots found
