@@ -37,8 +37,13 @@ class Stage():
     def move_relative(self, x=0, y=0):
         ret = self.read_write(f'!mor {x} {y} 0')
         # print(ret)
-        # if b'OK' not in ret:
-        #     raise Exception(f'Stage movement error: {ret}')
+        if b'OK' not in ret:
+            raise Exception(f'Stage movement error: {ret}')
+
+    def halt(self):
+        ret = self.read_write('!a')
+        if b'OK' not in ret:
+            raise Exception(f'Stage movement error: {ret}')
 
     def step(self, direction):
         if direction == 'l':

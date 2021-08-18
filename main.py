@@ -236,6 +236,8 @@ class Window(GUI):
 
     def keyPressEvent(self, event):
         key = event.key()
+        if key == QtCore.Qt.Key_Escape:
+            self.stage.halt()
         if self.project_image_mode:
             rotate_amt = self.oetRotationDoubleSpinBox.value()
             translate_amt = self.oetTranslateDoubleSpinBox.value()
