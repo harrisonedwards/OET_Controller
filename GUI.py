@@ -153,6 +153,8 @@ class GUI(QtWidgets.QWidget):
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
         self.oetOpenRobotsPushButton = QtWidgets.QPushButton('Open Robots')
         self.oetOpenRobotsPushButton.setCheckable(True)
+        self.oetControlDetectedPushButton = QtWidgets.QPushButton('Control Detected Robot')
+        self.oetControlDetectedPushButton.setCheckable(True)
         self.oetScaleLabel = QtWidgets.QLabel('Scale:')
         self.oetScaleDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.oetScaleDoubleSpinBox.setSuffix('%')
@@ -299,6 +301,7 @@ class GUI(QtWidgets.QWidget):
         self.oetLayoutLower.addWidget(self.oetProjectImagePushButton)
         self.oetLayoutLower.addWidget(self.oetRunPushButton)
         self.oetLayoutLower.addWidget(self.oetOpenRobotsPushButton)
+        self.oetLayoutLower.addWidget(self.oetControlDetectedPushButton)
         self.oetLayoutLower.addWidget(self.oetScaleLabel)
         self.oetLayoutLower.addWidget(self.oetScaleDoubleSpinBox)
         self.oetLayoutLower.addWidget(self.oetScaleUpPushButton)
@@ -414,6 +417,7 @@ class GUI(QtWidgets.QWidget):
         self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
         self.oetRunPushButton.clicked.connect(self.run_oet_commands)
         self.oetOpenRobotsPushButton.clicked.connect(self.update_detection_params)
+        self.oetControlDetectedPushButton.clicked.connect(self.toggleControlDetected)
         self.oetScaleUpPushButton.clicked.connect(self.scale_up_oet_projection)
         self.oetScaleDownPushButton.clicked.connect(self.scale_down_oet_projection)
         self.oetToggleLampPushButton.clicked.connect(self.toggle_dmd_lamp)
@@ -431,6 +435,7 @@ class GUI(QtWidgets.QWidget):
         self.oetScaleUpPushButton.setEnabled(False)
         self.oetRunPushButton.setEnabled(False)
         self.oetOpenRobotsPushButton.setEnabled(False)
+        self.oetControlDetectedPushButton.setEnabled(False)
 
         self.dmd.initialize_dmd()
         self.fluorescence_controller.turn_all_off()
@@ -447,6 +452,7 @@ class GUI(QtWidgets.QWidget):
         self.oetScaleUpPushButton.setEnabled(True)
         self.oetRunPushButton.setEnabled(True)
         self.oetOpenRobotsPushButton.setEnabled(True)
+        self.oetControlDetectedPushButton.setEnabled(True)
 
     def setChildrenFocusPolicy(self, policy):
         def recursiveSetChildFocusPolicy(parentQWidget):

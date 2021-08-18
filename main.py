@@ -62,9 +62,10 @@ class Window(GUI):
             print(f'unable to connect to polygon: {e}')
             self.dmd = False
 
-        self.dispenseMode = None
+        self.dispenseMode = None  # should be set by the GUI immediately
         self.project_circle_mode = False
         self.project_image_mode = False
+        self.controlling_detected_mode = False
 
         self.setupUI(self)
         self.initialize_gui_state()
@@ -135,6 +136,7 @@ class Window(GUI):
     def handle_click(self, event):
         # see if we are calibrated
         if len(self.image_viewer.calibration_payload) < 3:
+            print('not calibrated...ignoring click')
             return
         x = event.pos().x()
         y = event.pos().y()
@@ -146,7 +148,7 @@ class Window(GUI):
         # check if we can illuminate the clicked area with the dmd
         check = self.check_if_in_dmd_area(unit_scaled_viewer_x, unit_scaled_viewer_y)
         if not check:
-            print('not within DMD area. ignoring click')
+            print('not within DMD area...ignoring click')
             return
 
         # get the full scale of our dmd area
@@ -162,6 +164,8 @@ class Window(GUI):
             self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
         elif self.project_image_mode:
             self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y)
+        elif self.controlling_detected_mode:
+            pass
 
     def run_oet_commands(self):
         if self.detectRobotsPushButton.isChecked():
@@ -221,6 +225,9 @@ class Window(GUI):
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()
         self.image_viewer.drawing = state
+
+    def toggleControlDetected(self):
+        self.controlling_detected_mode = self.oetControlDetectedPushButton.isChecked()
 
     def closeEvent(self, event):
         print('closing all connections...')

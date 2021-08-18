@@ -52,7 +52,7 @@ def get_robot_control_mask(large_contours, detect, dilation_size, buffer_offset_
     contours_towards_center = []
     contour_range_border_limit = 100 * objective_calibration_dict[objective][1]
     robot_center_radius = 120 // objective_calibration_dict[objective][0]
-    line_length = 200
+    line_length = int(200 * objective_calibration_dict[objective][2])
     line_width = int(80 * objective_calibration_dict[objective][2])
 
     contours_in_limits = []
