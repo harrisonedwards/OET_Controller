@@ -106,6 +106,7 @@ class Polygon1000():
         print('open dmd leds:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
         print('reset dmd device:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
         print('open dmd led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        self.set_dmd_current(0)
         # print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
         # for channel in range(1, 2): # there are 4 total channels, but we will forget about them for now
         #     print(f'set led mode to enable for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))

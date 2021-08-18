@@ -2,7 +2,7 @@ import serial
 import sys
 
 
-DEFAULT_INTENSITY = 50
+DEFAULT_INTENSITY = 5
 
 class FluorescenceController():
 
@@ -16,6 +16,7 @@ class FluorescenceController():
         # print(self.send_receive(('ip=' + ','.join(['500' for i in range(4)]))))
         self.lamp_index = 0
         self.current_intensity = DEFAULT_INTENSITY
+        self.change_intensity(DEFAULT_INTENSITY)
         self.turn_all_off()
 
     def __del__(self):
@@ -66,8 +67,6 @@ class FluorescenceController():
         self.issue_command(command, suppress_msg)
         response = self.get_response()
         return response
-
-
 
     def turn_led_on(self):
         self.send_receive('on=a')
