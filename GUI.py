@@ -130,6 +130,20 @@ class GUI(QtWidgets.QWidget):
 
         # DMD
         self.detectRobotsPushButton = QtWidgets.QPushButton('Detect Robots')
+        self.bufferSizeLabel = QtWidgets.QLabel('Buffer:')
+        self.bufferSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.bufferSizeDoubleSpinBox.setSuffix('px')
+        self.bufferSizeDoubleSpinBox.setDecimals(0)
+        self.bufferSizeDoubleSpinBox.setSingleStep(5)
+        self.bufferSizeDoubleSpinBox.setValue(10)
+
+        self.dilationSizeLabel = QtWidgets.QLabel('Dilation:')
+        self.dilationSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.dilationSizeDoubleSpinBox.setSuffix('px')
+        self.dilationSizeDoubleSpinBox.setDecimals(0)
+        self.dilationSizeDoubleSpinBox.setSingleStep(5)
+        self.dilationSizeDoubleSpinBox.setValue(30)
+
         self.drawPathsPushButton = QtWidgets.QPushButton('Draw Paths')
         self.drawPathsPushButton.setCheckable(True)
         self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Paths')
@@ -262,6 +276,10 @@ class GUI(QtWidgets.QWidget):
         self.oetLayoutUpper = QtWidgets.QHBoxLayout()
         self.oetLayoutUpper.addWidget(self.detectRobotsPushButton)
         self.detectRobotsPushButton.setCheckable(True)
+        self.oetLayoutUpper.addWidget(self.bufferSizeLabel)
+        self.oetLayoutUpper.addWidget(self.bufferSizeDoubleSpinBox)
+        self.oetLayoutUpper.addWidget(self.dilationSizeLabel)
+        self.oetLayoutUpper.addWidget(self.dilationSizeDoubleSpinBox)
         self.oetLayoutUpper.addWidget(self.drawPathsPushButton)
         self.oetLayoutUpper.addWidget(self.oetClearOverlayPushButton)
         self.oetLayoutUpper.addWidget(self.oetCalibratePushButton)
