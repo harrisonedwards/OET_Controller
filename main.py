@@ -77,18 +77,10 @@ class Window(GUI):
 
     def turn_on_robot_detection(self):
         state = self.detectRobotsPushButton.isChecked()
-        if state:
-            self.detectRobotsPushButton.setStyleSheet('background-color : lightblue')
-        else:
-            self.detectRobotsPushButton.setStyleSheet('background-color : lightgrey')
         self.enable_robot_detection_signal.emit(state)
 
     def toggleVideoRecording(self):
         state = self.takeVideoPushbutton.isChecked()
-        if state:
-            self.takeVideoPushbutton.setStyleSheet('background-color : lightblue')
-        else:
-            self.takeVideoPushbutton.setStyleSheet('background-color : lightgrey')
         if state:
             self.start_record_video_signal.emit()
         else:
@@ -97,20 +89,12 @@ class Window(GUI):
     def toggleFLuorescenceLamp(self):
         state = self.fluorescenceToggleLampPushButton.isChecked()
         if state:
-            self.fluorescenceToggleLampPushButton.setStyleSheet('background-color : lightblue')
-        else:
-            self.fluorescenceToggleLampPushButton.setStyleSheet('background-color : lightgrey')
-        if state:
             self.fluorescence_controller.turn_led_on()
         else:
             self.fluorescence_controller.turn_all_off()
 
     def toggle_dmd_lamp(self):
         state = self.oetToggleLampPushButton.isChecked()
-        if state:
-            self.oetToggleLampPushButton.setStyleSheet('background-color : lightblue')
-        else:
-            self.oetToggleLampPushButton.setStyleSheet('background-color : lightgrey')
         self.dmd.toggle_dmd_light(state)
 
     def scale_up_oet_projection(self):
@@ -331,34 +315,18 @@ class Window(GUI):
 
     def toggleFluorShutter(self):
         state = self.fluorescenceShutterPushButton.isChecked()
-        if state:
-            self.fluorescenceShutterPushButton.setStyleSheet('background-color : lightblue')
-        else:
-            self.fluorescenceShutterPushButton.setStyleSheet('background-color : lightgrey')
         self.microscope.set_turret_shutter(state)
 
     def toggleDiaShutter(self):
         state = self.diaShutterPushButton.isChecked()
-        if state:
-            self.diaShutterPushButton.setStyleSheet('background-color : lightblue')
-        else:
-            self.diaShutterPushButton.setStyleSheet('background-color : lightgrey')
         self.microscope.set_dia_shutter(state)
 
     def toggleDiaLamp(self):
         state = self.diaLightPushbutton.isChecked()
-        if state:
-            self.diaLightPushbutton.setStyleSheet('background-color : lightblue')
-        else:
-            self.diaLightPushbutton.setStyleSheet('background-color : lightgrey')
         self.microscope.toggle_dia_light(state)
 
     def toggleRotation(self):
         state = self.cameraRotationPushButton.isChecked()
-        if state:
-            self.cameraRotationPushButton.setStyleSheet('background-color : lightblue')
-        else:
-            self.cameraRotationPushButton.setStyleSheet('background-color : lightgrey')
         self.image_processing.rotation = state
 
     def setCameraExposure(self, exposure):

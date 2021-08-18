@@ -130,13 +130,13 @@ class GUI(QtWidgets.QWidget):
 
         # DMD
         self.detectRobotsPushButton = QtWidgets.QPushButton('Detect Robots')
+        self.detectRobotsPushButton.setCheckable(True)
         self.bufferSizeLabel = QtWidgets.QLabel('Buffer:')
         self.bufferSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.bufferSizeDoubleSpinBox.setSuffix('px')
         self.bufferSizeDoubleSpinBox.setDecimals(0)
         self.bufferSizeDoubleSpinBox.setSingleStep(5)
         self.bufferSizeDoubleSpinBox.setValue(10)
-
         self.dilationSizeLabel = QtWidgets.QLabel('Dilation:')
         self.dilationSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.dilationSizeDoubleSpinBox.setSuffix('px')
@@ -146,6 +146,8 @@ class GUI(QtWidgets.QWidget):
 
         self.drawPathsPushButton = QtWidgets.QPushButton('Draw Paths')
         self.drawPathsPushButton.setCheckable(True)
+        self.drawShapePushButton = QtWidgets.QPushButton('Draw Shape')
+        self.drawShapePushButton.setCheckable(True)
         self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Paths')
         self.oetCalibratePushButton = QtWidgets.QPushButton('Calibrate')
         self.oetRunPushButton = QtWidgets.QPushButton('Run')
@@ -275,12 +277,12 @@ class GUI(QtWidgets.QWidget):
 
         self.oetLayoutUpper = QtWidgets.QHBoxLayout()
         self.oetLayoutUpper.addWidget(self.detectRobotsPushButton)
-        self.detectRobotsPushButton.setCheckable(True)
         self.oetLayoutUpper.addWidget(self.bufferSizeLabel)
         self.oetLayoutUpper.addWidget(self.bufferSizeDoubleSpinBox)
         self.oetLayoutUpper.addWidget(self.dilationSizeLabel)
         self.oetLayoutUpper.addWidget(self.dilationSizeDoubleSpinBox)
         self.oetLayoutUpper.addWidget(self.drawPathsPushButton)
+        self.oetLayoutUpper.addWidget(self.drawShapePushButton)
         self.oetLayoutUpper.addWidget(self.oetClearOverlayPushButton)
         self.oetLayoutUpper.addWidget(self.oetCalibratePushButton)
         self.oetLayoutUpper.addWidget(self.oetClearPushButton)
