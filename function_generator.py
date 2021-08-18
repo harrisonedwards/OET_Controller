@@ -17,6 +17,8 @@ class FunctionGenerator():
 
     def __del__(self):
         if self.connection != None:
+            self.set_voltage(0)
+            self.change_output(0)
             print('closing function generator connection...')
             self.connection.close()
 
