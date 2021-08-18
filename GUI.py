@@ -336,6 +336,7 @@ class GUI(QtWidgets.QWidget):
 
         self.image_viewer.resize_event_signal.connect(self.image_processing.resize_slot)
         self.image_viewer.path_signal.connect(self.image_processing.path_slot)
+        self.image_viewer.control_signal.connect(self.image_processing.robot_control_slot)
 
         self.set_camera_expsure_signal.connect(self.image_processing.set_exposure_slot)
 
@@ -406,7 +407,7 @@ class GUI(QtWidgets.QWidget):
         self.pumpTimeRadioButton.click()
 
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
-        self.detectRobotsPushButton.clicked.connect(self.turn_on_robot_detection)
+        self.detectRobotsPushButton.clicked.connect(self.toggle_robot_detection)
         self.dilationSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
         self.bufferSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
         self.update_detection_params_signal.connect(self.image_processing.update_detection_params_slot)
@@ -472,6 +473,7 @@ class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
     click_event_signal = QtCore.pyqtSignal(QtGui.QMouseEvent)
     path_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    control_signal = QtCore.pyqtSignal('PyQt_PyObject')
     calibration_signal = QtCore.pyqtSignal('PyQt_PyObject')
     enable_dmd_signal = QtCore.pyqtSignal()
 
@@ -480,12 +482,13 @@ class ImageViewer(QtWidgets.QWidget):
         self.image = QtGui.QImage()
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
         self.ignore_release = True
-        self.drawing = False
+        self.drawing_path = False
         self.calibrating = False
         self.robot_paths = []
         self.path_payload = {}
         self.calibration_payload = []
         self.begin_path = None
+        self.controlling_detected = False
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -528,7 +531,7 @@ class ImageViewer(QtWidgets.QWidget):
             h = self.height()
             w = int(2060 / 2048 * h)
             self.resize_event_signal.emit(QtCore.QSize(h, w), True)
-        if self.drawing:
+        if self.drawing_path:
             # subtract offsets for the x (due to black areas on sides of image)
             offset = (self.width() - self.image_width) // 2
             self.path_payload['start_x'] = self.begin_path.x() - offset
@@ -540,9 +543,9 @@ class ImageViewer(QtWidgets.QWidget):
     def mousePressEvent(self, event):
         self.ignore_release = True
         self.click_event_signal.emit(event)
-        if self.drawing:
+        if self.drawing_path:
             self.begin_path = event.pos()
-        if self.calibrating:
+        elif self.calibrating:
             # just scale this one here...probably could be neater
             x_scaled = event.pos().x() / self.width()
             y_scaled = event.pos().y() / self.height()
@@ -552,3 +555,8 @@ class ImageViewer(QtWidgets.QWidget):
                 QtWidgets.QMessageBox.about(self, 'Calibration', 'Calibration Complete')
                 self.calibrating = False
                 self.enable_dmd_signal.emit()
+        elif self.controlling_detected:
+            offset = (self.width() - self.image_width) // 2
+            self.path_payload['start_x'] = event.pos().x() - offset
+            self.path_payload['start_y'] = event.pos().y()
+            self.control_signal.emit(copy.deepcopy(self.path_payload))

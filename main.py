@@ -65,7 +65,6 @@ class Window(GUI):
         self.dispenseMode = None  # should be set by the GUI immediately
         self.project_circle_mode = False
         self.project_image_mode = False
-        self.controlling_detected_mode = False
 
         self.setupUI(self)
         self.initialize_gui_state()
@@ -79,7 +78,7 @@ class Window(GUI):
         # make our image processor aware of the system state
         self.update_detection_params()
 
-    def turn_on_robot_detection(self):
+    def toggle_robot_detection(self):
         state = self.detectRobotsPushButton.isChecked()
         self.enable_robot_detection_signal.emit(state)
 
@@ -164,8 +163,7 @@ class Window(GUI):
             self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
         elif self.project_image_mode:
             self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y)
-        elif self.controlling_detected_mode:
-            pass
+
 
     def run_oet_commands(self):
         if self.detectRobotsPushButton.isChecked():
@@ -224,10 +222,10 @@ class Window(GUI):
 
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()
-        self.image_viewer.drawing = state
+        self.image_viewer.drawing_path = state
 
     def toggleControlDetected(self):
-        self.controlling_detected_mode = self.oetControlDetectedPushButton.isChecked()
+        self.image_viewer.controlling_detected = self.oetControlDetectedPushButton.isChecked()
 
     def closeEvent(self, event):
         print('closing all connections...')

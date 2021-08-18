@@ -262,6 +262,14 @@ class imageProcessor(QtCore.QThread):
         # print('robots:', self.robots)
         self.draw_paths()
 
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def robot_control_slot(self, payload):
+        if len(self.robots.items()) == 0:
+            print('no robots currently detected for control...ignoring.')
+            return
+        # find nearest robot here and add it to the dictionary
+        cx, cy, nearest_robot = self.find_closest_robot(payload)
+
     def draw_paths(self):
         self.path_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
         # find closest contour, color the robot the same as the path, and draw it
