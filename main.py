@@ -119,7 +119,7 @@ class Window(GUI):
             self.detectRobotsPushButton.click()
 
         # grab our current controlled robots, project a control dmd image around them, and stop detection
-        img = self.image_processing.robot_control_mask
+        img = self.image_processing.detection_overlay
 
         # resize to our viewer window image size
         img = cv2.resize(img, (self.image_viewer.height() * 2060 // 2048, self.image_viewer.height()))

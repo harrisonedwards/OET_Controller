@@ -1,5 +1,7 @@
 import os, sys, time
 from time import strftime
+
+import names
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 import cv2
@@ -230,7 +232,7 @@ class imageProcessor(QtCore.QThread):
             print('initial finding of robots...')
             # first time finding robots, so lets update our finding them
             for i in range(len(robot_contours)):
-                name = f'robot_{i}'
+                name = names.get_first_name()
                 self.robots[name] = {'contour': robot_contours[i], 'angle': robot_angles[i]}
         else:
             # update our understanding of the robots
@@ -251,18 +253,22 @@ class imageProcessor(QtCore.QThread):
 
     def update_robot_information(self, new_robot_contours, new_robot_angles):
         # we want to see if our newly detected robots are similar to our old robots, given a distance threshold
-        similarity_threshold = .4
-        consistent_robot_count = 0
-        for k, v in self.robots.items():
-            old_contour = self.robots[k]['contour']
+        similarity_threshold = .3
+        for robot in self.robots:
+            old_contour = self.robots[robot]['contour']
             for new_contour, new_angle in zip(new_robot_contours, new_robot_angles):
                 if cv2.matchShapes(new_contour, old_contour, 2, 0) < similarity_threshold:
                     # they are a match! let's update the robot internal dictionary
-                    consistent_robot_count += 1
-                    self.robots[k]['contour'] = new_contour
-                    self.robots[k]['angle'] = new_angle
+                    self.robots[robot]['contour'] = new_contour
+                    self.robots[robot]['angle'] = new_angle
+                    print(f'robot {robot} found and kept consistent. {len(new_robot_contours)} total robots')
                 else:
-                    print('possible loss of robot detection!')
+                    # we need to add the new robot to our dictionary
+                    name = names.get_first_name()
+                    while name in self.robots.keys():
+                        name = names.get_first_name()
+                    self.robots[robot] = {'contour': new_contour, 'angle': new_angle}
+                    # print(f'new robot {name} found and added to tracking...')
 
     def find_closest_robot(self, payload):
         min_d = np.inf
