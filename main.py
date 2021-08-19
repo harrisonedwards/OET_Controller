@@ -70,6 +70,8 @@ class Window(GUI):
         self.initialize_gui_state()
         self.showMaximized()
 
+        self.image_processing.robot_signal.connect(self.robot_control_slot)
+
         # connect to the video thread and start the video
         self.start_video_signal.connect(self.image_processing.startVideo)
         self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)
@@ -77,6 +79,74 @@ class Window(GUI):
 
         # make our image processor aware of the system state
         self.update_detection_params()
+
+    @QtCore.pyqtSlot(QtGui.QMouseEvent)
+    def handle_click(self, event):
+        # see if we are calibrated
+        if len(self.image_viewer.calibration_payload) < 3:
+            print('not calibrated...ignoring click')
+            return
+        x = event.pos().x()
+        y = event.pos().y()
+
+        # scale everything
+        unit_scaled_viewer_x = x / self.image_viewer.width()
+        unit_scaled_viewer_y = y / self.image_viewer.height()
+
+        # check if we can illuminate the clicked area with the dmd
+        check = self.check_if_in_dmd_area(unit_scaled_viewer_x, unit_scaled_viewer_y)
+        if not check:
+            print('not within DMD area...ignoring click')
+            return
+
+        # get the full scale of our dmd area
+        dmd_fs_x = self.image_viewer.calibration_payload[-1][0] - self.image_viewer.calibration_payload[0][0]
+        dmd_fs_y = self.image_viewer.calibration_payload[-1][1] - self.image_viewer.calibration_payload[0][1]
+
+        # subtract out our top left calibration spot and divide by full scale
+        dmd_scaled_x = (unit_scaled_viewer_x - self.image_viewer.calibration_payload[0][0]) / dmd_fs_x
+        dmd_scaled_y = (unit_scaled_viewer_y - self.image_viewer.calibration_payload[0][1]) / dmd_fs_y
+
+        # project in the proper mode
+        if self.project_circle_mode:
+            self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
+        elif self.project_image_mode:
+            self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y)
+
+    def project_detection_pattern(self):
+        # TODO: move to image processor
+        if self.detectRobotsPushButton.isChecked():
+            self.detectRobotsPushButton.click()
+
+        # grab our current controlled robots, project a control dmd image around them, and stop detection
+        img = self.image_processing.robot_control_mask
+
+        # resize to our viewer window image size
+        img = cv2.resize(img, (self.image_viewer.height() * 2060 // 2048, self.image_viewer.height()))
+        _, img = cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)
+
+        # now we crop out the sections that cannot be illuminated by the dmd
+        # need an offset (difference between image width and viewer width)
+        offset = int(0.5 * (self.image_viewer.width() - img.shape[0]))
+        dmd_start_x = int(self.image_viewer.calibration_payload[0][0] * self.image_viewer.width() - offset)
+        dmd_end_x = int(self.image_viewer.calibration_payload[-1][0] * self.image_viewer.width() - offset)
+        dmd_start_y = int(self.image_viewer.calibration_payload[0][1] * self.image_viewer.height())
+        dmd_end_y = int(self.image_viewer.calibration_payload[-1][1] * self.image_viewer.height())
+        img = img[dmd_start_y:dmd_end_y, dmd_start_x:dmd_end_x]
+
+        # final resize to adjust to exact dimensions for dmd projection
+        img = cv2.resize(img, (912 * 2, 1140))
+        _, img = cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)
+
+        # finally, render it
+        print('rendering to dmd...')
+        self.dmd.render_to_dmd(img)
+
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def robot_control_slot(self, robot_signal):
+        print(robot_signal)
+        cx, cy, robot = robot_signal
 
     def toggle_robot_detection(self):
         state = self.detectRobotsPushButton.isChecked()
@@ -130,72 +200,6 @@ class Window(GUI):
                        'objective': self.magnificationComboBoxWidget.currentText(),
                        'open_robots': self.oetOpenRobotsPushButton.isChecked()}
         self.update_detection_params_signal.emit(params_dict)
-
-    @QtCore.pyqtSlot(QtGui.QMouseEvent)
-    def handle_click(self, event):
-        # see if we are calibrated
-        if len(self.image_viewer.calibration_payload) < 3:
-            print('not calibrated...ignoring click')
-            return
-        x = event.pos().x()
-        y = event.pos().y()
-
-        # scale everything
-        unit_scaled_viewer_x = x / self.image_viewer.width()
-        unit_scaled_viewer_y = y / self.image_viewer.height()
-
-        # check if we can illuminate the clicked area with the dmd
-        check = self.check_if_in_dmd_area(unit_scaled_viewer_x, unit_scaled_viewer_y)
-        if not check:
-            print('not within DMD area...ignoring click')
-            return
-
-        # get the full scale of our dmd area
-        dmd_fs_x = self.image_viewer.calibration_payload[-1][0] - self.image_viewer.calibration_payload[0][0]
-        dmd_fs_y = self.image_viewer.calibration_payload[-1][1] - self.image_viewer.calibration_payload[0][1]
-
-        # subtract out our top left calibration spot and divide by full scale
-        dmd_scaled_x = (unit_scaled_viewer_x - self.image_viewer.calibration_payload[0][0]) / dmd_fs_x
-        dmd_scaled_y = (unit_scaled_viewer_y - self.image_viewer.calibration_payload[0][1]) / dmd_fs_y
-
-        # project in the proper mode
-        if self.project_circle_mode:
-            self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
-        elif self.project_image_mode:
-            self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y)
-
-
-    def run_oet_commands(self):
-        if self.detectRobotsPushButton.isChecked():
-            self.detectRobotsPushButton.click()
-
-        # grab our current controlled robots, project a control dmd image around them, and stop detection
-        img = self.image_processing.robot_control_mask
-
-        # resize to our viewer window image size
-        img = cv2.resize(img, (self.image_viewer.height() * 2060 // 2048, self.image_viewer.height()))
-        _, img = cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)
-
-        # now we crop out the sections that cannot be illuminated by the dmd
-        # need an offset (difference between image width and viewer width)
-        offset = int(0.5 * (self.image_viewer.width() - img.shape[0]))
-        dmd_start_x = int(self.image_viewer.calibration_payload[0][0] * self.image_viewer.width() - offset)
-        dmd_end_x = int(self.image_viewer.calibration_payload[-1][0] * self.image_viewer.width() - offset)
-        dmd_start_y = int(self.image_viewer.calibration_payload[0][1] * self.image_viewer.height())
-        dmd_end_y = int(self.image_viewer.calibration_payload[-1][1] * self.image_viewer.height())
-        img = img[dmd_start_y:dmd_end_y, dmd_start_x:dmd_end_x]
-
-        # final resize to adjust to exact dimensions for dmd projection
-        img = cv2.resize(img, (912 * 2, 1140))
-        _, img = cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)
-
-        # finally, render it
-        print('rendering to dmd...')
-        self.dmd.render_to_dmd(img)
-
-    def camera_to_dmd_conversion(self, camera_view):
-        # takes a camera image as input and maps it to the DMD projector. TODO: MOVE TO IMAGE PROCESSOR
-        pass
 
     def check_if_in_dmd_area(self, scaled_x, scaled_y):
         # define bounds
@@ -253,17 +257,7 @@ class Window(GUI):
                 self.dmd.strafe(translate_amt)
             elif key == QtCore.Qt.Key_D:
                 self.dmd.strafe(-translate_amt)
-        if self.cameraRotationPushButton.isChecked():
-            if key == QtCore.Qt.Key_Up:
-                self.stage.step('r')
-            elif key == QtCore.Qt.Key_Left:
-                self.stage.step('u')
-            elif key == QtCore.Qt.Key_Right:
-                self.stage.step('d')
-            elif key == QtCore.Qt.Key_Down:
-                self.stage.step('l')
         else:
-
             if key == QtCore.Qt.Key_Up:
                 self.stage.step('r')
             elif key == QtCore.Qt.Key_Left:
@@ -336,10 +330,6 @@ class Window(GUI):
     def toggleDiaLamp(self):
         state = self.diaLightPushbutton.isChecked()
         self.microscope.toggle_dia_light(state)
-
-    def toggleRotation(self):
-        state = self.cameraRotationPushButton.isChecked()
-        self.image_processing.rotation = state
 
     def setCameraExposure(self, exposure):
         self.set_camera_expsure_signal.emit(exposure)

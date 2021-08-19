@@ -36,9 +36,9 @@ def get_robot_angle(contour, center):
     return np.nanmean(np.where(val == 0, bin_centers, np.nan))
 
 
-def get_robot_control_mask(large_contours, detect, dilation_size, buffer_offset_size, objective, open_robots):
+def get_robots(large_contours, detect, objective):
     # get memory
-    robot_control_mask, inner_circle_mask = np.zeros(detect.shape), np.zeros(detect.shape)
+    robot_control_mask  = np.zeros(detect.shape)
     large_contour_image = cv2.drawContours(np.copy(robot_control_mask), large_contours, -1, 1, -1)
 
     # probably needs more adjustment in the future, so will make a dict for now
@@ -51,9 +51,6 @@ def get_robot_control_mask(large_contours, detect, dilation_size, buffer_offset_
     robot_angles = []
     contours_towards_center = []
     contour_range_border_limit = 100 * objective_calibration_dict[objective][1]
-    robot_center_radius = 120 // objective_calibration_dict[objective][0]
-    line_length = int(200 * objective_calibration_dict[objective][2])
-    line_width = int(80 * objective_calibration_dict[objective][2])
 
     contours_in_limits = []
     for contour in large_contours:
@@ -70,48 +67,19 @@ def get_robot_control_mask(large_contours, detect, dilation_size, buffer_offset_
                 cy = int(M["m01"] / M["m00"])
 
                 contours_towards_center.append(contour)
-                cv2.circle(inner_circle_mask, (cx, cy), robot_center_radius, 1, -1)
+
                 angle = get_robot_angle(contour, (cx, cy))
-                # cv2.line(inner_circle_mask, (cx, cy),
-                # (cx + int(line_length*np.cos(angle)), cy + int(line_length*np.sin(angle))), 1, line_width)
                 robot_angles.append(angle)
 
-    # draw the contours on our control mask
-    robot_control_mask = cv2.drawContours(robot_control_mask, contours_towards_center, -1, 1, -1)  # .astype(np.uint8)
-    robot_control_mask = np.logical_or(inner_circle_mask, robot_control_mask).astype(np.uint8)
-    robot_control_mask = cv2.dilate(robot_control_mask, np.ones((buffer_offset_size, buffer_offset_size)))
-
-    # subtract a dilation from outside of the periphery
-    dilation = np.copy(robot_control_mask)  # .astype(np.uint8)
-    dilation = cv2.dilate(dilation, np.ones((dilation_size, dilation_size)))
-    robot_control_mask -= dilation
-
-    if open_robots:
-        for contour in large_contours:
-            M = cv2.moments(contour)
-            cx = int(M["m10"] / M["m00"])
-            cy = int(M["m01"] / M["m00"])
-            try:
-                cv2.line(robot_control_mask, (cx, cy),
-                         (cx + int(line_length * np.cos(angle)), cy + int(line_length * np.sin(angle))), 0, line_width)
-            except Exception as e:
-                print('failed to draw line to open robots')
+    return contours_towards_center, robot_angles
 
 
-
-    return robot_control_mask, contours_towards_center, robot_angles
-
-
-def get_robot_control(img, dilation_size, buffer_offset_size, objective, open_robots=False):
+def get_robot_control(img, objective):
     detected = detect(img)
 
     large_contours = get_large_contours(detected)
 
-    robot_control_mask, contours_towards_center, robot_angles = get_robot_control_mask(large_contours,
-                                                                                       detected,
-                                                                                       dilation_size,
-                                                                                       buffer_offset_size,
-                                                                                       objective,
-                                                                                       open_robots)
-
-    return robot_control_mask, contours_towards_center, robot_angles
+    robots, robot_angles = get_robots(large_contours,
+                                      detected,
+                                      objective)
+    return robots, robot_angles

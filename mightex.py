@@ -123,27 +123,6 @@ class Polygon1000():
     def toggle_dmd_light(self, state):
         print(f'set led mode to enable for channel:', self.led_clib.MTUSB_BLSDriverSetMode(0, 1, int(state)))
 
-    def draw_pyglet(self):
-
-        glReadPixels(0, 0, self.width, self.height, GL_LUMINANCE, GL_UNSIGNED_BYTE, self.byte_buff)
-
-        # self.numpy_buff[::2] = np.frombuffer(self.byte_buff, dtype=np.uint8)
-        # self.numpy_buff[1::2] = np.frombuffer(self.byte_buff, dtype=np.uint8)
-
-        data = (c_byte * len(self.image_bytes1))(
-            *np.packbits(np.reshape(np.frombuffer(self.byte_buff, dtype=np.uint8), (self.height, self.width)
-                                    ).T.flatten()[self.mask]).tobytes()
-        )
-        # data = (c_byte*len(self.image_bytes1))(*self.image_bytes1)
-        self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1))
-
-    def project_calibration_pattern(self):
-        print('projecting calibration pattern...')
-        numpy_image = np.zeros((self.height, self.width), dtype=bool)
-        self.draw_square(numpy_image, 25, 25)
-        self.draw_square(numpy_image, 25, 25)
-        self.draw_square(numpy_image, 912 - 25, 1140 - 25)
-
     def get_blank_image(self):
         offs = np.zeros((self.height, self.width * 2), dtype=np.uint8)
         return offs
@@ -270,8 +249,20 @@ class Polygon1000():
         image_bytes = np.packbits(img).tobytes()
         data = (c_byte * len(image_bytes))(*image_bytes)
         self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1))
-        # print('rendering to dmd:', self.tog,
-        #       )
+
+    def draw_pyglet(self):
+
+        glReadPixels(0, 0, self.width, self.height, GL_LUMINANCE, GL_UNSIGNED_BYTE, self.byte_buff)
+
+        # self.numpy_buff[::2] = np.frombuffer(self.byte_buff, dtype=np.uint8)
+        # self.numpy_buff[1::2] = np.frombuffer(self.byte_buff, dtype=np.uint8)
+
+        data = (c_byte * len(self.image_bytes1))(
+            *np.packbits(np.reshape(np.frombuffer(self.byte_buff, dtype=np.uint8), (self.height, self.width)
+                                    ).T.flatten()[self.mask]).tobytes()
+        )
+        # data = (c_byte*len(self.image_bytes1))(*self.image_bytes1)
+        self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1))
 
 
 if __name__ == '__main__':

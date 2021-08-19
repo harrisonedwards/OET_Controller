@@ -70,9 +70,6 @@ class GUI(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.setSingleStep(20)
         self.cameraExposureDoubleSpinBox.setValue(200)
 
-        self.cameraRotationPushButton = QtWidgets.QPushButton('Rotate')
-        self.cameraRotationPushButton.setCheckable(True)
-
         # FUNCTION GENERATOR
         self.voltageLabel = QtWidgets.QLabel(text='Voltage:')
         self.voltageDoubleSpinBox = QtWidgets.QDoubleSpinBox()
@@ -150,7 +147,7 @@ class GUI(QtWidgets.QWidget):
         self.drawShapePushButton.setCheckable(True)
         self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Paths')
         self.oetCalibratePushButton = QtWidgets.QPushButton('Calibrate')
-        self.oetRunPushButton = QtWidgets.QPushButton('Run')
+        self.oetProjectDetectionPushButton = QtWidgets.QPushButton('Project Detection Pattern')
         self.oetOpenRobotsPushButton = QtWidgets.QPushButton('Open Robots')
         self.oetOpenRobotsPushButton.setCheckable(True)
         self.oetControlDetectedPushButton = QtWidgets.QPushButton('Control Detected Robot')
@@ -221,7 +218,6 @@ class GUI(QtWidgets.QWidget):
         self.microscopeLayoutLower.addWidget(self.diaVoltageDoubleSpinBox)
         self.microscopeLayoutLower.addWidget(self.cameraExposureLabel)
         self.microscopeLayoutLower.addWidget(self.cameraExposureDoubleSpinBox)
-        self.microscopeLayoutLower.addWidget(self.cameraRotationPushButton)
         self.microscopeLayout.addLayout(self.microscopeLayoutLower)
 
         self.microscopeLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
@@ -299,7 +295,7 @@ class GUI(QtWidgets.QWidget):
         self.oetLayoutMiddle.addWidget(self.oetProjectCirclePushButton)
         self.oetLayoutMiddle.addWidget(self.oetLoadProjectionImagePushButton)
         self.oetLayoutMiddle.addWidget(self.oetProjectImagePushButton)
-        self.oetLayoutMiddle.addWidget(self.oetRunPushButton)
+        self.oetLayoutMiddle.addWidget(self.oetProjectDetectionPushButton)
         self.oetLayoutMiddle.addWidget(self.oetOpenRobotsPushButton)
         self.oetLayoutMiddle.addWidget(self.oetControlDetectedPushButton)
         self.oetLayout.addLayout(self.oetLayoutMiddle)
@@ -392,7 +388,7 @@ class GUI(QtWidgets.QWidget):
         self.diaLightPushbutton.clicked.connect(self.toggleDiaLamp)
         self.diaVoltageDoubleSpinBox.valueChanged.connect(self.microscope.set_dia_voltage)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
-        self.cameraRotationPushButton.clicked.connect(self.toggleRotation)
+
         if self.function_generator:
             self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
@@ -419,7 +415,7 @@ class GUI(QtWidgets.QWidget):
         self.oetProjectCirclePushButton.clicked.connect(self.toggle_project_circle)
         self.oetLoadProjectionImagePushButton.clicked.connect(self.load_oet_projection)
         self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
-        self.oetRunPushButton.clicked.connect(self.run_oet_commands)
+        self.oetProjectDetectionPushButton.clicked.connect(self.project_detection_pattern)
         self.oetOpenRobotsPushButton.clicked.connect(self.update_detection_params)
         self.oetControlDetectedPushButton.clicked.connect(self.toggleControlDetected)
         self.oetScaleUpPushButton.clicked.connect(self.scale_up_oet_projection)
@@ -437,7 +433,7 @@ class GUI(QtWidgets.QWidget):
         self.oetRotationDoubleSpinBox.setEnabled(False)
         self.oetTranslateDoubleSpinBox.setEnabled(False)
         self.oetScaleUpPushButton.setEnabled(False)
-        self.oetRunPushButton.setEnabled(False)
+        self.oetProjectDetectionPushButton.setEnabled(False)
         self.oetOpenRobotsPushButton.setEnabled(False)
         self.oetControlDetectedPushButton.setEnabled(False)
 
@@ -454,7 +450,7 @@ class GUI(QtWidgets.QWidget):
         self.oetRotationDoubleSpinBox.setEnabled(True)
         self.oetTranslateDoubleSpinBox.setEnabled(True)
         self.oetScaleUpPushButton.setEnabled(True)
-        self.oetRunPushButton.setEnabled(True)
+        self.oetProjectDetectionPushButton.setEnabled(True)
         self.oetOpenRobotsPushButton.setEnabled(True)
         self.oetControlDetectedPushButton.setEnabled(True)
 

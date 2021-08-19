@@ -28,6 +28,7 @@ if camera_type == 'hamamatsu':
 class imageProcessor(QtCore.QThread):
     # VideoSignal = QtCore.pyqtSignal(QtGui.QImage)
     VideoSignal = QtCore.pyqtSignal('PyQt_PyObject')
+    robot_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self, parent=None):
         super(imageProcessor, self).__init__(parent)
@@ -50,7 +51,6 @@ class imageProcessor(QtCore.QThread):
             self.init_hamamatsu()
 
         self.run_video = True
-        self.rotation = False
         self.window_size = QtCore.QSize(self.height, self.width)
         self.buffer_size = 10
         self.dilation_size = 30
@@ -158,10 +158,8 @@ class imageProcessor(QtCore.QThread):
         window_h = self.window_size.height()
         window_w = self.window_size.width()
 
-        # resize and rotate
+        # resize
         self.resize_lock.lock()
-        if self.rotation:
-            np_img = cv2.rotate(np_img, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
         np_img = cv2.resize(np_img, (window_w, window_h))
         self.resize_lock.unlock()
 
@@ -176,20 +174,56 @@ class imageProcessor(QtCore.QThread):
             self.clear_paths_overlay_slot()
             self.robots = {}
 
+
+    def get_control_mask(self, robot_contours, robot_angles):
+        objective_calibration_dict = {'2x': [8, 4, 0.25],
+                                      '4x': [4, 2, 0.5],
+                                      '10x': [2, 1, 1],
+                                      '20x': [1, 1, 2],
+                                      '40x': [0.5, 1, 4]}
+
+        robot_control_mask = np.zeros(self.image.shape, dtype=np.uint8)
+
+        line_length = int(200 * objective_calibration_dict[self.objective][2])
+        line_width = int(80 * objective_calibration_dict[self.objective][2])
+        robot_center_radius = 120 // objective_calibration_dict[self.objective][0]
+
+        for contour, angle in zip(robot_contours, robot_angles):
+            # draw the contours on our control mask
+            robot_control_mask = cv2.drawContours(robot_control_mask, [contour], -1, 255, -1)
+            M = cv2.moments(contour)
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
+            cv2.circle(robot_control_mask, (cx, cy), robot_center_radius, 255, -1)
+            if self.open_robots:
+                try:
+                    cv2.line(robot_control_mask, (cx, cy),
+                             (cx + int(line_length * np.cos(angle)), cy + int(line_length * np.sin(angle))), 0,
+                             line_width)
+                except Exception as e:
+                    print('failed to draw line to open robots')
+
+        robot_control_mask = cv2.dilate(robot_control_mask, np.ones((self.buffer_size, self.buffer_size)))
+
+        dilation = np.copy(robot_control_mask)
+        dilation = cv2.dilate(dilation, np.ones((self.dilation_size, self.dilation_size)) * 255).astype(np.uint8)
+
+        robot_control_mask = dilation - robot_control_mask
+
+        return robot_control_mask
+
+
     def run_detection(self):
         # process current image to find robots
-        self.robot_control_mask, robot_contours, robot_angles = get_robot_control(self.image,
-                                                                                  self.dilation_size,
-                                                                                  self.buffer_size,
-                                                                                  self.objective,
-                                                                                  self.open_robots)
+        robot_contours, robot_angles = get_robot_control(self.image, self.objective)
 
         if len(robot_contours) == 0:
             # no robots found
             self.detection_overlay.fill(0)
             return
 
-        self.detection_overlay = np.copy(self.robot_control_mask)
+        self.robot_control_mask = self.get_control_mask(robot_contours, robot_angles)
+        self.detection_overlay = self.robot_control_mask.astype(np.uint8)
 
         if self.robots == {}:
             # first time finding robots, so lets update our finding them
@@ -238,11 +272,6 @@ class imageProcessor(QtCore.QThread):
         # scale back to window size
         return nearest_robot_cx * self.width, nearest_robot_cy * self.height, nearest_robot
 
-    def camera_to_dmd_conversion(self, camera_view):
-        # takes a camera image as input and maps it to the DMD projector
-        pass
-
-
     @QtCore.pyqtSlot('PyQt_PyObject')
     def path_slot(self, payload):
         if len(self.robots.items()) == 0:
@@ -269,6 +298,8 @@ class imageProcessor(QtCore.QThread):
             return
         # find nearest robot here and add it to the dictionary
         cx, cy, nearest_robot = self.find_closest_robot(payload)
+        print(f'found closest robot at {cx}, {cy}')
+        self.robot_signal.emit((cx, cy, nearest_robot))
 
     def draw_paths(self):
         self.path_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
