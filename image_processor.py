@@ -144,12 +144,6 @@ class imageProcessor(QtCore.QThread):
     def process_and_emit_image(self, np_img):
         # np_img is native resolution from camera
         if self.detection:
-            # if its not in color, convert to color
-            if self.detection_overlay.shape[-1] != 3:
-                self.detection_overlay = cv2.cvtColor(self.detection_overlay, cv2.COLOR_GRAY2BGR)
-                # now make it red only
-                self.detection_overlay[:, :, 1:] = 0
-
             np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
             np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.8, 0)
             np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.8, 0)
@@ -173,30 +167,43 @@ class imageProcessor(QtCore.QThread):
             self.clear_paths_overlay_slot()
             self.robots = {}
 
-    def get_control_mask(self, robot_contours, robot_angles):
+    def get_control_mask(self, robots):
         objective_calibration_dict = {'2x': [8, 0.25],
                                       '4x': [4, 0.5],
                                       '10x': [2, 1],
                                       '20x': [1, 2],
                                       '40x': [0.5, 4]}
 
-        robot_control_mask = np.zeros(self.image.shape, dtype=np.uint8)
+        robot_control_mask = np.zeros(self.image.shape + (3,), dtype=np.uint8)
 
         line_length = int(200 * objective_calibration_dict[self.objective][1])
         line_width = int(80 * objective_calibration_dict[self.objective][1])
         robot_center_radius = 120 // objective_calibration_dict[self.objective][0]
 
-        for contour, angle in zip(robot_contours, robot_angles):
-            # draw the contours on our control mask
-            robot_control_mask = cv2.drawContours(robot_control_mask, [contour], -1, 255, -1)
+        for robot in robots:
+            contour = robots[robot]['contour']
+            angle = robots[robot]['angle']
+
             M = cv2.moments(contour)
             cx = int(M["m10"] / M["m00"])
             cy = int(M["m01"] / M["m00"])
-            cv2.circle(robot_control_mask, (cx, cy), robot_center_radius, 255, -1)
+
+            # draw the contours on our control mask
+            if 'control' in robots[robot].keys():
+                if robots[robot]['control']:
+                    # green for the controlled robot
+                    robot_control_mask = cv2.drawContours(robot_control_mask, [contour], -1, (0, 255, 0), -1)
+                    cv2.circle(robot_control_mask, (cx, cy), robot_center_radius, (0, 255, 0), -1)
+            else:
+                # red for all non-controlled, but detected robots
+                robot_control_mask = cv2.drawContours(robot_control_mask, [contour], -1, (255, 0, 0), -1)
+                cv2.circle(robot_control_mask, (cx, cy), robot_center_radius, (255, 0, 0), -1)
+
             if self.open_robots:
+                # draw a blank line to remove the opening for the robot
                 try:
                     cv2.line(robot_control_mask, (cx, cy),
-                             (cx + int(line_length * np.cos(angle)), cy + int(line_length * np.sin(angle))), 0,
+                             (cx + int(line_length * np.cos(angle)), cy + int(line_length * np.sin(angle))), (0, 0, 0),
                              line_width)
                 except Exception as e:
                     print('failed to draw line to open robots')
@@ -220,6 +227,7 @@ class imageProcessor(QtCore.QThread):
             return
 
         if self.robots == {}:
+            print('initial finding of robots...')
             # first time finding robots, so lets update our finding them
             for i in range(len(robot_contours)):
                 name = f'robot_{i}'
@@ -228,11 +236,22 @@ class imageProcessor(QtCore.QThread):
             # update our understanding of the robots
             self.update_robot_information(robot_contours, robot_angles)
 
-        self.detection_overlay = self.get_control_mask(robot_contours, robot_angles).astype(np.uint8)
+        self.detection_overlay = self.get_control_mask(self.robots).astype(np.uint8)
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def robot_control_slot(self, payload):
+        if len(self.robots.items()) == 0:
+            print('no robots currently detected for control...ignoring.')
+            return
+        # find nearest robot here and add it to the dictionary
+        cx, cy, nearest_robot = self.find_closest_robot(payload)
+        self.robots[nearest_robot]['control'] = True
+        print(f'found closest robot at {cx}, {cy}')
+        self.robot_signal.emit((cx, cy, nearest_robot))
 
     def update_robot_information(self, new_robot_contours, new_robot_angles):
         # we want to see if our newly detected robots are similar to our old robots, given a distance threshold
-        similarity_threshold = .125
+        similarity_threshold = .4
         consistent_robot_count = 0
         for k, v in self.robots.items():
             old_contour = self.robots[k]['contour']
@@ -240,7 +259,10 @@ class imageProcessor(QtCore.QThread):
                 if cv2.matchShapes(new_contour, old_contour, 2, 0) < similarity_threshold:
                     # they are a match! let's update the robot internal dictionary
                     consistent_robot_count += 1
-                    self.robots[k] = {'contour': new_contour, 'angle': new_angle}
+                    self.robots[k]['contour'] = new_contour
+                    self.robots[k]['angle'] = new_angle
+                else:
+                    print('possible loss of robot detection!')
 
     def find_closest_robot(self, payload):
         min_d = np.inf
@@ -286,16 +308,6 @@ class imageProcessor(QtCore.QThread):
         print('nearest robot:', nearest_robot)
         # print('robots:', self.robots)
         self.draw_paths()
-
-    @QtCore.pyqtSlot('PyQt_PyObject')
-    def robot_control_slot(self, payload):
-        if len(self.robots.items()) == 0:
-            print('no robots currently detected for control...ignoring.')
-            return
-        # find nearest robot here and add it to the dictionary
-        cx, cy, nearest_robot = self.find_closest_robot(payload)
-        print(f'found closest robot at {cx}, {cy}')
-        self.robot_signal.emit((cx, cy, nearest_robot))
 
     def draw_paths(self):
         self.path_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
