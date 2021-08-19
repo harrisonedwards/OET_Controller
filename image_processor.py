@@ -57,7 +57,6 @@ class imageProcessor(QtCore.QThread):
         self.open_robots = False
 
         # initialize all of our empty masks
-        self.robot_control_mask = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT), dtype=np.uint8)
         self.path_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
         self.detection_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
 
@@ -174,18 +173,17 @@ class imageProcessor(QtCore.QThread):
             self.clear_paths_overlay_slot()
             self.robots = {}
 
-
     def get_control_mask(self, robot_contours, robot_angles):
-        objective_calibration_dict = {'2x': [8, 4, 0.25],
-                                      '4x': [4, 2, 0.5],
-                                      '10x': [2, 1, 1],
-                                      '20x': [1, 1, 2],
-                                      '40x': [0.5, 1, 4]}
+        objective_calibration_dict = {'2x': [8, 0.25],
+                                      '4x': [4, 0.5],
+                                      '10x': [2, 1],
+                                      '20x': [1, 2],
+                                      '40x': [0.5, 4]}
 
         robot_control_mask = np.zeros(self.image.shape, dtype=np.uint8)
 
-        line_length = int(200 * objective_calibration_dict[self.objective][2])
-        line_width = int(80 * objective_calibration_dict[self.objective][2])
+        line_length = int(200 * objective_calibration_dict[self.objective][1])
+        line_width = int(80 * objective_calibration_dict[self.objective][1])
         robot_center_radius = 120 // objective_calibration_dict[self.objective][0]
 
         for contour, angle in zip(robot_contours, robot_angles):
@@ -212,7 +210,6 @@ class imageProcessor(QtCore.QThread):
 
         return robot_control_mask
 
-
     def run_detection(self):
         # process current image to find robots
         robot_contours, robot_angles = get_robot_control(self.image, self.objective)
@@ -222,9 +219,6 @@ class imageProcessor(QtCore.QThread):
             self.detection_overlay.fill(0)
             return
 
-        self.robot_control_mask = self.get_control_mask(robot_contours, robot_angles)
-        self.detection_overlay = self.robot_control_mask.astype(np.uint8)
-
         if self.robots == {}:
             # first time finding robots, so lets update our finding them
             for i in range(len(robot_contours)):
@@ -233,6 +227,8 @@ class imageProcessor(QtCore.QThread):
         else:
             # update our understanding of the robots
             self.update_robot_information(robot_contours, robot_angles)
+
+        self.detection_overlay = self.get_control_mask(robot_contours, robot_angles).astype(np.uint8)
 
     def update_robot_information(self, new_robot_contours, new_robot_angles):
         # we want to see if our newly detected robots are similar to our old robots, given a distance threshold

@@ -42,15 +42,15 @@ def get_robots(large_contours, detect, objective):
     large_contour_image = cv2.drawContours(np.copy(robot_control_mask), large_contours, -1, 1, -1)
 
     # probably needs more adjustment in the future, so will make a dict for now
-    objective_calibration_dict = {'2x': [8, 4, 0.25],
-                                  '4x': [4, 2, 0.5],
-                                  '10x': [2, 1, 1],
-                                  '20x': [1, 1, 2],
-                                  '40x': [0.5, 1, 4]}
+    objective_calibration_dict = {'2x': 4,
+                                  '4x':  2,
+                                  '10x': 1,
+                                  '20x': 1,
+                                  '40x': 1}
 
     robot_angles = []
     contours_towards_center = []
-    contour_range_border_limit = 100 * objective_calibration_dict[objective][1]
+    contour_range_border_limit = 100 * objective_calibration_dict[objective]
 
     contours_in_limits = []
     for contour in large_contours:
