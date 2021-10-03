@@ -44,7 +44,8 @@ class Stage():
     def halt(self):
         ret = self.read_write('!a')
         if b'OK' not in ret:
-            raise Exception(f'Stage movement error: {ret}')
+            print('STAGE ERROR')
+            # raise Exception(f'Stage movement error: {ret}')
 
     def step(self, direction):
         if direction == 'l':

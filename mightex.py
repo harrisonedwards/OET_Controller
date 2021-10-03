@@ -36,6 +36,7 @@ class Polygon1000():
         self.circle_radius = 25
         self.tog = False
         self.angle = 0
+        self.curr_img = self.get_blank_image()
 
 
         numpy_image = np.zeros((self.height, self.width), dtype=bool)
@@ -181,7 +182,7 @@ class Polygon1000():
         self.angle -= rotation / 180 * np.pi
         self.project_loaded_image(self.cx, self.cy, inplace=True)
 
-    def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, inplace=False):
+    def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, adding_only=False, inplace=False):
         if inplace:
             cx = int(dmd_scaled_x)
             cy = int(dmd_scaled_y)
@@ -189,7 +190,10 @@ class Polygon1000():
             cx = int(dmd_scaled_x * 912 * 2)
             cy = int(dmd_scaled_y * 1140)
 
-        img = self.get_blank_image()
+        if adding_only:
+            img = self.curr_img
+        elif not adding_only:
+            img = self.get_blank_image()
 
         # project as much of the image as possible, and clip as necessary to fit within the dmd working area
         h, w = self.projection_image.shape
@@ -243,6 +247,7 @@ class Polygon1000():
         self.render_to_dmd(img)
 
     def render_to_dmd(self, img):
+        self.curr_img = np.copy(img)
         img = img[:, 0::2]
         img = np.rot90(np.rot90(img))
         img = np.copy(img).T.flatten()

@@ -70,15 +70,15 @@ class Window(GUI):
         self.initialize_gui_state()
         self.showMaximized()
 
-        self.image_processing.robot_signal.connect(self.robot_control_slot)
+        # self.image_processing.robot_signal.connect(self.robot_control_slot)
 
         # connect to the video thread and start the video
-        self.start_video_signal.connect(self.image_processing.startVideo)
+        # self.start_video_signal.connect(self.image_processing.startVideo)
         self.setChildrenFocusPolicy(QtCore.Qt.ClickFocus)
-        self.start_video_signal.emit()
+        # self.start_video_signal.emit()
 
         # make our image processor aware of the system state
-        self.update_detection_params()
+        # self.update_detection_params()
 
     @QtCore.pyqtSlot(QtGui.QMouseEvent)
     def handle_click(self, event):
@@ -110,8 +110,29 @@ class Window(GUI):
         # project in the proper mode
         if self.project_circle_mode:
             self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
-        elif self.project_image_mode:
-            self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y)
+        elif self.project_image_mode == 'adding_robots':
+            self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=True)
+        elif self.project_image_mode == 'controlling_robots':
+            self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=False)
+
+    def toggle_controL_projections(self):
+        if self.oetControlProjectionsPushButton.isChecked():
+            self.project_image_mode = 'controlling_robots'
+        self.oetProjectImagePushButton.setChecked(False)
+        self.oetProjectCirclePushButton.setChecked(False)
+
+    def toggle_project_circle(self):
+        self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
+        self.oetProjectImagePushButton.setChecked(False)
+        self.oetControlProjectionsPushButton.setChecked(False)
+        self.project_image_mode = False
+
+    def toggle_project_image(self):
+        if self.oetProjectImagePushButton.isChecked():
+            self.project_image_mode =  'adding_robots'
+        self.oetProjectCirclePushButton.setChecked(False)
+        self.oetControlProjectionsPushButton.setChecked(False)
+        self.project_circle_mode = False
 
     def project_detection_pattern(self):
         # TODO: move to image processor
@@ -148,9 +169,13 @@ class Window(GUI):
         print(robot_signal)
         cx, cy, robot = robot_signal
 
+
+
     def toggle_robot_detection(self):
         state = self.detectRobotsPushButton.isChecked()
         self.enable_robot_detection_signal.emit(state)
+
+
 
     def toggleVideoRecording(self):
         state = self.takeVideoPushbutton.isChecked()
@@ -214,15 +239,7 @@ class Window(GUI):
         else:
             return False
 
-    def toggle_project_circle(self):
-        self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
-        self.oetProjectImagePushButton.setChecked(False)
-        self.project_image_mode = False
 
-    def toggle_project_image(self):
-        self.project_image_mode = self.oetProjectImagePushButton.isChecked()
-        self.oetProjectCirclePushButton.setChecked(False)
-        self.project_circle_mode = False
 
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()

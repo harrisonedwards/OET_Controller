@@ -175,6 +175,8 @@ class GUI(QtWidgets.QWidget):
         self.oetLoadProjectionImagePushButton = QtWidgets.QPushButton('Load Projection Image')
         self.oetProjectImagePushButton = QtWidgets.QPushButton('Project Image')
         self.oetProjectImagePushButton.setCheckable(True)
+        self.oetControlProjectionsPushButton = QtWidgets.QPushButton('Control Projections')
+        self.oetControlProjectionsPushButton.setCheckable(True)
         self.oetClearPushButton = QtWidgets.QPushButton('Clear Projection')
         self.oetToggleLampPushButton = QtWidgets.QPushButton('Lamp')
         self.oetToggleLampPushButton.setCheckable(True)
@@ -295,6 +297,7 @@ class GUI(QtWidgets.QWidget):
         self.oetLayoutMiddle.addWidget(self.oetProjectCirclePushButton)
         self.oetLayoutMiddle.addWidget(self.oetLoadProjectionImagePushButton)
         self.oetLayoutMiddle.addWidget(self.oetProjectImagePushButton)
+        self.oetLayoutMiddle.addWidget(self.oetControlProjectionsPushButton)
         self.oetLayoutMiddle.addWidget(self.oetProjectDetectionPushButton)
         self.oetLayoutMiddle.addWidget(self.oetOpenRobotsPushButton)
         self.oetLayoutMiddle.addWidget(self.oetControlDetectedPushButton)
@@ -326,42 +329,42 @@ class GUI(QtWidgets.QWidget):
         # TODO: fix this...
         # self.image_viewer.calibration_signal.connect(self.dmd.calibration_slot)
 
-        self.image_processing = imageProcessor()
-        self.image_processing_thread = QThread()
-        self.image_processing_thread.start()
+        # self.image_processing = imageProcessor()
+        # self.image_processing_thread = QThread()
+        # self.image_processing_thread.start()
 
-        self.image_viewer.resize_event_signal.connect(self.image_processing.resize_slot)
-        self.image_viewer.path_signal.connect(self.image_processing.path_slot)
-        self.image_viewer.control_signal.connect(self.image_processing.robot_control_slot)
+        # self.image_viewer.resize_event_signal.connect(self.image_processing.resize_slot)
+        # self.image_viewer.path_signal.connect(self.image_processing.path_slot)
+        # self.image_viewer.control_signal.connect(self.image_processing.robot_control_slot)
 
-        self.set_camera_expsure_signal.connect(self.image_processing.set_exposure_slot)
+        # self.set_camera_expsure_signal.connect(self.image_processing.set_exposure_slot)
 
-        self.image_processing.VideoSignal.connect(self.image_viewer.setImage)
-        self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-        self.image_processing.moveToThread(self.image_processing_thread)
-
-        self.image_viewer.click_event_signal.connect(self.handle_click)
+        # self.image_processing.VideoSignal.connect(self.image_viewer.setImage)
+        # self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
+        # self.image_processing.moveToThread(self.image_processing_thread)
+        #
+        # self.image_viewer.click_event_signal.connect(self.handle_click)
 
         self.VBoxLayout.setAlignment(QtCore.Qt.AlignTop)
 
         self.HBoxLayout.addLayout(self.VBoxLayout)
-        self.HBoxLayout.addWidget(self.image_viewer)
+        # self.HBoxLayout.addWidget(self.image_viewer)
 
     def initialize_gui_state(self):
         # get the initial state and make the GUI synced to it
-        idx_dict = {k: v for k, v in zip(range(1, 7), self.objectives)}
-        objective = self.microscope.status.iNOSEPIECE
-        self.magnificationComboBoxWidget.setCurrentText(idx_dict[objective])
+        # idx_dict = {k: v for k, v in zip(range(1, 7), self.objectives)}
+        # objective = self.microscope.status.iNOSEPIECE
+        # self.magnificationComboBoxWidget.setCurrentText(idx_dict[objective])
 
-        idx_dict = {k: v for k, v in zip(range(1, 7), self.filter_positions)}
-        filter = self.microscope.status.iTURRET1POS
-        self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
-
-        fluor_shutter_state = self.microscope.status.iTURRET1SHUTTER
-        self.fluorescenceShutterPushButton.setChecked(fluor_shutter_state)
-
-        dia_state = self.microscope.status.iSHUTTER_DIA
-        self.diaShutterPushButton.setChecked(dia_state)
+        # idx_dict = {k: v for k, v in zip(range(1, 7), self.filter_positions)}
+        # filter = self.microscope.status.iTURRET1POS
+        # self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
+        #
+        # fluor_shutter_state = self.microscope.status.iTURRET1SHUTTER
+        # self.fluorescenceShutterPushButton.setChecked(fluor_shutter_state)
+        #
+        # dia_state = self.microscope.status.iSHUTTER_DIA
+        # self.diaShutterPushButton.setChecked(dia_state)
 
 
         xy_vel = self.stage.get_xy_vel()
@@ -375,46 +378,47 @@ class GUI(QtWidgets.QWidget):
 
 
         # connect all of our control signals
-        self.takeScreenshotPushButton.clicked.connect(self.image_processing.take_screenshot_slot)
-        self.start_record_video_signal.connect(self.image_processing.start_recording_video_slot)
-        self.stop_record_video_signal.connect(self.image_processing.stop_video_slot)
-        self.takeVideoPushbutton.clicked.connect(self.toggleVideoRecording)
+        # self.takeScreenshotPushButton.clicked.connect(self.image_processing.take_screenshot_slot)
+        # self.start_record_video_signal.connect(self.image_processing.start_recording_video_slot)
+        # self.stop_record_video_signal.connect(self.image_processing.stop_video_slot)
+        # self.takeVideoPushbutton.clicked.connect(self.toggleVideoRecording)
 
-        self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
-        self.xystageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_xystep_size)
-        self.zstageStepSizeDoubleSpinBox.valueChanged.connect(self.microscope.set_zstep_size)
-        self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
-        self.diaShutterPushButton.clicked.connect(self.toggleDiaShutter)
-        self.diaLightPushbutton.clicked.connect(self.toggleDiaLamp)
-        self.diaVoltageDoubleSpinBox.valueChanged.connect(self.microscope.set_dia_voltage)
-        self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
+        # self.magnificationComboBoxWidget.currentTextChanged.connect(self.changeMagnification)
+        # self.xystageStepSizeDoubleSpinBox.valueChanged.connect(self.stage.set_xystep_size)
+        # self.zstageStepSizeDoubleSpinBox.valueChanged.connect(self.microscope.set_zstep_size)
+        # self.filterComboBoxWidget.currentTextChanged.connect(self.changeFilter)
+        # self.diaShutterPushButton.clicked.connect(self.toggleDiaShutter)
+        # self.diaLightPushbutton.clicked.connect(self.toggleDiaLamp)
+        # self.diaVoltageDoubleSpinBox.valueChanged.connect(self.microscope.set_dia_voltage)
+        # self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
 
         if self.function_generator:
             self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
-        self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
-        self.fluorescenceToggleLampPushButton.clicked.connect(self.toggleFLuorescenceLamp)
-        self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
-        self.pumpAmountRadioButton.clicked.connect(self.startAmountDispenseMode)
-        self.pumpTimeRadioButton.clicked.connect(self.startTimeDispenseMode)
-        self.pumpDispensePushButton.clicked.connect(self.pumpDispense)
-        self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
-        self.pumpStopPushButton.clicked.connect(self.pump.halt)
-        self.pumpTimeRadioButton.click()
-
-        self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
-        self.detectRobotsPushButton.clicked.connect(self.toggle_robot_detection)
-        self.dilationSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
-        self.bufferSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
-        self.update_detection_params_signal.connect(self.image_processing.update_detection_params_slot)
-        self.enable_robot_detection_signal.connect(self.image_processing.toggle_detection_slot)
-        self.oetClearOverlayPushButton.clicked.connect(self.image_processing.clear_paths_overlay_slot)
+        # self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
+        # self.fluorescenceToggleLampPushButton.clicked.connect(self.toggleFLuorescenceLamp)
+        # self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
+        # self.pumpAmountRadioButton.clicked.connect(self.startAmountDispenseMode)
+        # self.pumpTimeRadioButton.clicked.connect(self.startTimeDispenseMode)
+        # self.pumpDispensePushButton.clicked.connect(self.pumpDispense)
+        # self.pumpWithdrawPushButton.clicked.connect(self.pumpWithdraw)
+        # self.pumpStopPushButton.clicked.connect(self.pump.halt)
+        # self.pumpTimeRadioButton.click()
+        #
+        # self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
+        # self.detectRobotsPushButton.clicked.connect(self.toggle_robot_detection)
+        # self.dilationSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
+        # self.bufferSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
+        # self.update_detection_params_signal.connect(self.image_processing.update_detection_params_slot)
+        # self.enable_robot_detection_signal.connect(self.image_processing.toggle_detection_slot)
+        # self.oetClearOverlayPushButton.clicked.connect(self.image_processing.clear_paths_overlay_slot)
 
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
         self.oetClearPushButton.clicked.connect(self.dmd.clear_oet_projection)
         self.oetProjectCirclePushButton.clicked.connect(self.toggle_project_circle)
         self.oetLoadProjectionImagePushButton.clicked.connect(self.load_oet_projection)
         self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
+        self.oetControlProjectionsPushButton.clicked.connect(self.toggle_controL_projections)
         self.oetProjectDetectionPushButton.clicked.connect(self.project_detection_pattern)
         self.oetOpenRobotsPushButton.clicked.connect(self.update_detection_params)
         self.oetControlDetectedPushButton.clicked.connect(self.toggleControlDetected)
@@ -429,6 +433,7 @@ class GUI(QtWidgets.QWidget):
         self.oetProjectCirclePushButton.setEnabled(False)
         self.oetLoadProjectionImagePushButton.setEnabled(False)
         self.oetProjectImagePushButton.setEnabled(False)
+        self.oetControlProjectionsPushButton.setEnabled(False)
         self.oetScaleDoubleSpinBox.setEnabled(False)
         self.oetRotationDoubleSpinBox.setEnabled(False)
         self.oetTranslateDoubleSpinBox.setEnabled(False)
@@ -438,7 +443,7 @@ class GUI(QtWidgets.QWidget):
         self.oetControlDetectedPushButton.setEnabled(False)
 
         self.dmd.initialize_dmd()
-        self.fluorescence_controller.turn_all_off()
+        # self.fluorescence_controller.turn_all_off()
 
     @QtCore.pyqtSlot()
     def enable_dmd_controls(self):
