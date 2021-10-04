@@ -190,10 +190,7 @@ class Polygon1000():
             cx = int(dmd_scaled_x * 912 * 2)
             cy = int(dmd_scaled_y * 1140)
 
-        if adding_only:
-            img = self.curr_img
-        elif not adding_only:
-            img = self.get_blank_image()
+        img = self.get_blank_image()
 
         # project as much of the image as possible, and clip as necessary to fit within the dmd working area
         h, w = self.projection_image.shape
@@ -222,7 +219,14 @@ class Polygon1000():
             start_x -= 1
         if end_y - start_y < cropped_projection.shape[0]:
             start_y -= 1
-        img[start_y:end_y, start_x:end_x] = cropped_projection
+
+        if adding_only:
+            print('adding')
+            img[start_y:end_y, start_x:end_x] = cropped_projection
+            img = np.logical_or(img, self.curr_img)
+        else:
+            print('not adding')
+            img[start_y:end_y, start_x:end_x] = cropped_projection
 
         self.render_to_dmd(img)
         self.cx = cx
