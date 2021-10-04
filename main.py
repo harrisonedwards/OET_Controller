@@ -127,29 +127,54 @@ class Window(GUI):
         #     self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=False)
 
     def handle_robot_movement(self, key):
-        rotate_amt = self.oetRotationDoubleSpinBox.value()
-        translate_amt = self.oetTranslateDoubleSpinBox.value()
         adding = 0
         for robot in self.robots:
             if self.robots[robot]['checkbox'].isChecked():
-                if key == QtCore.Qt.Key_W:
-                    cx, cy, angle = self.dmd.translate(-translate_amt,
-                                                       self.robots[robot]['cx'],
-                                                       self.robots[robot]['cy'],
-                                                       self.robots[robot]['angle'],
-                                                       adding=adding)
-                elif key == QtCore.Qt.Key_S:
-                    cx, cy, angle = self.dmd.translate(translate_amt,
-                                                       self.robots[robot]['cx'],
-                                                       self.robots[robot]['cy'],
-                                                       self.robots[robot]['angle'],
-                                                       adding=adding)
-
-
-                adding += 1
-                self.robots[robot]['cx'] = cx
-                self.robots[robot]['cy'] = cy
-                self.robots[robot]['angle'] = angle
+                rotate_amt = self.oetRotationDoubleSpinBox.value()
+                translate_amt = self.oetTranslateDoubleSpinBox.value()
+            else:
+                rotate_amt, translate_amt = 0, 0
+            print(f'translating {robot} {translate_amt} and angle {rotate_amt}')
+            if key == QtCore.Qt.Key_W:
+                cx, cy, angle = self.dmd.translate(-translate_amt,
+                                                   self.robots[robot]['cx'],
+                                                   self.robots[robot]['cy'],
+                                                   self.robots[robot]['angle'],
+                                                   adding=adding)
+            elif key == QtCore.Qt.Key_S:
+                cx, cy, angle = self.dmd.translate(translate_amt,
+                                                   self.robots[robot]['cx'],
+                                                   self.robots[robot]['cy'],
+                                                   self.robots[robot]['angle'],
+                                                   adding=adding)
+            elif key == QtCore.Qt.Key_A:
+                cx, cy, angle = self.dmd.strafe(-translate_amt,
+                                                self.robots[robot]['cx'],
+                                                self.robots[robot]['cy'],
+                                                self.robots[robot]['angle'],
+                                                adding=adding)
+            elif key == QtCore.Qt.Key_D:
+                cx, cy, angle = self.dmd.strafe(translate_amt,
+                                                self.robots[robot]['cx'],
+                                                self.robots[robot]['cy'],
+                                                self.robots[robot]['angle'],
+                                                adding=adding)
+            elif key == QtCore.Qt.Key_Q:
+                cx, cy, angle = self.dmd.rotate_projection_image(rotate_amt,
+                                                                 self.robots[robot]['cx'],
+                                                                 self.robots[robot]['cy'],
+                                                                 self.robots[robot]['angle'],
+                                                                 adding=adding)
+            elif key == QtCore.Qt.Key_E:
+                cx, cy, angle = self.dmd.rotate_projection_image(-rotate_amt,
+                                                                 self.robots[robot]['cx'],
+                                                                 self.robots[robot]['cy'],
+                                                                 self.robots[robot]['angle'],
+                                                                 adding=adding)
+            adding += 1
+            self.robots[robot]['cx'] = cx
+            self.robots[robot]['cy'] = cy
+            self.robots[robot]['angle'] = angle
         self.dmd.update()
 
     def clear_dmd(self):
