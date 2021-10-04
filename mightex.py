@@ -31,11 +31,8 @@ class Polygon1000():
     def __init__(self, height, width):
         self.height = height
         self.width = width
-        self.cx = width // 2
-        self.cy = height // 2
         self.circle_radius = 25
         self.tog = False
-        self.angle = 0
         self.controllable_projections = {}
         self.curr_img = self.get_blank_image()
 
@@ -164,38 +161,71 @@ class Polygon1000():
         result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
         return result
 
-    def translate(self, amt, cx, cy):
-        amt_x, amt_y = self.pol2cart(amt, self.angle)
+    def translate(self, amt, cx, cy, angle, adding):
+        amt_x, amt_y = self.pol2cart(amt, angle)
         cx += amt_x
         cy += amt_y
-        self.project_loaded_image(self.cx, self.cy, inplace=True)
+        cx, cy, _ = self.project_loaded_image(cx, cy, adding=adding, inplace=True)
+        return cx, cy, angle
 
-    def strafe(self, amt, cx, cy):
-        amt_x, amt_y = self.pol2cart(amt, self.angle + np.pi / 2)
+    def strafe(self, amt, cx, cy, angle, adding):
+        amt_x, amt_y = self.pol2cart(amt, angle + np.pi / 2)
         cx += amt_x
         cy += amt_y
-        self.project_loaded_image(self.cx, self.cy, inplace=True)
+        cx, cy, _ = self.project_loaded_image(cx, cy, adding=adding, inplace=True)
+        return cx, cy, angle
 
-    def rotate_projection_image(self, rotation, cx, cy):
+    def rotate_projection_image(self, rotation, cx, cy, angle, adding):
         self.projection_image = self.rotate_image(self.projection_image, rotation)
         ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
-        self.angle -= rotation / 180 * np.pi
-        self.project_loaded_image(cx, cy, inplace=True)
+        angle -= rotation / 180 * np.pi
+        cx, cy, _ = self.project_loaded_image(cx, cy, adding=adding, inplace=True)
+        return cx, cy, angle
 
-    def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, adding_only=False, inplace=False):
+    def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, adding=False, inplace=False):
+
         if inplace:
+            # if we are moving something in place (i.e. not from a mouse click)
             cx = int(dmd_scaled_x)
             cy = int(dmd_scaled_y)
         else:
+            # if we are placing something initially with a mouse click:
             cx = int(dmd_scaled_x * 912 * 2)
             cy = int(dmd_scaled_y * 1140)
 
         img = self.get_blank_image()
 
-        # project as much of the image as possible, and clip as necessary to fit within the dmd working area
-        h, w = self.projection_image.shape
+        # retrieve where the image should be placed, and what it looks like cropped
+        start_x, end_x, start_y, end_y, cropped_projection = self.get_crop(self.projection_image, cx, cy)
 
-        cropped_projection = np.copy(self.projection_image)
+        if adding:
+            img[start_y:end_y, start_x:end_x] = cropped_projection
+            img = np.logical_or(img, self.curr_img)
+        else:
+            img[start_y:end_y, start_x:end_x] = cropped_projection
+
+        self.curr_img = img
+
+        return cx, cy, 0
+
+    def update(self):
+        self.render_to_dmd(self.curr_img)
+
+    def project_circle(self, dmd_scaled_x, dmd_scaled_y):
+        cx = int(dmd_scaled_x * 912 * 2)
+        cy = int(dmd_scaled_y * 1140)
+        offs = self.get_blank_image()
+        img = cv2.circle(offs, (cx, cy), self.circle_radius, 255, -1)
+        self.render_to_dmd(img)
+        self.cx = cx
+        self.cy = cy
+
+    def get_crop(self, projection_image, cx, cy):
+        # project as much of the image as possible, and clip as necessary to fit within the dmd working area
+        img = self.get_blank_image()
+        h, w = projection_image.shape
+
+        cropped_projection = np.copy(projection_image)
 
         start_x = cx - w // 2
         end_x = cx + w // 2
@@ -220,23 +250,7 @@ class Polygon1000():
         if end_y - start_y < cropped_projection.shape[0]:
             start_y -= 1
 
-        if adding_only:
-            img[start_y:end_y, start_x:end_x] = cropped_projection
-            img = np.logical_or(img, self.curr_img)
-        else:
-            img[start_y:end_y, start_x:end_x] = cropped_projection
-
-        self.render_to_dmd(img)
-        return cx, cy, 0
-
-    def project_circle(self, dmd_scaled_x, dmd_scaled_y):
-        cx = int(dmd_scaled_x * 912 * 2)
-        cy = int(dmd_scaled_y * 1140)
-        offs = self.get_blank_image()
-        img = cv2.circle(offs, (cx, cy), self.circle_radius, 255, -1)
-        self.render_to_dmd(img)
-        self.cx = cx
-        self.cy = cy
+        return start_x, end_x, start_y, end_y, cropped_projection
 
     def project_calibration_image(self):
         offs = self.get_blank_image()

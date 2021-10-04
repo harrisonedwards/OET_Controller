@@ -112,27 +112,45 @@ class Window(GUI):
         # project in the proper mode
         if self.project_circle_mode:
             self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
+            self.dmd.update()
         elif self.project_image_mode == 'adding_robots':
-            cx, cy, angle = self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=True)
+            cx, cy, angle = self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding=True)
             name = names.get_first_name()
+            while name in self.robots:
+                name = names.get_first_name()
             checkbox = QtWidgets.QCheckBox(name)
             self.robots[name] = {'cx': cx, 'cy': cy, 'angle': angle, 'checkbox': checkbox}
             self.oetRobotsLayout.addWidget(checkbox)
             self.oetRobotsEmptyLabel.setVisible(False)
+            self.dmd.update()
         # elif self.project_image_mode == 'controlling_robots':
         #     self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=False)
 
     def handle_robot_movement(self, key):
         rotate_amt = self.oetRotationDoubleSpinBox.value()
         translate_amt = self.oetTranslateDoubleSpinBox.value()
+        adding = 0
         for robot in self.robots:
-            print(robot, self.robots[robot]['checkbox'].isChecked())
             if self.robots[robot]['checkbox'].isChecked():
                 if key == QtCore.Qt.Key_W:
-                    self.dmd.translate(translate_amt, self.robots[robot]['cx'], self.robots[robot]['cy'])
-                elif key == QtCore.Qt.Key_D:
-                    self.dmd.translate(-translate_amt, self.robots[robot]['cx'], self.robots[robot]['cy'])
+                    cx, cy, angle = self.dmd.translate(-translate_amt,
+                                                       self.robots[robot]['cx'],
+                                                       self.robots[robot]['cy'],
+                                                       self.robots[robot]['angle'],
+                                                       adding=adding)
+                elif key == QtCore.Qt.Key_S:
+                    cx, cy, angle = self.dmd.translate(translate_amt,
+                                                       self.robots[robot]['cx'],
+                                                       self.robots[robot]['cy'],
+                                                       self.robots[robot]['angle'],
+                                                       adding=adding)
 
+
+                adding += 1
+                self.robots[robot]['cx'] = cx
+                self.robots[robot]['cy'] = cy
+                self.robots[robot]['angle'] = angle
+        self.dmd.update()
 
     def clear_dmd(self):
         # add all robot clearing
@@ -143,6 +161,7 @@ class Window(GUI):
             checkbox = None
         self.robots = {}
         self.dmd.clear_oet_projection()
+        self.oetClearPushButton.setChecked(False)
 
     def toggle_project_image(self):
         if self.oetProjectImagePushButton.isChecked():
@@ -166,7 +185,6 @@ class Window(GUI):
             self.oetScaleDownPushButton.setEnabled(True)
             self.oetRotationDoubleSpinBox.setEnabled(True)
             self.oetTranslateDoubleSpinBox.setEnabled(True)
-
 
     def toggle_project_circle(self):
         self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
