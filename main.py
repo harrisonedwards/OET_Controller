@@ -1,5 +1,5 @@
 import sys
-
+import names
 import PyQt5.QtGui
 from PyQt5 import QtCore, QtGui, QtWidgets
 from function_generator import FunctionGenerator
@@ -66,6 +66,7 @@ class Window(GUI):
         self.dispenseMode = None  # should be set by the GUI immediately
         self.project_circle_mode = False
         self.project_image_mode = False
+        self.robots = {}
 
         self.setupUI(self)
         self.initialize_gui_state()
@@ -112,13 +113,20 @@ class Window(GUI):
         if self.project_circle_mode:
             self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
         elif self.project_image_mode == 'adding_robots':
-            self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=True)
-        elif self.project_image_mode == 'controlling_robots':
-            self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=False)
+            cx, cy, angle = self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=True)
+            name = names.get_first_name()
+            radioButton = QtWidgets.QRadioButton(name)
+            self.robots[name] = {'cx': cx, 'cy': cy, 'angle': angle, 'radiobutton': radioButton}
+            self.oetRobotsLayout.addWidget(radioButton)
+            self.oetRobotsLayout.removeWidget(self.oetRobotsEmptyLabel)
+            self.oetRobotsEmptyLabel.setVisible(False)
+        # elif self.project_image_mode == 'controlling_robots':
+        #     self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=False)
 
     def toggle_project_image(self):
         if self.oetProjectImagePushButton.isChecked():
             self.project_image_mode = 'adding_robots'
+        self.oetRobotsGroupBox.setEnabled(False)
         self.oetProjectCirclePushButton.setChecked(False)
         self.oetControlProjectionsPushButton.setChecked(False)
         self.project_circle_mode = False
@@ -126,6 +134,7 @@ class Window(GUI):
     def toggle_controL_projections(self):
         if self.oetControlProjectionsPushButton.isChecked():
             self.project_image_mode = 'controlling_robots'
+        self.oetRobotsGroupBox.setEnabled(True)
         self.oetProjectImagePushButton.setChecked(False)
         self.oetProjectCirclePushButton.setChecked(False)
 
@@ -188,7 +197,7 @@ class Window(GUI):
         else:
             self.stop_record_video_signal.emit()
 
-    def toggleFLuorescenceLamp(self):
+    def toggleFluorescenceLamp(self):
         state = self.fluorescenceToggleLampPushButton.isChecked()
         if state:
             self.fluorescence_controller.turn_led_on()

@@ -227,8 +227,7 @@ class Polygon1000():
             img[start_y:end_y, start_x:end_x] = cropped_projection
 
         self.render_to_dmd(img)
-        self.cx = cx
-        self.cy = cy
+        return cx, cy, 0
 
     def project_circle(self, dmd_scaled_x, dmd_scaled_y):
         cx = int(dmd_scaled_x * 912 * 2)
