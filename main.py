@@ -351,7 +351,7 @@ class Window(GUI):
         self.microscope.toggle_dia_light(state)
 
     def setCameraExposure(self, exposure):
-        self.set_camera_expsure_signal.emit(exposure)
+        self.set_camera_exposure_signal.emit(exposure)
 
 
 sys._excepthook = sys.excepthook

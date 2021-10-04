@@ -45,7 +45,7 @@ class imageProcessor(QtCore.QThread):
         self.writer = None
         self.video_dir = 'C:\\Users\\Mohamed\\Desktop\\Harrison\\Videos\\'
         self.vid_name = ''
-        self.clahe_params = {'status': False}
+        self.clahe_params = {'status': False, 'clip': 3.0, 'grid': 8}
 
         print('initializing camera...')
         if camera_type is CameraType.NIKON:
@@ -149,7 +149,7 @@ class imageProcessor(QtCore.QThread):
 
         if self.clahe_params['status']:
             clahe = cv2.createCLAHE(clipLimit=self.clahe_params['clip'],
-                                    tileGridSize=(self.clahe_params['grid'], self.clahe_params['grid']))
+                                    tileGridSize=(int(self.clahe_params['grid']), int(self.clahe_params['grid'])))
             np_img = clahe.apply(np_img)
 
         if self.detection:

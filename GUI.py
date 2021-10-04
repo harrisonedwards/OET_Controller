@@ -186,7 +186,7 @@ class GUI(QtWidgets.QWidget):
         self.oetLampIntesnsityDoubleSpinBox.setDecimals(1)
         self.oetLampIntesnsityDoubleSpinBox.setSingleStep(5)
 
-        self.imageAdjustmentClahePushButton = QtWidgets.QPushButton()
+        self.imageAdjustmentClahePushButton = QtWidgets.QPushButton('Apply Clahe')
         self.imageAdjustmentClahePushButton.setCheckable(True)
         self.imageAdjustmentClaheGridValueDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.imageAdjustmentClaheGridValueDoubleSpinBox.setMinimum(8)
@@ -197,7 +197,7 @@ class GUI(QtWidgets.QWidget):
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setMinimum(3)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setMaximum(200)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setSingleStep(1)
-        self.imageAdjustmentClaheClipValueDoubleSpinBox.setDecimals(0)
+        self.imageAdjustmentClaheClipValueDoubleSpinBox.setDecimals(1)
 
         self.takeScreenshotPushButton = QtWidgets.QPushButton(text='Screenshot')
         self.takeVideoPushbutton = QtWidgets.QPushButton('Record Video')
@@ -343,7 +343,7 @@ class GUI(QtWidgets.QWidget):
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClahePushButton)
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClaheClipValueDoubleSpinBox)
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClaheGridValueDoubleSpinBox)
-        # self.imageAdustmentLayout.setAlignment(QtCore.Qt.Alignleft)
+        self.imageAdustmentLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.imageAdustmentGroupBox)
 
         self.acquisitionGroupBox = QtWidgets.QGroupBox('Acquisition')
@@ -351,7 +351,7 @@ class GUI(QtWidgets.QWidget):
         self.acquisitionGroupBox.setLayout(self.acquisitionLayout)
         self.acquisitionLayout.addWidget(self.takeScreenshotPushButton)
         self.acquisitionLayout.addWidget(self.takeVideoPushbutton)
-        # self.acquisitionLayout.setAlignment(QtCore.Qt.AlignLeft)
+        self.acquisitionLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.acquisitionGroupBox)
 
         self.image_viewer = ImageViewer()
@@ -476,7 +476,7 @@ class GUI(QtWidgets.QWidget):
         self.oetControlDetectedPushButton.setEnabled(False)
 
         self.dmd.initialize_dmd()
-        # self.fluorescence_controller.turn_all_off()
+        self.fluorescence_controller.turn_all_off()
 
     @QtCore.pyqtSlot()
     def enable_dmd_controls(self):
