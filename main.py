@@ -115,28 +115,46 @@ class Window(GUI):
         elif self.project_image_mode == 'adding_robots':
             cx, cy, angle = self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=True)
             name = names.get_first_name()
-            radioButton = QtWidgets.QRadioButton(name)
-            self.robots[name] = {'cx': cx, 'cy': cy, 'angle': angle, 'radiobutton': radioButton}
-            self.oetRobotsLayout.addWidget(radioButton)
-            self.oetRobotsLayout.removeWidget(self.oetRobotsEmptyLabel)
+            checkbox = QtWidgets.QCheckBox(name)
+            self.robots[name] = {'cx': cx, 'cy': cy, 'angle': angle, 'checkbox': checkbox}
+            self.oetRobotsLayout.addWidget(checkbox)
             self.oetRobotsEmptyLabel.setVisible(False)
         # elif self.project_image_mode == 'controlling_robots':
         #     self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=False)
 
+    def handle_robot_movement(self, key):
+        rotate_amt = self.oetRotationDoubleSpinBox.value()
+        translate_amt = self.oetTranslateDoubleSpinBox.value()
+        for robot in self.robots:
+            print(robot, self.robots[robot]['checkbox'].isChecked())
+
+    def clear_dmd(self):
+        # add all robot clearing
+        self.dmd.clear_oet_projection
+
     def toggle_project_image(self):
         if self.oetProjectImagePushButton.isChecked():
             self.project_image_mode = 'adding_robots'
-        self.oetRobotsGroupBox.setEnabled(False)
-        self.oetProjectCirclePushButton.setChecked(False)
-        self.oetControlProjectionsPushButton.setChecked(False)
-        self.project_circle_mode = False
+            self.oetRobotsGroupBox.setEnabled(False)
+            self.oetProjectCirclePushButton.setChecked(False)
+            self.oetControlProjectionsPushButton.setChecked(False)
+            self.project_circle_mode = False
+        elif not self.oetProjectImagePushButton.isChecked():
+            self.oetControlProjectionsPushButton.setEnabled(True)
 
     def toggle_controL_projections(self):
         if self.oetControlProjectionsPushButton.isChecked():
             self.project_image_mode = 'controlling_robots'
-        self.oetRobotsGroupBox.setEnabled(True)
-        self.oetProjectImagePushButton.setChecked(False)
-        self.oetProjectCirclePushButton.setChecked(False)
+            self.oetRobotsGroupBox.setEnabled(True)
+            self.oetProjectImagePushButton.setChecked(False)
+            self.oetProjectCirclePushButton.setChecked(False)
+            self.project_circle_mode = False
+            self.oetScaleDoubleSpinBox.setEnabled(True)
+            self.oetScaleUpPushButton.setEnabled(True)
+            self.oetScaleDownPushButton.setEnabled(True)
+            self.oetRotationDoubleSpinBox.setEnabled(True)
+            self.oetTranslateDoubleSpinBox.setEnabled(True)
+
 
     def toggle_project_circle(self):
         self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
@@ -271,20 +289,7 @@ class Window(GUI):
         if key == QtCore.Qt.Key_Escape:
             self.stage.halt()
         if self.project_image_mode:
-            rotate_amt = self.oetRotationDoubleSpinBox.value()
-            translate_amt = self.oetTranslateDoubleSpinBox.value()
-            if key == QtCore.Qt.Key_Q:
-                self.dmd.rotate_projection_image(rotate_amt)
-            elif key == QtCore.Qt.Key_E:
-                self.dmd.rotate_projection_image(-rotate_amt)
-            elif key == QtCore.Qt.Key_W:
-                self.dmd.translate(-translate_amt)
-            elif key == QtCore.Qt.Key_S:
-                self.dmd.translate(+translate_amt)
-            elif key == QtCore.Qt.Key_A:
-                self.dmd.strafe(translate_amt)
-            elif key == QtCore.Qt.Key_D:
-                self.dmd.strafe(-translate_amt)
+            self.handle_robot_movement(key)
         else:
             if key == QtCore.Qt.Key_Up:
                 self.stage.step('r')

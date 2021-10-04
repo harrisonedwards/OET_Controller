@@ -453,7 +453,7 @@ class GUI(QtWidgets.QWidget):
         self.oetClearOverlayPushButton.clicked.connect(self.image_processing.clear_paths_overlay_slot)
 
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
-        self.oetClearPushButton.clicked.connect(self.dmd.clear_oet_projection)
+        self.oetClearPushButton.clicked.connect(self.clear_dmd)
         self.oetProjectCirclePushButton.clicked.connect(self.toggle_project_circle)
         self.oetLoadProjectionImagePushButton.clicked.connect(self.load_oet_projection)
         self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
@@ -491,13 +491,8 @@ class GUI(QtWidgets.QWidget):
 
     @QtCore.pyqtSlot()
     def enable_dmd_controls(self):
-        self.oetScaleDownPushButton.setEnabled(True)
         self.oetProjectCirclePushButton.setEnabled(True)
         self.oetLoadProjectionImagePushButton.setEnabled(True)
-        self.oetScaleDoubleSpinBox.setEnabled(True)
-        self.oetRotationDoubleSpinBox.setEnabled(True)
-        self.oetTranslateDoubleSpinBox.setEnabled(True)
-        self.oetScaleUpPushButton.setEnabled(True)
         self.oetProjectDetectionPushButton.setEnabled(True)
         self.oetOpenRobotsPushButton.setEnabled(True)
         self.oetControlDetectedPushButton.setEnabled(True)
