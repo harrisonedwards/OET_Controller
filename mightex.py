@@ -60,7 +60,6 @@ class Polygon1000():
             # else:
             #     self.mask[h,1::2] = True
         self.mask = self.mask.flatten()
-        self.projection_image = None
 
         uninit = self.dmd_clib.MTPLG_UnInitDevice()
         if uninit != 0:
@@ -129,14 +128,6 @@ class Polygon1000():
         blank = self.get_blank_image()
         self.render_to_dmd(blank)
 
-    def load_projection_image(self, file_name):
-        self.projection_image = cv2.imread(file_name)
-        print(f'loaded image of size {self.projection_image.shape}')
-
-        # convert to grayscale and binarize
-        self.projection_image = cv2.cvtColor(self.projection_image, cv2.COLOR_BGR2GRAY)
-        ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
-        print(f'image converted to binary. shape: {self.projection_image.shape}')
 
     def scale_projection(self, scale):
         h, w = self.projection_image.shape
@@ -161,28 +152,30 @@ class Polygon1000():
         result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
         return result
 
-    def translate(self, amt, cx, cy, angle, adding):
-        amt_x, amt_y = self.pol2cart(amt, angle)
+    def translate(self, amt, cx, cy, angle, image, adding):
+        amt_x, amt_y = self.pol2cart(amt, -angle*np.pi/180)
         cx += amt_x
         cy += amt_y
-        cx, cy, _ = self.project_loaded_image(cx, cy, adding=adding, inplace=True)
+        image = self.rotate_image(image, angle)
+        cx, cy, angle = self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
         return cx, cy, angle
 
-    def strafe(self, amt, cx, cy, angle, adding):
-        amt_x, amt_y = self.pol2cart(amt, angle + np.pi / 2)
+    def strafe(self, amt, cx, cy, angle, image, adding):
+        amt_x, amt_y = self.pol2cart(amt, (-angle*np.pi/180) + np.pi / 2)
         cx += amt_x
         cy += amt_y
-        cx, cy, _ = self.project_loaded_image(cx, cy, adding=adding, inplace=True)
+        image = self.rotate_image(image, angle)
+        cx, cy, angle = self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
         return cx, cy, angle
 
-    def rotate_projection_image(self, rotation, cx, cy, angle, adding):
-        self.projection_image = self.rotate_image(self.projection_image, rotation)
-        ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
-        angle -= rotation / 180 * np.pi
-        cx, cy, _ = self.project_loaded_image(cx, cy, adding=adding, inplace=True)
+    def rotate_projection_image(self, rotation, cx, cy, angle, image, adding):
+        angle -= rotation
+        image = self.rotate_image(image, angle)
+        ret, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
+        cx, cy, image = self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
         return cx, cy, angle
 
-    def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, adding=False, inplace=False):
+    def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, angle, image, adding=False, inplace=False):
 
         if inplace:
             # if we are moving something in place (i.e. not from a mouse click)
@@ -192,11 +185,12 @@ class Polygon1000():
             # if we are placing something initially with a mouse click:
             cx = int(dmd_scaled_x * 912 * 2)
             cy = int(dmd_scaled_y * 1140)
+            angle = 0
 
         img = self.get_blank_image()
 
         # retrieve where the image should be placed, and what it looks like cropped
-        start_x, end_x, start_y, end_y, cropped_projection = self.get_crop(self.projection_image, cx, cy)
+        start_x, end_x, start_y, end_y, cropped_projection = self.get_crop(image, cx, cy)
 
         if adding:
             img[start_y:end_y, start_x:end_x] = cropped_projection
@@ -206,7 +200,7 @@ class Polygon1000():
 
         self.curr_img = img
 
-        return cx, cy, 0
+        return cx, cy, angle
 
     def update(self):
         self.render_to_dmd(self.curr_img)

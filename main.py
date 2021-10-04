@@ -67,6 +67,7 @@ class Window(GUI):
         self.project_circle_mode = False
         self.project_image_mode = False
         self.robots = {}
+        self.projection_image = None
 
         self.setupUI(self)
         self.initialize_gui_state()
@@ -114,12 +115,14 @@ class Window(GUI):
             self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
             self.dmd.update()
         elif self.project_image_mode == 'adding_robots':
-            cx, cy, angle = self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding=True)
+            cx, cy, angle = self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, 0,
+                                                          self.projection_image, adding=True)
             name = names.get_first_name()
             while name in self.robots:
                 name = names.get_first_name()
             checkbox = QtWidgets.QCheckBox(name)
-            self.robots[name] = {'cx': cx, 'cy': cy, 'angle': angle, 'checkbox': checkbox}
+            self.robots[name] = {'cx': cx, 'cy': cy, 'angle': angle,
+                                 'checkbox': checkbox, 'image': np.copy(self.projection_image)}
             self.oetRobotsLayout.addWidget(checkbox)
             self.oetRobotsEmptyLabel.setVisible(False)
             self.dmd.update()
@@ -140,36 +143,42 @@ class Window(GUI):
                                                    self.robots[robot]['cx'],
                                                    self.robots[robot]['cy'],
                                                    self.robots[robot]['angle'],
+                                                   self.robots[robot]['image'],
                                                    adding=adding)
             elif key == QtCore.Qt.Key_S:
                 cx, cy, angle = self.dmd.translate(translate_amt,
                                                    self.robots[robot]['cx'],
                                                    self.robots[robot]['cy'],
                                                    self.robots[robot]['angle'],
+                                                   self.robots[robot]['image'],
                                                    adding=adding)
             elif key == QtCore.Qt.Key_A:
-                cx, cy, angle = self.dmd.strafe(-translate_amt,
-                                                self.robots[robot]['cx'],
-                                                self.robots[robot]['cy'],
-                                                self.robots[robot]['angle'],
-                                                adding=adding)
-            elif key == QtCore.Qt.Key_D:
                 cx, cy, angle = self.dmd.strafe(translate_amt,
                                                 self.robots[robot]['cx'],
                                                 self.robots[robot]['cy'],
                                                 self.robots[robot]['angle'],
+                                                self.robots[robot]['image'],
+                                                adding=adding)
+            elif key == QtCore.Qt.Key_D:
+                cx, cy, angle = self.dmd.strafe(-translate_amt,
+                                                self.robots[robot]['cx'],
+                                                self.robots[robot]['cy'],
+                                                self.robots[robot]['angle'],
+                                                self.robots[robot]['image'],
                                                 adding=adding)
             elif key == QtCore.Qt.Key_Q:
-                cx, cy, angle = self.dmd.rotate_projection_image(rotate_amt,
-                                                                 self.robots[robot]['cx'],
-                                                                 self.robots[robot]['cy'],
-                                                                 self.robots[robot]['angle'],
-                                                                 adding=adding)
-            elif key == QtCore.Qt.Key_E:
                 cx, cy, angle = self.dmd.rotate_projection_image(-rotate_amt,
                                                                  self.robots[robot]['cx'],
                                                                  self.robots[robot]['cy'],
                                                                  self.robots[robot]['angle'],
+                                                                 self.robots[robot]['image'],
+                                                                 adding=adding)
+            elif key == QtCore.Qt.Key_E:
+                cx, cy, angle = self.dmd.rotate_projection_image(rotate_amt,
+                                                                 self.robots[robot]['cx'],
+                                                                 self.robots[robot]['cy'],
+                                                                 self.robots[robot]['angle'],
+                                                                 self.robots[robot]['image'],
                                                                  adding=adding)
             adding += 1
             self.robots[robot]['cx'] = cx
@@ -292,8 +301,18 @@ class Window(GUI):
     def load_oet_projection(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file for projection')
         if file_name != '':
-            self.dmd.load_projection_image(file_name)
+            self.load_projection_image(file_name)
             self.oetProjectImagePushButton.setEnabled(True)
+
+    def load_projection_image(self, file_name):
+        projection_image = cv2.imread(file_name)
+        print(f'loaded image of size {projection_image.shape}')
+
+        # convert to grayscale and binarize
+        projection_image = cv2.cvtColor(projection_image, cv2.COLOR_BGR2GRAY)
+        ret, projection_image = cv2.threshold(projection_image, 127, 255, cv2.THRESH_BINARY)
+        print(f'image converted to binary. shape: {projection_image.shape}')
+        self.projection_image = np.copy(projection_image)
 
     def calibrate_dmd(self):
         print('calibrating dmd...')
