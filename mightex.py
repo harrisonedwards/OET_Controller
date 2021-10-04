@@ -155,7 +155,7 @@ class Polygon1000():
     def pol2cart(rho, phi):
         x = rho * np.cos(phi)
         y = rho * np.sin(phi)
-        return (x, y)
+        return x, y
 
     @staticmethod
     def rotate_image(image, angle):
@@ -221,11 +221,9 @@ class Polygon1000():
             start_y -= 1
 
         if adding_only:
-            print('adding')
             img[start_y:end_y, start_x:end_x] = cropped_projection
             img = np.logical_or(img, self.curr_img)
         else:
-            print('not adding')
             img[start_y:end_y, start_x:end_x] = cropped_projection
 
         self.render_to_dmd(img)

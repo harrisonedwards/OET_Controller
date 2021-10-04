@@ -332,6 +332,16 @@ class GUI(QtWidgets.QWidget):
         self.oetLayoutLower.addWidget(self.oetTranslateLabel)
         self.oetLayoutLower.addWidget(self.oetTranslateDoubleSpinBox)
         self.oetLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
+
+        self.oetRobotsGroupBox = QtWidgets.QGroupBox('Robots')
+        self.oetRobotsLayout = QtWidgets.QHBoxLayout()
+        self.oetRobotsGroupBox.setLayout(self.oetRobotsLayout)
+        self.oetRobotsLayout.setAlignment(QtCore.Qt.AlignLeft)
+        self.oetRobotsEmptyLabel = QtWidgets.QLabel('(empty)')
+        self.oetRobotsLayout.addWidget(self.oetRobotsEmptyLabel)
+        self.oetLayoutBottom = QtWidgets.QHBoxLayout()
+        self.oetLayout.addWidget(self.oetRobotsGroupBox)
+
         self.oetLayout.addLayout(self.oetLayoutLower)
         self.VBoxLayout.addWidget(self.oetGroupBox)
         # if not self.dmd:
