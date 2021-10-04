@@ -193,7 +193,7 @@ class GUI(QtWidgets.QWidget):
         self.imageAdjustmentClaheGridValueDoubleSpinBox.setMaximum(200)
         self.imageAdjustmentClaheGridValueDoubleSpinBox.setSingleStep(2)
         self.imageAdjustmentClaheGridValueDoubleSpinBox.setDecimals(0)
-        self.imageAdjustmentClaheClipValueDoubleSpinBox = QtWidgets.QDoubleSpinBox
+        self.imageAdjustmentClaheClipValueDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setMinimum(3)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setMaximum(200)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setSingleStep(1)
@@ -340,15 +340,15 @@ class GUI(QtWidgets.QWidget):
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClahePushButton)
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClaheClipValueDoubleSpinBox)
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClaheGridValueDoubleSpinBox)
-        self.imageAdustmentLayout.setAlignment(QtCore.Qt.Alignleft)
+        # self.imageAdustmentLayout.setAlignment(QtCore.Qt.Alignleft)
         self.VBoxLayout.addWidget(self.imageAdustmentGroupBox)
 
         self.acquisitionGroupBox = QtWidgets.QGroupBox('Acquisition')
         self.acquisitionLayout = QtWidgets.QHBoxLayout()
-        self.acquisitionGroupBox.setLayout(self.acquisitionGroupBox)
+        self.acquisitionGroupBox.setLayout(self.acquisitionLayout)
         self.acquisitionLayout.addWidget(self.takeScreenshotPushButton)
         self.acquisitionLayout.addWidget(self.takeVideoPushbutton)
-        self.acquisitionLayout.setAlignment(QtCore.Qt.AlignLeft)
+        # self.acquisitionLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.acquisitionGroupBox)
 
         self.image_viewer = ImageViewer()
