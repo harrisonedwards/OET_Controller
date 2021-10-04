@@ -45,6 +45,7 @@ class imageProcessor(QtCore.QThread):
         self.writer = None
         self.video_dir = 'C:\\Users\\Mohamed\\Desktop\\Harrison\\Videos\\'
         self.vid_name = ''
+        self.clahe_params = {'status': False}
 
         print('initializing camera...')
         if camera_type is CameraType.NIKON:
@@ -145,6 +146,12 @@ class imageProcessor(QtCore.QThread):
 
     def process_and_emit_image(self, np_img):
         # np_img is native resolution from camera
+
+        if self.clahe_params['status']:
+            clahe = cv2.createCLAHE(clipLimit=self.clahe_params['clip'],
+                                    tileGridSize=(self.clahe_params['grid'], self.clahe_params['grid']))
+            np_img = clahe.apply(np_img)
+
         if self.detection:
             np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
             np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.8, 0)
@@ -295,6 +302,10 @@ class imageProcessor(QtCore.QThread):
 
         # scale back to window size
         return nearest_robot_cx * self.width, nearest_robot_cy * self.height, nearest_robot
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def clay_params_slot(self, clahe_params):
+        self.clahe_params = clahe_params
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def path_slot(self, payload):

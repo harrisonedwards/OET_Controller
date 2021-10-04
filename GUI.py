@@ -203,7 +203,10 @@ class GUI(QtWidgets.QWidget):
         self.takeVideoPushbutton = QtWidgets.QPushButton('Record Video')
         self.takeVideoPushbutton.setCheckable(True)
 
-        # arrange the widgets
+        #
+        # ARRANGE THE WIDGETS
+        #
+
         self.VBoxLayout = QtWidgets.QVBoxLayout()
         self.HBoxLayout = QtWidgets.QHBoxLayout(self)
 
@@ -375,7 +378,7 @@ class GUI(QtWidgets.QWidget):
         self.VBoxLayout.setAlignment(QtCore.Qt.AlignTop)
 
         self.HBoxLayout.addLayout(self.VBoxLayout)
-        # self.HBoxLayout.addWidget(self.image_viewer)
+        self.HBoxLayout.addWidget(self.image_viewer)
 
     def initialize_gui_state(self):
         # get the initial state and make the GUI synced to it
@@ -453,6 +456,11 @@ class GUI(QtWidgets.QWidget):
         self.oetLampIntesnsityDoubleSpinBox.valueChanged.connect(self.dmd.set_dmd_current)
 
         self.image_viewer.enable_dmd_signal.connect(self.enable_dmd_controls)
+
+        self.imageAdjustmentClaheClipValueDoubleSpinBox.valueChanged.connect(self.apply_image_adjustment)
+        self.imageAdjustmentClaheGridValueDoubleSpinBox.valueChanged.connect(self.apply_image_adjustment)
+        self.imageAdjustmentClahePushButton.clicked.connect(self.apply_image_adjustment)
+        self.clahe_params_signal.connect(self.image_processing.clay_params_slot)
 
         self.oetScaleDownPushButton.setEnabled(False)
         self.oetProjectCirclePushButton.setEnabled(False)

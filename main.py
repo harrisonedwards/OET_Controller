@@ -22,6 +22,7 @@ class Window(GUI):
     stop_record_video_signal = QtCore.pyqtSignal()
     enable_robot_detection_signal = QtCore.pyqtSignal('PyQt_PyObject')
     update_detection_params_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    clahe_params_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self):
         super(Window, self).__init__()
@@ -162,6 +163,14 @@ class Window(GUI):
         # finally, render it
         print('rendering to dmd...')
         self.dmd.render_to_dmd(img)
+
+    def apply_image_adjustment(self, value):
+        clip = self.imageAdjustmentClaheClipValueDoubleSpinBox.value()
+        grid = self.imageAdjustmentClaheGridValueDoubleSpinBox.value()
+        status = self.imageAdjustmentClahePushButton.isChecked()
+        print(f'clahe: {status}, {clip}, {grid}')
+        clahe_values = {'status': status, 'clip': clip, 'grid': grid}
+        self.clahe_params_signal.emit(clahe_values)
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def robot_control_slot(self, robot_signal):
