@@ -164,23 +164,23 @@ class Polygon1000():
         result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
         return result
 
-    def translate(self, amt):
+    def translate(self, amt, cx, cy):
         amt_x, amt_y = self.pol2cart(amt, self.angle)
-        self.cx += amt_x
-        self.cy += amt_y
+        cx += amt_x
+        cy += amt_y
         self.project_loaded_image(self.cx, self.cy, inplace=True)
 
-    def strafe(self, amt):
+    def strafe(self, amt, cx, cy):
         amt_x, amt_y = self.pol2cart(amt, self.angle + np.pi / 2)
-        self.cx += amt_x
-        self.cy += amt_y
+        cx += amt_x
+        cy += amt_y
         self.project_loaded_image(self.cx, self.cy, inplace=True)
 
-    def rotate_projection_image(self, rotation):
+    def rotate_projection_image(self, rotation, cx, cy):
         self.projection_image = self.rotate_image(self.projection_image, rotation)
         ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
         self.angle -= rotation / 180 * np.pi
-        self.project_loaded_image(self.cx, self.cy, inplace=True)
+        self.project_loaded_image(cx, cy, inplace=True)
 
     def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, adding_only=False, inplace=False):
         if inplace:

@@ -127,10 +127,22 @@ class Window(GUI):
         translate_amt = self.oetTranslateDoubleSpinBox.value()
         for robot in self.robots:
             print(robot, self.robots[robot]['checkbox'].isChecked())
+            if self.robots[robot]['checkbox'].isChecked():
+                if key == QtCore.Qt.Key_W:
+                    self.dmd.translate(translate_amt, self.robots[robot]['cx'], self.robots[robot]['cy'])
+                elif key == QtCore.Qt.Key_D:
+                    self.dmd.translate(-translate_amt, self.robots[robot]['cx'], self.robots[robot]['cy'])
+
 
     def clear_dmd(self):
         # add all robot clearing
-        self.dmd.clear_oet_projection
+        for robot in self.robots:
+            checkbox = self.robots[robot]['checkbox']
+            self.oetRobotsLayout.removeWidget(checkbox)
+            checkbox.deleteLater()
+            checkbox = None
+        self.robots = {}
+        self.dmd.clear_oet_projection()
 
     def toggle_project_image(self):
         if self.oetProjectImagePushButton.isChecked():

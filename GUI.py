@@ -176,7 +176,7 @@ class GUI(QtWidgets.QWidget):
         self.oetProjectImagePushButton.setCheckable(True)
         self.oetControlProjectionsPushButton = QtWidgets.QPushButton('Control Projections')
         self.oetControlProjectionsPushButton.setCheckable(True)
-        self.oetClearPushButton = QtWidgets.QPushButton('Clear Projection')
+        self.oetClearPushButton = QtWidgets.QPushButton('Clear Controls')
         self.oetToggleLampPushButton = QtWidgets.QPushButton('Lamp')
         self.oetToggleLampPushButton.setCheckable(True)
         self.oetLampIntesnsityLabel = QtWidgets.QLabel('Intensity:')
