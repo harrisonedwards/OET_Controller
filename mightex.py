@@ -36,8 +36,8 @@ class Polygon1000():
         self.circle_radius = 25
         self.tog = False
         self.angle = 0
+        self.controllable_projections = {}
         self.curr_img = self.get_blank_image()
-
 
         numpy_image = np.zeros((self.height, self.width), dtype=bool)
         numpy_image[::2] = True
@@ -157,6 +157,13 @@ class Polygon1000():
         y = rho * np.sin(phi)
         return (x, y)
 
+    @staticmethod
+    def rotate_image(image, angle):
+        image_center = tuple(np.array(image.shape[1::-1]) / 2)
+        rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+        result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
+        return result
+
     def translate(self, amt):
         amt_x, amt_y = self.pol2cart(amt, self.angle)
         self.cx += amt_x
@@ -168,13 +175,6 @@ class Polygon1000():
         self.cx += amt_x
         self.cy += amt_y
         self.project_loaded_image(self.cx, self.cy, inplace=True)
-
-    @staticmethod
-    def rotate_image(image, angle):
-        image_center = tuple(np.array(image.shape[1::-1]) / 2)
-        rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-        result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
-        return result
 
     def rotate_projection_image(self, rotation):
         self.projection_image = self.rotate_image(self.projection_image, rotation)
