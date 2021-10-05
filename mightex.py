@@ -129,7 +129,7 @@ class Polygon1000():
         self.render_to_dmd(blank)
 
     def translate(self, amt, cx, cy, angle, scale, image, adding):
-        amt_x, amt_y = self.pol2cart(amt, -angle*np.pi/90)
+        amt_x, amt_y = self.pol2cart(amt, -angle * np.pi / 90)
         cx += amt_x
         cy += amt_y
         image = self.rotate_and_scale(angle, scale, image)
@@ -137,7 +137,7 @@ class Polygon1000():
         return cx, cy, angle
 
     def strafe(self, amt, cx, cy, angle, scale, image, adding):
-        amt_x, amt_y = self.pol2cart(amt, (-angle*np.pi/90) + np.pi / 2)
+        amt_x, amt_y = self.pol2cart(amt, (-angle * np.pi / 90) + np.pi / 2)
         cx += amt_x
         cy += amt_y
         image = self.rotate_and_scale(angle, scale, image)
@@ -151,6 +151,7 @@ class Polygon1000():
         return cx, cy, angle
 
     def scale_projection(self, amt, cx, cy, angle, scale, image, adding):
+        print('SCALING')
         scale += amt
         image = self.rotate_and_scale(angle, scale, image)
         self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
@@ -201,6 +202,7 @@ class Polygon1000():
             img[start_y:end_y, start_x:end_x] = cropped_projection
             img = np.logical_or(img, self.curr_img)
         else:
+            print(start_y, end_y, '\t', start_x, end_x)
             img[start_y:end_y, start_x:end_x] = cropped_projection
 
         self.curr_img = img
@@ -244,10 +246,17 @@ class Polygon1000():
             cropped_projection = cropped_projection[:h // 2 + int(img.shape[0] - cy), :]
             end_y = img.shape[0]
 
-        if end_x - start_x < cropped_projection.shape[1]:
-            start_x -= 1
-        if end_y - start_y < cropped_projection.shape[0]:
-            start_y -= 1
+        # fixing a dumb off-by-one bug...probably an easier way to do this...
+        if end_x - start_x != cropped_projection.shape[1]:
+            if start_x == 0:
+                end_x += 1
+            elif start_x > 0:
+                start_x -= 1
+        if end_y - start_y != cropped_projection.shape[0]:
+            if start_y == 0:
+                end_y += 1
+            elif start_y > 0:
+                start_y -= 1
 
         return start_x, end_x, start_y, end_y, cropped_projection
 

@@ -138,7 +138,7 @@ class imageProcessor(QtCore.QThread):
                     t1 = time.time()
                     fps = 200 / (t1 - t0)
                     t0 = t1
-                    print(f'fps: {fps}')
+                    # print(f'fps: {fps}')
             else:
                 count += 1
                 print('Camera dropped frame:', count)
