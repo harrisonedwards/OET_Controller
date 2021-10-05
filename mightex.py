@@ -128,16 +128,44 @@ class Polygon1000():
         blank = self.get_blank_image()
         self.render_to_dmd(blank)
 
+    def translate(self, amt, cx, cy, angle, scale, image, adding):
+        amt_x, amt_y = self.pol2cart(amt, -angle*np.pi/90)
+        cx += amt_x
+        cy += amt_y
+        image = self.rotate_and_scale(angle, scale, image)
+        cx, cy, angle = self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
+        return cx, cy, angle
 
-    def scale_projection(self, scale):
-        h, w = self.projection_image.shape
-        self.projection_image = cv2.resize(self.projection_image, (int(w * scale), int(h * scale)))
+    def strafe(self, amt, cx, cy, angle, scale, image, adding):
+        amt_x, amt_y = self.pol2cart(amt, (-angle*np.pi/90) + np.pi / 2)
+        cx += amt_x
+        cy += amt_y
+        image = self.rotate_and_scale(angle, scale, image)
+        cx, cy, angle = self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
+        return cx, cy, angle
 
+    def turn_robot(self, amt, cx, cy, angle, scale, image, adding):
+        angle += amt
+        image = self.rotate_and_scale(angle, scale, image)
+        cx, cy, angle = self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
+        return cx, cy, angle
+
+    def scale_projection(self, amt, cx, cy, angle, scale, image, adding):
+        scale += amt
+        image = self.rotate_and_scale(angle, scale, image)
+        self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
+        return scale
+
+    def rotate_and_scale(self, angle, scale, image):
+        # rotate first
+        image = self.rotate_image(image, angle)
+        # now scale
+        h, w = image.shape
+        image = cv2.resize(image, (int(w * scale / 100), int(h * scale / 100)))
         # threshold to binarize
-        ret, self.projection_image = cv2.threshold(self.projection_image, 127, 255, cv2.THRESH_BINARY)
-
-        # re-project the image in the location it was in
-        self.project_loaded_image(self.cx, self.cy, inplace=True)
+        ret, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
+        image = self.rotate_image(image, angle)
+        return image
 
     @staticmethod
     def pol2cart(rho, phi):
@@ -151,29 +179,6 @@ class Polygon1000():
         rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
         result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
         return result
-
-    def translate(self, amt, cx, cy, angle, image, adding):
-        amt_x, amt_y = self.pol2cart(amt, -angle*np.pi/180)
-        cx += amt_x
-        cy += amt_y
-        image = self.rotate_image(image, angle)
-        cx, cy, angle = self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
-        return cx, cy, angle
-
-    def strafe(self, amt, cx, cy, angle, image, adding):
-        amt_x, amt_y = self.pol2cart(amt, (-angle*np.pi/180) + np.pi / 2)
-        cx += amt_x
-        cy += amt_y
-        image = self.rotate_image(image, angle)
-        cx, cy, angle = self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
-        return cx, cy, angle
-
-    def rotate_projection_image(self, rotation, cx, cy, angle, image, adding):
-        angle -= rotation
-        image = self.rotate_image(image, angle)
-        ret, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
-        cx, cy, image = self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
-        return cx, cy, angle
 
     def project_loaded_image(self, dmd_scaled_x, dmd_scaled_y, angle, image, adding=False, inplace=False):
 

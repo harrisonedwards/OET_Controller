@@ -122,7 +122,8 @@ class Window(GUI):
                 name = names.get_first_name()
             checkbox = QtWidgets.QCheckBox(name)
             self.robots[name] = {'cx': cx, 'cy': cy, 'angle': angle,
-                                 'checkbox': checkbox, 'image': np.copy(self.projection_image)}
+                                 'checkbox': checkbox, 'image': np.copy(self.projection_image),
+                                 'scale': 100}
             self.oetRobotsLayout.addWidget(checkbox)
             self.oetRobotsEmptyLabel.setVisible(False)
             self.dmd.update()
@@ -137,12 +138,12 @@ class Window(GUI):
                 translate_amt = self.oetTranslateDoubleSpinBox.value()
             else:
                 rotate_amt, translate_amt = 0, 0
-            print(f'translating {robot} {translate_amt} and angle {rotate_amt}')
             if key == QtCore.Qt.Key_W:
                 cx, cy, angle = self.dmd.translate(-translate_amt,
                                                    self.robots[robot]['cx'],
                                                    self.robots[robot]['cy'],
                                                    self.robots[robot]['angle'],
+                                                   self.robots[robot]['scale'],
                                                    self.robots[robot]['image'],
                                                    adding=adding)
             elif key == QtCore.Qt.Key_S:
@@ -150,6 +151,7 @@ class Window(GUI):
                                                    self.robots[robot]['cx'],
                                                    self.robots[robot]['cy'],
                                                    self.robots[robot]['angle'],
+                                                   self.robots[robot]['scale'],
                                                    self.robots[robot]['image'],
                                                    adding=adding)
             elif key == QtCore.Qt.Key_A:
@@ -157,6 +159,7 @@ class Window(GUI):
                                                 self.robots[robot]['cx'],
                                                 self.robots[robot]['cy'],
                                                 self.robots[robot]['angle'],
+                                                self.robots[robot]['scale'],
                                                 self.robots[robot]['image'],
                                                 adding=adding)
             elif key == QtCore.Qt.Key_D:
@@ -164,26 +167,47 @@ class Window(GUI):
                                                 self.robots[robot]['cx'],
                                                 self.robots[robot]['cy'],
                                                 self.robots[robot]['angle'],
+                                                self.robots[robot]['scale'],
                                                 self.robots[robot]['image'],
                                                 adding=adding)
             elif key == QtCore.Qt.Key_Q:
-                cx, cy, angle = self.dmd.rotate_projection_image(-rotate_amt,
-                                                                 self.robots[robot]['cx'],
-                                                                 self.robots[robot]['cy'],
-                                                                 self.robots[robot]['angle'],
-                                                                 self.robots[robot]['image'],
-                                                                 adding=adding)
+                cx, cy, angle = self.dmd.turn_robot(rotate_amt,
+                                                    self.robots[robot]['cx'],
+                                                    self.robots[robot]['cy'],
+                                                    self.robots[robot]['angle'],
+                                                    self.robots[robot]['scale'],
+                                                    self.robots[robot]['image'],
+                                                    adding=adding)
             elif key == QtCore.Qt.Key_E:
-                cx, cy, angle = self.dmd.rotate_projection_image(rotate_amt,
-                                                                 self.robots[robot]['cx'],
-                                                                 self.robots[robot]['cy'],
-                                                                 self.robots[robot]['angle'],
-                                                                 self.robots[robot]['image'],
-                                                                 adding=adding)
+                cx, cy, angle = self.dmd.turn_robot(-rotate_amt,
+                                                    self.robots[robot]['cx'],
+                                                    self.robots[robot]['cy'],
+                                                    self.robots[robot]['angle'],
+                                                    self.robots[robot]['scale'],
+                                                    self.robots[robot]['image'],
+                                                    adding=adding)
             adding += 1
             self.robots[robot]['cx'] = cx
             self.robots[robot]['cy'] = cy
             self.robots[robot]['angle'] = angle
+        self.dmd.update()
+
+    def scale_up_oet_projection(self):
+        adding = 0
+        for robot in self.robots:
+            if self.robots[robot]['checkbox'].isChecked():
+                scale_amt = self.oetScaleDoubleSpinBox.value()
+            else:
+                scale_amt = 0
+            scale = self.dmd.scale_projection(scale_amt,
+                                              self.robots[robot]['cx'],
+                                              self.robots[robot]['cy'],
+                                              self.robots[robot]['angle'],
+                                              self.robots[robot]['scale'],
+                                              self.robots[robot]['image'],
+                                              adding=adding)
+            self.robots[robot]['scale'] = scale
+            adding += 1
         self.dmd.update()
 
     def clear_dmd(self):
@@ -216,7 +240,6 @@ class Window(GUI):
             self.project_circle_mode = False
             self.oetScaleDoubleSpinBox.setEnabled(True)
             self.oetScaleUpPushButton.setEnabled(True)
-            self.oetScaleDownPushButton.setEnabled(True)
             self.oetRotationDoubleSpinBox.setEnabled(True)
             self.oetTranslateDoubleSpinBox.setEnabled(True)
 
@@ -290,14 +313,6 @@ class Window(GUI):
         state = self.oetToggleLampPushButton.isChecked()
         self.dmd.toggle_dmd_light(state)
 
-    def scale_up_oet_projection(self):
-        amt = self.oetScaleDoubleSpinBox.value()
-        self.dmd.scale_projection(1 + amt / 100)
-
-    def scale_down_oet_projection(self):
-        amt = self.oetScaleDoubleSpinBox.value()
-        self.dmd.scale_projection(1 - amt / 100)
-
     def load_oet_projection(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file for projection')
         if file_name != '':
@@ -362,8 +377,6 @@ class Window(GUI):
         key = event.key()
         if key == QtCore.Qt.Key_Escape:
             self.stage.halt()
-        if self.project_image_mode:
-            self.handle_robot_movement(key)
         else:
             if key == QtCore.Qt.Key_Up:
                 self.stage.step('r')
@@ -375,8 +388,12 @@ class Window(GUI):
                 self.stage.step('l')
         if key == QtCore.Qt.Key_PageUp:
             self.microscope.move_rel_z(self.zstageStepSizeDoubleSpinBox.value())
+            return
         elif key == QtCore.Qt.Key_PageDown:
             self.microscope.move_rel_z(-self.zstageStepSizeDoubleSpinBox.value())
+            return
+        if self.project_image_mode:
+            self.handle_robot_movement(key)
 
     def keyReleaseEvent(self, event):
         pass
