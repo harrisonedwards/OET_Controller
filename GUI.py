@@ -3,7 +3,8 @@ import qimage2ndarray
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QThread
 from image_processor import imageProcessor
-
+import logging
+import cv2
 
 class GUI(QtWidgets.QWidget):
 
@@ -68,6 +69,8 @@ class GUI(QtWidgets.QWidget):
         self.cameraExposureDoubleSpinBox.setMinimum(5)
         self.cameraExposureDoubleSpinBox.setSingleStep(20)
         self.cameraExposureDoubleSpinBox.setValue(200)
+        self.scaleBarTogglePushButton = QtWidgets.QPushButton('Scale Bar')
+        self.scaleBarTogglePushButton.setCheckable(True)
 
         # FUNCTION GENERATOR
         self.voltageLabel = QtWidgets.QLabel(text='Voltage:')
@@ -85,9 +88,9 @@ class GUI(QtWidgets.QWidget):
         self.waveformComboBox = QtWidgets.QComboBox()
         self.waveformComboBox.addItems(['SIN', 'SQU'])
         self.waveformComboBox.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.fgOutputCombobox = QtWidgets.QComboBox()
-        self.fgOutputCombobox.addItems(['OFF', 'ON'])
-        self.fgOutputCombobox.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.fgOutputTogglePushButton = QtWidgets.QPushButton('Output')
+        self.fgOutputTogglePushButton.setCheckable(True)
+
         self.setFunctionGeneratorPushButton = QtWidgets.QPushButton('Set')
 
         # FLUORESCENCE CONTROLLER
@@ -163,7 +166,7 @@ class GUI(QtWidgets.QWidget):
         self.oetRotationDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.oetRotationDoubleSpinBox.setSuffix('°')
         self.oetRotationDoubleSpinBox.setDecimals(0)
-        self.oetRotationDoubleSpinBox.setMinimum(5)
+        self.oetRotationDoubleSpinBox.setMinimum(1)
         self.oetRotationDoubleSpinBox.setMaximum(180)
         self.oetRotationDoubleSpinBox.setSingleStep(5)
         self.oetTranslateLabel = QtWidgets.QLabel('Translation:')
@@ -189,13 +192,15 @@ class GUI(QtWidgets.QWidget):
 
         self.imageAdjustmentClahePushButton = QtWidgets.QPushButton('Apply Clahe')
         self.imageAdjustmentClahePushButton.setCheckable(True)
+        self.imageAdjustmentClaheGridLabel = QtWidgets.QLabel('Grid Size:')
         self.imageAdjustmentClaheGridValueDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.imageAdjustmentClaheGridValueDoubleSpinBox.setMinimum(8)
+        self.imageAdjustmentClaheGridValueDoubleSpinBox.setMinimum(3)
         self.imageAdjustmentClaheGridValueDoubleSpinBox.setMaximum(200)
         self.imageAdjustmentClaheGridValueDoubleSpinBox.setSingleStep(2)
         self.imageAdjustmentClaheGridValueDoubleSpinBox.setDecimals(0)
+        self.imageAdjustmentClaheClipValueLabel = QtWidgets.QLabel('Clip Limit:')
         self.imageAdjustmentClaheClipValueDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.imageAdjustmentClaheClipValueDoubleSpinBox.setMinimum(3)
+        self.imageAdjustmentClaheClipValueDoubleSpinBox.setMinimum(1)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setMaximum(200)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setSingleStep(1)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setDecimals(1)
@@ -240,6 +245,7 @@ class GUI(QtWidgets.QWidget):
         self.microscopeLayoutLower.addWidget(self.diaVoltageDoubleSpinBox)
         self.microscopeLayoutLower.addWidget(self.cameraExposureLabel)
         self.microscopeLayoutLower.addWidget(self.cameraExposureDoubleSpinBox)
+        self.microscopeLayoutLower.addWidget(self.scaleBarTogglePushButton)
         self.microscopeLayout.addLayout(self.microscopeLayoutLower)
 
         self.microscopeLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
@@ -256,7 +262,8 @@ class GUI(QtWidgets.QWidget):
         self.functionGeneratorLayout.addWidget(self.frequencyDoubleSpinBox)
         self.functionGeneratorLayout.addWidget(self.waveformComboBox)
         self.functionGeneratorLayout.addWidget(self.setFunctionGeneratorPushButton)
-        self.functionGeneratorLayout.addWidget(self.fgOutputCombobox)
+        self.functionGeneratorLayout.addWidget(self.fgOutputTogglePushButton)
+
         self.functionGeneratorLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.functionGeneratorGroupBox)
         if not self.function_generator:
@@ -352,7 +359,9 @@ class GUI(QtWidgets.QWidget):
         self.imageAdustmentLayout = QtWidgets.QHBoxLayout()
         self.imageAdustmentGroupBox.setLayout(self.imageAdustmentLayout)
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClahePushButton)
+        self.imageAdustmentLayout.addWidget(self.imageAdjustmentClaheClipValueLabel)
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClaheClipValueDoubleSpinBox)
+        self.imageAdustmentLayout.addWidget(self.imageAdjustmentClaheGridLabel)
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClaheGridValueDoubleSpinBox)
         self.imageAdustmentLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.imageAdustmentGroupBox)
@@ -377,6 +386,7 @@ class GUI(QtWidgets.QWidget):
         self.image_viewer.resize_event_signal.connect(self.image_processing.resize_slot)
         self.image_viewer.path_signal.connect(self.image_processing.path_slot)
         self.image_viewer.control_signal.connect(self.image_processing.robot_control_slot)
+        self.toggle_scale_bar_signal.connect(self.image_viewer.toggle_scale_bar_slot)
 
         self.set_camera_exposure_signal.connect(self.image_processing.set_exposure_slot)
 
@@ -430,9 +440,9 @@ class GUI(QtWidgets.QWidget):
         self.diaLightPushbutton.clicked.connect(self.toggleDiaLamp)
         self.diaVoltageDoubleSpinBox.valueChanged.connect(self.microscope.set_dia_voltage)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
+        self.scaleBarTogglePushButton.clicked.connect(self.toggleScaleBar)
 
-        if self.function_generator:
-            self.fgOutputCombobox.currentTextChanged.connect(self.function_generator.change_output)
+        self.fgOutputTogglePushButton.clicked.connect(self.toggleFgOutput)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
         self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
         self.fluorescenceToggleLampPushButton.clicked.connect(self.toggleFluorescenceLamp)
@@ -529,6 +539,14 @@ class ImageViewer(QtWidgets.QWidget):
         self.calibration_payload = []
         self.begin_path = None
         self.controlling_detected = False
+        self.scale_bar_shown = False
+        self.scale_bar_values = {'2x': ['500um', 162],
+                                 '4x': ['200um', 125],
+                                 '10x': ['100um', 156],
+                                 '20x': ['50um', 152],
+                                 '40x': ['10um', 63]}
+        self.scale_bar_value = 'Unk'
+        self.scale_bar_length = 10
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -540,7 +558,24 @@ class ImageViewer(QtWidgets.QWidget):
     # @QtCore.pyqtSlot(QtGui.QImage)
 
     @QtCore.pyqtSlot('PyQt_PyObject')
+    def toggle_scale_bar_slot(self, objective):
+        self.scale_bar_shown = not self.scale_bar_shown
+        self.scale_bar_value = self.scale_bar_values[objective][0]
+        self.scale_bar_length = self.scale_bar_values[objective][1]
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
     def setImage(self, np_img):
+        if self.scale_bar_shown:
+            # draw our scale line and text in a reasonable location
+            cv2.putText(np_img, self.scale_bar_value,
+                        (20, int(self.height() * .925)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        255,
+                        2)
+            cv2.line(np_img, (20, int(self.height() * .925) + 20),
+                     (self.scale_bar_length, int(self.height() * .925) + 20),
+                     255, 3, 3)
         if len(np_img.shape) > 2:
             # Format_RGB16
             qt_img = qimage2ndarray.array2qimage(np_img)
@@ -548,7 +583,7 @@ class ImageViewer(QtWidgets.QWidget):
         else:
             self.image = QtGui.QImage(np_img.data, self.height(), self.width(), np_img.strides[0],
                                       QtGui.QImage.Format_Grayscale8)
-        # self.image = image
+
         self.image_width = self.image.width()
         self.image_height = self.image.height()
         self.update()
@@ -590,7 +625,7 @@ class ImageViewer(QtWidgets.QWidget):
             x_scaled = event.pos().x() / self.width()
             y_scaled = event.pos().y() / self.height()
             self.calibration_payload.append((x_scaled, y_scaled))
-            print('calibration point marked:', x_scaled, y_scaled)
+            logging.info('calibration point marked:', x_scaled, y_scaled)
             if len(self.calibration_payload) > 2:
                 QtWidgets.QMessageBox.about(self, 'Calibration', 'Calibration Complete')
                 self.calibrating = False

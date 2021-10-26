@@ -1,4 +1,4 @@
-import os
+import os, logging
 from ctypes import *
 import numpy as np
 from pyglet.gl import *
@@ -75,7 +75,7 @@ class Polygon1000():
         device_no_status = self.dmd_clib.MTPLG_GetDevModuleNo(c_int(self.dev_id), devno)
         if device_no_status != 0:
             raise Exception('Unable to get Polygon 1000 device number')
-        print(f'connected to DMD: {devno.value}')
+        logging.info(f'connected to DMD: {devno.value}')
         set_display_mode = self.dmd_clib.MTPLG_SetDevDisplayMode(c_int(self.dev_id), c_int(1))
         if set_display_mode != 0:
             raise Exception('Unable to set Polygon 1000 display mode')
@@ -99,16 +99,16 @@ class Polygon1000():
               self.dmd_clib.MTPLG_UnInitDevice())
 
     def initialize_dmd(self):
-        print('init dmd leds:', self.led_clib.MTUSB_BLSDriverInitDevices())
-        print('open dmd leds:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
-        print('reset dmd device:', self.led_clib.MTUSB_BLSDriverResetDevice(0))
-        print('open dmd led:', self.led_clib.MTUSB_BLSDriverOpenDevice(0))
+        logging.info(f'init dmd leds: {self.led_clib.MTUSB_BLSDriverInitDevices()}')
+        logging.info(f'open dmd leds: {self.led_clib.MTUSB_BLSDriverOpenDevice(0)}')
+        logging.info(f'reset dmd device: {self.led_clib.MTUSB_BLSDriverResetDevice(0)}')
+        logging.info(f'open dmd led: {self.led_clib.MTUSB_BLSDriverOpenDevice(0)}')
         self.set_dmd_current(0)
-        # print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
+        # print()('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
         # for channel in range(1, 2): # there are 4 total channels, but we will forget about them for now
-        #     print(f'set led mode to enable for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
-        #     # print(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
-        #     print(f'set led current to 100% for channel {channel}:',
+        #     print()(f'set led mode to enable for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
+        #     # print()(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
+        #     print()(f'set led current to 100% for channel {channel}:',
         #           self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
 
     def set_dmd_current(self, current):
@@ -151,7 +151,6 @@ class Polygon1000():
         return cx, cy, angle
 
     def scale_projection(self, amt, cx, cy, angle, scale, image, adding):
-        print('SCALING')
         scale += amt
         image = self.rotate_and_scale(angle, scale, image)
         self.project_loaded_image(cx, cy, angle, image, adding=adding, inplace=True)
@@ -202,7 +201,6 @@ class Polygon1000():
             img[start_y:end_y, start_x:end_x] = cropped_projection
             img = np.logical_or(img, self.curr_img)
         else:
-            print(start_y, end_y, '\t', start_x, end_x)
             img[start_y:end_y, start_x:end_x] = cropped_projection
 
         self.curr_img = img

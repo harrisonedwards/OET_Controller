@@ -1,5 +1,5 @@
 import serial
-import sys
+import logging
 
 
 DEFAULT_INTENSITY = 5
@@ -10,10 +10,10 @@ class FluorescenceController():
         try:
             self.ser = self.get_connection()
         except Exception as e:
-            print('failed to connect to fluorescence controller')
+            logging.warning('failed to connect to fluorescence controller')
             self.ser = None
-        # print(self.send_receive('lh?'))
-        # print(self.send_receive(('ip=' + ','.join(['500' for i in range(4)]))))
+        # logging.info(self.send_receive('lh?'))
+        # logging.info(self.send_receive(('ip=' + ','.join(['500' for i in range(4)]))))
         self.lamp_index = 0
         self.current_intensity = DEFAULT_INTENSITY
         self.change_intensity(DEFAULT_INTENSITY)
@@ -24,7 +24,7 @@ class FluorescenceController():
             self.turn_all_off()
             self.ser.reset_input_buffer()
             self.ser.reset_output_buffer()
-            print('closing fluorescence controller connection...')
+            logging.info('closing fluorescence controller connection...')
             self.ser.close()
 
     def get_connection(self):
@@ -37,14 +37,14 @@ class FluorescenceController():
                                     parity=parity)
                 ser.write('co\r'.encode('utf-8'))
                 response = ser.readline()
-                # print('response:', response)
+                # logging.info('response:', response)
                 ser.write('sn?\r'.encode('utf-8'))
                 response = ser.readline()
                 if response == b'548\r':
-                    print('fluorescence controller found on {}'.format(com))
+                    logging.info('fluorescence controller found on {}'.format(com))
                     return ser
             except Exception as e:
-                pass
+                logging.warning('failed to send commands to fluorescence controller')
         raise Exception('failed to connect')
         # sys.exit(1)
 
@@ -54,13 +54,13 @@ class FluorescenceController():
             piece = self.ser.read()
             if piece != b'':
                 response += piece.decode('utf-8')
-        print('response received from excitation lamp:{}'.format(response))
+        logging.info('response received from excitation lamp:{}'.format(response))
         return response
 
     def issue_command(self, command, suppress_msg=False):
         command_string = '{}\r'.format(command)
         if (not suppress_msg):
-            print('sending command to excitation lamp:{}'.format(command_string))
+            logging.info('sending command to excitation lamp:{}'.format(command_string))
         self.ser.write(command_string.encode('utf-8'))
 
     def send_receive(self, command, suppress_msg=False):
@@ -102,7 +102,7 @@ class FluorescenceController():
         self.send_receive('on?')
 
     # def flush_and_close(self):
-    #     print('CLOSING')
+    #     logging.info('CLOSING')
     #     del self
 
 
@@ -114,4 +114,4 @@ if __name__ == '__main__':
     # ser = serial.Serial('COM3', 19200, timeout=.25,
     #                     parity=parity)
     # ser.write(b'sn?\r')
-    # print(ser.readline())
+    # logging.info(ser.readline())

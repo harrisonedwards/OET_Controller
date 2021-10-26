@@ -1,4 +1,7 @@
-import sys
+import sys, logging
+import os, sys, time
+from time import strftime
+
 import names
 import PyQt5.QtGui
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -23,6 +26,7 @@ class Window(GUI):
     enable_robot_detection_signal = QtCore.pyqtSignal('PyQt_PyObject')
     update_detection_params_signal = QtCore.pyqtSignal('PyQt_PyObject')
     clahe_params_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    toggle_scale_bar_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self):
         super(Window, self).__init__()
@@ -30,37 +34,37 @@ class Window(GUI):
         try:
             self.function_generator = FunctionGenerator()
         except Exception as e:
-            print(f'Function generator control not available: {e}')
+            logging.warning(f'Function generator control not available: {e}')
             self.function_generator = False
 
         try:
             self.pump = Pump()
         except Exception as e:
-            print(f'Pump control not available: {e}')
+            logging.warning(f'Pump control not available: {e}')
             self.pump = False
 
         try:
             self.fluorescence_controller = FluorescenceController()
         except Exception as e:
-            print(f'Fluorescence control not available: {e}')
+            logging.warning(f'Fluorescence control not available: {e}')
             self.fluorescence_controller = False
 
         try:
             self.stage = Stage()
         except Exception as e:
-            print(f'Stage not available: {e}')
+            logging.warning(f'Stage not available: {e}')
             self.stage = False
 
         try:
             self.microscope = Microscope()
         except Exception as e:
-            print(f'Microscope control not available: {e}')
+            logging.warning(f'Microscope control not available: {e}')
             self.microscope = False
 
         try:
             self.dmd = Polygon1000(1140, 912)
         except Exception as e:
-            print(f'unable to connect to polygon: {e}')
+            logging.warning(f'unable to connect to polygon: {e}')
             self.dmd = False
 
         self.dispenseMode = None  # should be set by the GUI immediately
@@ -87,7 +91,7 @@ class Window(GUI):
     def handle_click(self, event):
         # see if we are calibrated
         if len(self.image_viewer.calibration_payload) < 3:
-            print('not calibrated...ignoring click')
+            logging.info('not calibrated...ignoring click')
             return
         x = event.pos().x()
         y = event.pos().y()
@@ -99,7 +103,7 @@ class Window(GUI):
         # check if we can illuminate the clicked area with the dmd
         check = self.check_if_in_dmd_area(unit_scaled_viewer_x, unit_scaled_viewer_y)
         if not check:
-            print('not within DMD area...ignoring click')
+            logging.info('not within DMD area...ignoring click')
             return
 
         # get the full scale of our dmd area
@@ -133,7 +137,7 @@ class Window(GUI):
     def handle_robot_movement(self, key):
         adding = 0
         for robot in self.robots:
-            if self.robots[robot]['checkbox'].isChecked():
+            if self.robots[robot]['checkbox'].isChecked() and key in [87, 65, 83, 68, 81, 69]:
                 rotate_amt = self.oetRotationDoubleSpinBox.value()
                 translate_amt = self.oetTranslateDoubleSpinBox.value()
             else:
@@ -187,9 +191,10 @@ class Window(GUI):
                                                     self.robots[robot]['image'],
                                                     adding=adding)
             adding += 1
-            self.robots[robot]['cx'] = cx
-            self.robots[robot]['cy'] = cy
-            self.robots[robot]['angle'] = angle
+            if self.robots[robot]['checkbox'].isChecked() and key in [87, 65, 83, 68, 81, 69]:
+                self.robots[robot]['cx'] = cx
+                self.robots[robot]['cy'] = cy
+                self.robots[robot]['angle'] = angle
         self.dmd.update()
 
     def scale_up_oet_projection(self):
@@ -275,20 +280,19 @@ class Window(GUI):
         _, img = cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)
 
         # finally, render it
-        print('rendering to dmd...')
+        logging.info('rendering to dmd...')
         self.dmd.render_to_dmd(img)
 
     def apply_image_adjustment(self, value):
         clip = self.imageAdjustmentClaheClipValueDoubleSpinBox.value()
         grid = self.imageAdjustmentClaheGridValueDoubleSpinBox.value()
         status = self.imageAdjustmentClahePushButton.isChecked()
-        print(f'clahe: {status}, {clip}, {grid}')
         clahe_values = {'status': status, 'clip': clip, 'grid': grid}
         self.clahe_params_signal.emit(clahe_values)
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def robot_control_slot(self, robot_signal):
-        print(robot_signal)
+        logging.info(robot_signal)
         cx, cy, robot = robot_signal
 
     def toggle_robot_detection(self):
@@ -321,16 +325,16 @@ class Window(GUI):
 
     def load_projection_image(self, file_name):
         projection_image = cv2.imread(file_name)
-        print(f'loaded image of size {projection_image.shape}')
+        logging.info(f'loaded image of size {projection_image.shape}')
 
         # convert to grayscale and binarize
         projection_image = cv2.cvtColor(projection_image, cv2.COLOR_BGR2GRAY)
         ret, projection_image = cv2.threshold(projection_image, 127, 255, cv2.THRESH_BINARY)
-        print(f'image converted to binary. shape: {projection_image.shape}')
+        logging.info(f'image converted to binary. shape: {projection_image.shape}')
         self.projection_image = np.copy(projection_image)
 
     def calibrate_dmd(self):
-        print('calibrating dmd...')
+        logging.info('calibrating dmd...')
         # now we want to project 3 circles on the dmd for the user to click so that we can calibrate
         QtWidgets.QMessageBox.about(self, 'Calibration',
                                     'Please click the center of the 3 (clipped) projected circles in a CLOCKWISE \
@@ -359,6 +363,10 @@ class Window(GUI):
         else:
             return False
 
+    def toggleFgOutput(self):
+        state = self.fgOutputTogglePushButton.isChecked()
+        self.function_generator.change_output(int(state))
+
     def toggleDrawPaths(self):
         state = self.drawPathsPushButton.isChecked()
         self.image_viewer.drawing_path = state
@@ -367,7 +375,7 @@ class Window(GUI):
         self.image_viewer.controlling_detected = self.oetControlDetectedPushButton.isChecked()
 
     def closeEvent(self, event):
-        print('closing all connections...')
+        logging.info('closing all connections...')
         for hardware in [self.microscope, self.fluorescence_controller, self.function_generator,
                          self.dmd, self.pump]:
             if hardware is not False:
@@ -438,6 +446,8 @@ class Window(GUI):
         idx_dict = {k: v for k, v in zip(self.objectives, range(1, 7))}
         self.microscope.set_objective(idx_dict[text])
         self.update_detection_params()
+        self.scaleBarTogglePushButton.click()
+        self.scaleBarTogglePushButton.click()
 
     def changeFilter(self, text):
         idx_dict = {k: v for k, v in zip(self.filter_positions, range(1, 7))}
@@ -458,19 +468,13 @@ class Window(GUI):
     def setCameraExposure(self, exposure):
         self.set_camera_exposure_signal.emit(exposure)
 
-
-sys._excepthook = sys.excepthook
-
-
-def exception_hook(exctype, value, traceback):
-    print(exctype, value, traceback)
-    sys._excepthook(exctype, value, traceback)
-    sys.exit(1)
-
-
-sys.excepthook = exception_hook
+    def toggleScaleBar(self):
+        objective = self.magnificationComboBoxWidget.currentText()
+        self.toggle_scale_bar_signal.emit(objective)
 
 if __name__ == '__main__':
+    log_name = strftime('..\\logs\\%Y_%m_%d_%H_%M_%S.log', time.gmtime())
+    logging.basicConfig(filename=log_name, level=logging.DEBUG)
     app = QtWidgets.QApplication(sys.argv)
     window = Window()
     # window.setGeometry(500, 300, 800, 600)

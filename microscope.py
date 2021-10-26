@@ -1,4 +1,5 @@
 import ctypes, time, os
+import logging
 from PyQt5 import QtWidgets
 
 dll_name = 'Ni_Mic_Driver.dll'
@@ -12,8 +13,8 @@ def get_device_list():
     device_count = ctypes.create_string_buffer(32)
     device_list = ctypes.create_string_buffer(64)
     c_lib.MIC_GetDeviceList(ctypes.byref(device_count), ctypes.pointer(device_list))
-    print('device count:', device_count.value)
-    print('device list:', device_list.value)
+    logging.info('device count:', device_count.value)
+    logging.info('device list:', device_list.value)
     return device_count, device_list
 
 
@@ -34,12 +35,12 @@ def issue_dedicated_command(command, val1=None, val2=None):
     data_buffer = ctypes.create_string_buffer(32)
     ret = c_lib.MIC_DedicatedCommand(ctypes.byref(cmd), data_buffer)
     if ret != 0:
-        print(f'Command {command} FAILED!', ret)
-    print('Command Returned:', data_buffer.value)
+        logging.info(f'Command {command} FAILED!', ret)
+    logging.info('Command Returned:', data_buffer.value)
 
 
 def print_fields(status):
-    print(' '.join([f'{field_name} {getattr(status, field_name)}' for field_name, field_type in status._fields_]))
+    logging.info(' '.join([f'{field_name} {getattr(status, field_name)}' for field_name, field_type in status._fields_]))
 
 
 class MIC_Data(ctypes.Structure):
@@ -96,7 +97,7 @@ class Microscope():
         data_in.iDIALAMP_VOLTAGE = int(5)
         self.issue_command(data_in)
         self.status = self.get_status()
-        print_fields(self.status)
+        logging.info(self.status)
 
     def __del__(self):
         data_in = MIC_Data()
@@ -126,7 +127,7 @@ class Microscope():
         data_in.uiDataUsageMask = default_mask
         ret = c_lib.MIC_DataGet(ctypes.byref(data_in))
         if ret != 0:
-            print('get_status failed!', ret)
+            logging.info('get_status failed!', ret)
             self.close_microscope()
         return data_in
 
@@ -135,7 +136,7 @@ class Microscope():
         accessories_mask = ctypes.c_uint64()
         error_message_size = ctypes.c_int32(2 ** 32)
         error_message = ctypes.c_wchar_p()
-        print('attempting connection to microscope...')
+        logging.info('attempting connection to microscope...')
         ret = c_lib.MIC_Open(device_index,
                              ctypes.byref(accessories_mask),
                              error_message_size,
@@ -143,32 +144,32 @@ class Microscope():
         if ret != 0:
             raise Exception('failed to connect')
         else:
-            print('connected to microscope')
+            logging.info('connected to microscope')
 
-        # print('accessories mask:', accessories_mask.value)
-        # print('connection error message:', error_message.value)
+        # logging.info('accessories mask:', accessories_mask.value)
+        # logging.info('connection error message:', error_message.value)
 
     def close_microscope(self):
-        print('closing microscope...')
+        logging.info('closing microscope...')
         self.set_dia_shutter(0)
         self.set_turret_shutter(0)
-        print('microscope closed:', c_lib.MIC_Close())
+        logging.info(f'microscope closed: {c_lib.MIC_Close()}')
 
     def set_zstep_size(self, value):
-        print(f'z step size set to: {value}')
+        logging.info(f'z step size set to: {value}')
         self.step_size = value
 
     def move_rel_z(self, amount):
         self.status = self.get_status()
         z = self.status.iZPOSITION
-        print('z pos before:', z)
+        logging.info('z pos before:', z)
         data_in = MIC_Data()
         data_in.uiDataUsageMask = 0x0000000000000001
         data_in.iZPOSITION = int(z) + int(amount)
         # data_in.iZPOSITIONTolerance = 10
         # data_in.iZPOSITIONSpeed = 1
         self.issue_command(data_in)
-        print('z pos after:', self.status.iZPOSITION)
+        logging.info('z pos after: [self.status.iZPOSITION')
 
     def move_absolute_z(self, z=-500000):
         data_in = MIC_Data()
@@ -186,18 +187,18 @@ class Microscope():
                                     ctypes.byref(data_out),
                                     False)
             if ret != 0:
-                print('microscope error!', ret)
+                logging.info('microscope error!', ret)
         except Exception as e:
-            print('Microscope movement error:', e)
+            logging.warning(f'Microscope movement error: {e}')
             self.close_microscope()
         self.status = data_out
-        print(f'z at: {self.status.iZPOSITION}')
-        # print_fields(data_in)
-        # print_fields(data_out)
+        logging.info(f'z at: {self.status.iZPOSITION}')
+        # logging.info_fields(data_in)
+        # logging.info_fields(data_out)
 
     def set_turret_pos(self, pos, t1shutter, diashutter):
         status = self.get_status()
-        print('turret pos:', status.iTURRET1POS,
+        logging.info('turret pos:', status.iTURRET1POS,
               'turret shutter:', status.iTURRET1SHUTTER,
               'dia status:', status.iSHUTTER_DIA)
         data_in = MIC_Data()
@@ -230,7 +231,7 @@ class Microscope():
 
     def set_turret_shutter(self, state):
         if state == 2: state = 1
-        # print('state', state)
+        # logging.info('state', state)
         data_in = MIC_Data()
         data_in.uiDataUsageMask = 0x0000000000000080
         data_in.iTURRET1SHUTTER = state
@@ -244,12 +245,12 @@ class Microscope():
                                     ctypes.byref(data_out),
                                     False)
             if ret != 0:
-                print('microscope error!', ret)
+                logging.warning(f'microscope error! {ret}')
         except Exception as e:
-            print('Microscope movement error:', e)
+            logging.warning(f'Microscope movement error: {e}')
             self.close_microscope()
         self.status = data_out
-        # print(data_out.iTURRET1POS, data_out.iTURRET1SHUTTER, data_in.iSHUTTER_DIA)
+        # logging.info(data_out.iTURRET1POS, data_out.iTURRET1SHUTTER, data_in.iSHUTTER_DIA)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 import os, sys, time
 from time import strftime
-
+import logging
 import names
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -47,7 +47,7 @@ class imageProcessor(QtCore.QThread):
         self.vid_name = ''
         self.clahe_params = {'status': False, 'clip': 3.0, 'grid': 8}
 
-        print('initializing camera...')
+        logging.info('initializing camera...')
         if camera_type is CameraType.NIKON:
             self.init_nikon()
         if camera_type is CameraType.HAMAMATSU:
@@ -86,7 +86,8 @@ class imageProcessor(QtCore.QThread):
         self.mmc.setProperty('camera', 'Exposure', self.exposure)
         # self.mmc.setProperty('camera', 'PixelType', '8bit')
         for p in properties:
-            print(p, self.mmc.getProperty('camera', p), self.mmc.getAllowedPropertyValues('camera', p))
+            log_string = p + str(self.mmc.getProperty('camera', p)) + str(self.mmc.getAllowedPropertyValues('camera', p))
+            logging.info(log_string)
         self.mmc.startContinuousSequenceAcquisition(1)
         self.run_video = True
 
@@ -97,7 +98,7 @@ class imageProcessor(QtCore.QThread):
         self.hcam.start_sequence_qt(self.process_and_emit_image)
 
     def __del__(self):
-        print('closing camera...')
+        logging.info('closing camera...')
         self.mmc.stopSequenceAcquisition()
         self.mmc.reset()
 
@@ -107,11 +108,11 @@ class imageProcessor(QtCore.QThread):
         self.dilation_size = params_dict['dilation_size']
         self.objective = params_dict['objective']
         self.open_robots = params_dict['open_robots']
-        print('detection params updated:', params_dict)
+        logging.info('detection params updated:', params_dict)
 
     @QtCore.pyqtSlot()
     def startVideo(self):
-        print('starting video stream...')
+        logging.info('starting video stream...')
         count = 0
         t0 = time.time()
         QtWidgets.QApplication.processEvents()
@@ -128,7 +129,7 @@ class imageProcessor(QtCore.QThread):
                         self.writer.append_data(img)
                     self.image = img
                 except Exception as e:
-                    print(f'camera dropped frame {count}, {e}')
+                    logging.warning(f'camera dropped frame {count}, {e}')
                 # self.VideoSignal.emit(img)
                 self.process_and_emit_image(img)
                 count += 1
@@ -138,10 +139,10 @@ class imageProcessor(QtCore.QThread):
                     t1 = time.time()
                     fps = 200 / (t1 - t0)
                     t0 = t1
-                    # print(f'fps: {fps}')
+                    logging.info(f'fps: {fps}')
             else:
                 count += 1
-                print('Camera dropped frame:', count)
+                logging.info(f'Camera dropped frame: {count}')
             QtWidgets.QApplication.processEvents()
 
     def process_and_emit_image(self, np_img):
@@ -215,7 +216,7 @@ class imageProcessor(QtCore.QThread):
                              (cx + int(line_length * np.cos(angle)), cy + int(line_length * np.sin(angle))), (0, 0, 0),
                              line_width)
                 except Exception as e:
-                    print('failed to draw line to open robots')
+                    logging.warning('failed to draw line to open robots')
 
         robot_control_mask = cv2.dilate(robot_control_mask, np.ones((self.buffer_size, self.buffer_size)))
 
@@ -236,7 +237,7 @@ class imageProcessor(QtCore.QThread):
             return
 
         if self.robots == {}:
-            print('initial finding of robots...')
+            logging.info('initial finding of robots...')
             # first time finding robots, so lets update our finding them
             for i in range(len(robot_contours)):
                 name = names.get_first_name()
@@ -250,12 +251,12 @@ class imageProcessor(QtCore.QThread):
     @QtCore.pyqtSlot('PyQt_PyObject')
     def robot_control_slot(self, payload):
         if len(self.robots.items()) == 0:
-            print('no robots currently detected for control...ignoring.')
+            logging.info('no robots currently detected for control...ignoring.')
             return
         # find nearest robot here and add it to the dictionary
         cx, cy, nearest_robot = self.find_closest_robot(payload)
         self.robots[nearest_robot]['control'] = True
-        print(f'found closest robot at {cx}, {cy}')
+        logging.info(f'found closest robot at {cx}, {cy}')
         self.robot_signal.emit((cx, cy, nearest_robot))
 
     def update_robot_information(self, new_robot_contours, new_robot_angles):
@@ -268,14 +269,14 @@ class imageProcessor(QtCore.QThread):
                     # they are a match! let's update the robot internal dictionary
                     self.robots[robot]['contour'] = new_contour
                     self.robots[robot]['angle'] = new_angle
-                    print(f'robot {robot} found and kept consistent. {len(new_robot_contours)} total robots')
+                    logging.info(f'robot {robot} found and kept consistent. {len(new_robot_contours)} total robots')
                 else:
                     # we need to add the new robot to our dictionary
                     name = names.get_first_name()
                     while name in self.robots.keys():
                         name = names.get_first_name()
                     self.robots[robot] = {'contour': new_contour, 'angle': new_angle}
-                    # print(f'new robot {name} found and added to tracking...')
+                    # logging.info()(f'new robot {name} found and added to tracking...')
 
     def find_closest_robot(self, payload):
         min_d = np.inf
@@ -310,7 +311,7 @@ class imageProcessor(QtCore.QThread):
     @QtCore.pyqtSlot('PyQt_PyObject')
     def path_slot(self, payload):
         if len(self.robots.items()) == 0:
-            print('no robots currently detected for paths..')
+            logging.info('no robots currently detected for paths..')
             return
 
         # find nearest robot here and add it to the dictionary
@@ -322,8 +323,8 @@ class imageProcessor(QtCore.QThread):
         self.robots[nearest_robot]['path_start_y'] = cy / self.height
         self.robots[nearest_robot]['path_end_x'] = payload['end_x'] / self.width
         self.robots[nearest_robot]['path_end_y'] = payload['end_y'] / self.height
-        print('nearest robot:', nearest_robot)
-        # print('robots:', self.robots)
+        logging.info('nearest robot:', nearest_robot)
+        # logging.info()('robots:', self.robots)
         self.draw_paths()
 
     def draw_paths(self):
@@ -344,7 +345,7 @@ class imageProcessor(QtCore.QThread):
 
     @QtCore.pyqtSlot(QtCore.QSize, 'PyQt_PyObject')
     def resize_slot(self, size, running):
-        # print('received resize')
+        # logging.info()('received resize')
 
         # self.detection = False
         self.clear_paths_overlay_slot()
@@ -369,7 +370,7 @@ class imageProcessor(QtCore.QThread):
     def set_exposure_slot(self, exposure):
         self.exposure = exposure
         self.mmc.setProperty('camera', 'Exposure', self.exposure)
-        print('exposure set:', self.exposure)
+        logging.info(f'exposure set: {self.exposure}')
 
     @QtCore.pyqtSlot()
     def take_screenshot_slot(self):
@@ -380,12 +381,12 @@ class imageProcessor(QtCore.QThread):
     @QtCore.pyqtSlot()
     def start_recording_video_slot(self):
         self.recording = True
-        self.vid_name = self.video_dir + strftime('%Y_%m_%d_%H_%M_%S.avi', time.gmtime())
-        print(f'recording video: {self.vid_name}')
+        self.vid_name = self.video_dir + strftime('%Y_%m_%d_%H_%M_%S.mp4', time.gmtime())
+        logging.info(f'recording video: {self.vid_name}')
         self.writer = imageio.get_writer(self.vid_name, mode='I')
 
     @QtCore.pyqtSlot()
     def stop_video_slot(self):
         self.recording = False
         self.writer.close()
-        print(f'video: {self.vid_name} finished recording')
+        logging.info(f'video: {self.vid_name} finished recording')
