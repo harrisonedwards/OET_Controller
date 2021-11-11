@@ -35,7 +35,7 @@ def issue_dedicated_command(command, val1=None, val2=None):
     data_buffer = ctypes.create_string_buffer(32)
     ret = c_lib.MIC_DedicatedCommand(ctypes.byref(cmd), data_buffer)
     if ret != 0:
-        logging.info(f'Command {command} FAILED!', ret)
+        logging.WARNING(f'Command {command} FAILED!', ret)
     logging.info('Command Returned:', data_buffer.value)
 
 
@@ -137,14 +137,17 @@ class Microscope():
         error_message_size = ctypes.c_int32(2 ** 32)
         error_message = ctypes.c_wchar_p()
         logging.info('attempting connection to microscope...')
-        ret = c_lib.MIC_Open(device_index,
-                             ctypes.byref(accessories_mask),
-                             error_message_size,
-                             error_message)
-        if ret != 0:
-            raise Exception('failed to connect')
-        else:
-            logging.info('connected to microscope')
+        try:
+            ret = c_lib.MIC_Open(device_index,
+                                 ctypes.byref(accessories_mask),
+                                 error_message_size,
+                                 error_message)
+            if ret != 0:
+                raise Exception('nonzero code returned while attempting to connect to microscope')
+            else:
+                logging.info('connected to microscope')
+        except:
+            logging.critical('failed to connect to microscope')
 
         # logging.info('accessories mask:', accessories_mask.value)
         # logging.info('connection error message:', error_message.value)

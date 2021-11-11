@@ -4,7 +4,7 @@ from time import strftime
 
 import names
 import PyQt5.QtGui
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets, QtTest
 from function_generator import FunctionGenerator
 from pump import Pump
 from microscope import Microscope
@@ -30,42 +30,48 @@ class Window(GUI):
 
     def __init__(self):
         super(Window, self).__init__()
-
+        self.unavailable_instruments = []
         try:
             self.function_generator = FunctionGenerator()
         except Exception as e:
-            logging.warning(f'Function generator control not available: {e}')
+            logging.CRITICAL(f'Function generator control not available: {e}')
             self.function_generator = False
+            self.unavailable_instruments.append('function generator')
 
         try:
             self.pump = Pump()
         except Exception as e:
-            logging.warning(f'Pump control not available: {e}')
+            logging.CRITICAL(f'Pump control not available: {e}')
             self.pump = False
+            self.unavailable_instruments.append('pump')
 
         try:
             self.fluorescence_controller = FluorescenceController()
         except Exception as e:
-            logging.warning(f'Fluorescence control not available: {e}')
+            logging.CRITICAL(f'Fluorescence control not available: {e}')
             self.fluorescence_controller = False
+            self.unavailable_instruments.append('fluorescence')
 
         try:
             self.stage = Stage()
         except Exception as e:
-            logging.warning(f'Stage not available: {e}')
+            logging.CRITICAL(f'Stage not available: {e}')
             self.stage = False
+            self.unavailable_instruments.append('stage')
 
         try:
             self.microscope = Microscope()
         except Exception as e:
-            logging.warning(f'Microscope control not available: {e}')
+            logging.CRITICAL(f'Microscope control not available: {e}')
             self.microscope = False
+            self.unavailable_instruments.append('microscope')
 
         try:
             self.dmd = Polygon1000(1140, 912)
         except Exception as e:
             logging.warning(f'unable to connect to polygon: {e}')
             self.dmd = False
+            self.unavailable_instruments.append('DMD')
 
         self.dispenseMode = None  # should be set by the GUI immediately
         self.project_circle_mode = False
@@ -75,6 +81,7 @@ class Window(GUI):
 
         self.setupUI(self)
         self.initialize_gui_state()
+        self.statusBar.showMessage('unavailable instruments: ' + ','.join(self.unavailable_instruments), 10000)
         self.showMaximized()
 
         self.image_processing.robot_signal.connect(self.robot_control_slot)
@@ -86,6 +93,19 @@ class Window(GUI):
 
         # make our image processor aware of the system state
         self.update_detection_params()
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def fps_slot(self, fps):
+        fps = int(fps)
+        self.statusBar.showMessage(f'FPS: {fps}')
+
+    def execute_pulse(self):
+        duration = self.pulseDoubleSpinBox.value()
+        if self.fgOutputTogglePushButton.isChecked():
+            self.fgOutputTogglePushButton.click()
+        self.fgOutputTogglePushButton.click()
+        QtTest.QTest.qWait(duration)
+        self.fgOutputTogglePushButton.click()
 
     @QtCore.pyqtSlot(QtGui.QMouseEvent)
     def handle_click(self, event):
@@ -402,9 +422,13 @@ class Window(GUI):
             return
         if self.project_image_mode:
             self.handle_robot_movement(key)
+        if key == QtCore.Qt.Key_Space:
+            self.fgOutputTogglePushButton.setChecked(True)
 
     def keyReleaseEvent(self, event):
-        pass
+        key = event.key()
+        if key == QtCore.Qt.Key_Space:
+            self.fgOutputTogglePushButton.setChecked(False)
 
     def startAmountDispenseMode(self):
         self.dispenseMode = 'amount'
@@ -474,7 +498,16 @@ class Window(GUI):
 
 if __name__ == '__main__':
     log_name = strftime('..\\logs\\%Y_%m_%d_%H_%M_%S.log', time.gmtime())
-    logging.basicConfig(filename=log_name, level=logging.DEBUG)
+
+    # logging.basicConfig(filename=log_name, level=logging.DEBUG)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(log_name),
+            logging.StreamHandler()
+        ]
+    )
     app = QtWidgets.QApplication(sys.argv)
     window = Window()
     # window.setGeometry(500, 300, 800, 600)

@@ -7,21 +7,27 @@ class FunctionGenerator():
     def __init__(self):
         # hard coded for now...for some reason ResourceManager.list_resources() hangs indefinitely
         failure = False
-        self.connection = visa.ResourceManager().get_instrument('USB0::0x0957::0x0407::MY44008868::0::INSTR')
-        if 'Agilent Technologies,33220A,MY44008868,2.00-2.00-22-2' in self.connection.query('*IDN?'):
-            logging.info('successfully connected to function generator')
-            self.change_output('OFF')
-        else:
-            raise Exception('failed to connect to function generator')
+        try:
+            self.connection = visa.ResourceManager().get_instrument('USB0::0x0957::0x0407::MY44008868::0::INSTR')
+            if 'Agilent Technologies,33220A,MY44008868,2.00-2.00-22-2' in self.connection.query('*IDN?'):
+                logging.info('successfully connected to function generator')
+                self.change_output('OFF')
+            else:
+                raise Exception('failed to connect to function generator')
+        except:
+            logging.critical('failed to connect to function generator')
 
         # self.connection.write('*RST')
 
     def __del__(self):
-        if self.connection != None:
-            self.set_voltage(0)
-            self.change_output(0)
-            logging.info('closing function generator connection...')
-            self.connection.close()
+        try:
+            if self.connection != None:
+                self.set_voltage(0)
+                self.change_output(0)
+                logging.info('closing function generator connection...')
+                self.connection.close()
+        except:
+            logging.warning('failed to close function generator connection')
 
     def set_voltage(self, voltage):
         self.connection.write(f'SOURce:VOLTage:LEVel:IMMediate:AMPLitude {voltage}')

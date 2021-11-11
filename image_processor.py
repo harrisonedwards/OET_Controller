@@ -31,14 +31,15 @@ class imageProcessor(QtCore.QThread):
     # VideoSignal = QtCore.pyqtSignal(QtGui.QImage)
     VideoSignal = QtCore.pyqtSignal('PyQt_PyObject')
     robot_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    fps_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
-    def __init__(self, parent=None):
+    def __init__(self, height, width, parent=None):
         super(imageProcessor, self).__init__(parent)
         self.exposure = 200
         self.resize_lock = QtCore.QMutex()
         self.total = 0
-        self.width = 0
-        self.height = 0
+        self.width = width
+        self.height = height
         self.detection = False
         self.robots = {}
         self.recording = False
@@ -75,21 +76,24 @@ class imageProcessor(QtCore.QThread):
         os.chdir(mm_directory)
 
         import MMCorePy
-        self.mmc = MMCorePy.CMMCore()
-        self.mmc.setCircularBufferMemoryFootprint(500)
-        self.mmc.loadDevice('camera', 'PCO_Camera', 'pco_camera')
-        self.mmc.initializeAllDevices()
-        self.mmc.setCameraDevice('camera')
-        properties = self.mmc.getDevicePropertyNames('camera')
-        self.mmc.setProperty('camera', 'PixelRate', 'fast scan')
-        self.mmc.setProperty('camera', 'Noisefilter', 'Off')
-        self.mmc.setProperty('camera', 'Exposure', self.exposure)
-        # self.mmc.setProperty('camera', 'PixelType', '8bit')
-        for p in properties:
-            log_string = p + str(self.mmc.getProperty('camera', p)) + str(self.mmc.getAllowedPropertyValues('camera', p))
-            logging.info(log_string)
-        self.mmc.startContinuousSequenceAcquisition(1)
-        self.run_video = True
+        try:
+            self.mmc = MMCorePy.CMMCore()
+            self.mmc.setCircularBufferMemoryFootprint(500)
+            self.mmc.loadDevice('camera', 'PCO_Camera', 'pco_camera')
+            self.mmc.initializeAllDevices()
+            self.mmc.setCameraDevice('camera')
+            properties = self.mmc.getDevicePropertyNames('camera')
+            self.mmc.setProperty('camera', 'PixelRate', 'fast scan')
+            self.mmc.setProperty('camera', 'Noisefilter', 'Off')
+            self.mmc.setProperty('camera', 'Exposure', self.exposure)
+            # self.mmc.setProperty('camera', 'PixelType', '8bit')
+            for p in properties:
+                log_string = p + str(self.mmc.getProperty('camera', p)) + str(self.mmc.getAllowedPropertyValues('camera', p))
+                logging.info(log_string)
+            self.mmc.startContinuousSequenceAcquisition(1)
+            self.run_video = True
+        except:
+            logging.critical('failed to connect to camera')
 
     def init_hamamatsu(self):
         self.hcam = Camera()
@@ -98,9 +102,12 @@ class imageProcessor(QtCore.QThread):
         self.hcam.start_sequence_qt(self.process_and_emit_image)
 
     def __del__(self):
-        logging.info('closing camera...')
-        self.mmc.stopSequenceAcquisition()
-        self.mmc.reset()
+        try:
+            logging.info('closing camera...')
+            self.mmc.stopSequenceAcquisition()
+            self.mmc.reset()
+        except:
+            logging.critical('failed to terminate connection to camera')
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def update_detection_params_slot(self, params_dict):
@@ -127,6 +134,8 @@ class imageProcessor(QtCore.QThread):
                     img = (img / 256).astype(np.uint8)
                     if self.recording:
                         self.writer.append_data(img)
+                        writer = imageio.get_writer()
+                        writer.app
                     self.image = img
                 except Exception as e:
                     logging.warning(f'camera dropped frame {count}, {e}')
@@ -135,11 +144,12 @@ class imageProcessor(QtCore.QThread):
                 count += 1
                 if count % 5 == 0 and self.detection:
                     self.run_detection()
-                if count % 200 == 0:
-                    t1 = time.time()
-                    fps = 200 / (t1 - t0)
-                    t0 = t1
-                    logging.info(f'fps: {fps}')
+                # calculate our fps and send it to be shown on status bar
+                t1 = time.time()
+                fps = 1 / (t1 - t0)
+                t0 = t1
+                self.fps_signal.emit(fps)
+
             else:
                 count += 1
                 logging.info(f'Camera dropped frame: {count}')

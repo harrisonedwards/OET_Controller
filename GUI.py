@@ -6,7 +6,7 @@ from image_processor import imageProcessor
 import logging
 import cv2
 
-class GUI(QtWidgets.QWidget):
+class GUI(QtWidgets.QMainWindow):
 
     def __init__(self):
         super(GUI, self).__init__()
@@ -14,6 +14,7 @@ class GUI(QtWidgets.QWidget):
     def setupUI(self, MainWindow):
 
         self.setWindowTitle('OET System Control')
+        self.statusBar = self.statusBar()
 
         # MICROSCOPE
         self.filter_positions = ['DAPI', 'GFP', 'Red', 'Brightfield', 'Cy5', 'PE-Cy7']
@@ -90,6 +91,13 @@ class GUI(QtWidgets.QWidget):
         self.waveformComboBox.setFocusPolicy(QtCore.Qt.NoFocus)
         self.fgOutputTogglePushButton = QtWidgets.QPushButton('Output')
         self.fgOutputTogglePushButton.setCheckable(True)
+        self.pulseLabel = QtWidgets.QLabel('Pulse Duration:')
+        self.pulseDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.pulseDoubleSpinBox.setSuffix('ms')
+        self.pulseDoubleSpinBox.setMinimum(0)
+        self.pulseDoubleSpinBox.setDecimals(3)
+        self.pulseDoubleSpinBox.setMaximum(5000)
+        self.pulsePushButton = QtWidgets.QPushButton('Pulse')
 
         self.setFunctionGeneratorPushButton = QtWidgets.QPushButton('Set')
 
@@ -213,8 +221,11 @@ class GUI(QtWidgets.QWidget):
         # ARRANGE THE WIDGETS
         #
 
+        centralWidget = QtWidgets.QWidget(self)
         self.VBoxLayout = QtWidgets.QVBoxLayout()
-        self.HBoxLayout = QtWidgets.QHBoxLayout(self)
+        self.HBoxLayout = QtWidgets.QHBoxLayout(centralWidget)
+        centralWidget.setLayout(self.HBoxLayout)
+        self.setCentralWidget(centralWidget)
 
         self.microscopeGroupBox = QtWidgets.QGroupBox('Microscope')
         self.microscopeLayout = QtWidgets.QVBoxLayout()
@@ -263,6 +274,9 @@ class GUI(QtWidgets.QWidget):
         self.functionGeneratorLayout.addWidget(self.waveformComboBox)
         self.functionGeneratorLayout.addWidget(self.setFunctionGeneratorPushButton)
         self.functionGeneratorLayout.addWidget(self.fgOutputTogglePushButton)
+        self.functionGeneratorLayout.addWidget(self.pulseLabel)
+        self.functionGeneratorLayout.addWidget(self.pulseDoubleSpinBox)
+        self.functionGeneratorLayout.addWidget(self.pulsePushButton)
 
         self.functionGeneratorLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.functionGeneratorGroupBox)
@@ -297,7 +311,7 @@ class GUI(QtWidgets.QWidget):
         self.pumpLayout.addWidget(self.pumpStopPushButton)
         self.pumpLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.pumpGroupBox)
-        if not self.pump:
+        if not self.pump.ser:
             self.pumpGroupBox.setEnabled(False)
 
         self.oetGroupBox = QtWidgets.QGroupBox('OET Controls')
@@ -352,8 +366,8 @@ class GUI(QtWidgets.QWidget):
 
         self.oetLayout.addLayout(self.oetLayoutLower)
         self.VBoxLayout.addWidget(self.oetGroupBox)
-        # if not self.dmd:
-        #     self.oetGroupBox.setEnabled(False)
+        if not self.dmd:
+            self.oetGroupBox.setEnabled(False)
 
         self.imageAdustmentGroupBox = QtWidgets.QGroupBox('Image Adjustment')
         self.imageAdustmentLayout = QtWidgets.QHBoxLayout()
@@ -375,11 +389,12 @@ class GUI(QtWidgets.QWidget):
         self.VBoxLayout.addWidget(self.acquisitionGroupBox)
 
         self.image_viewer = ImageViewer()
+        self.image_viewer.height()
 
         # TODO: fix this...
         # self.image_viewer.calibration_signal.connect(self.dmd.calibration_slot)
 
-        self.image_processing = imageProcessor()
+        self.image_processing = imageProcessor(self.image_viewer.height(), self.image_viewer.width())
         self.image_processing_thread = QThread()
         self.image_processing_thread.start()
 
@@ -401,21 +416,26 @@ class GUI(QtWidgets.QWidget):
         self.HBoxLayout.addLayout(self.VBoxLayout)
         self.HBoxLayout.addWidget(self.image_viewer)
 
+
     def initialize_gui_state(self):
         # get the initial state and make the GUI synced to it
-        idx_dict = {k: v for k, v in zip(range(1, 7), self.objectives)}
-        objective = self.microscope.status.iNOSEPIECE
-        self.magnificationComboBoxWidget.setCurrentText(idx_dict[objective])
+        try:
+            idx_dict = {k: v for k, v in zip(range(1, 7), self.objectives)}
+            objective = self.microscope.status.iNOSEPIECE
+            self.magnificationComboBoxWidget.setCurrentText(idx_dict[objective])
 
-        idx_dict = {k: v for k, v in zip(range(1, 7), self.filter_positions)}
-        filter = self.microscope.status.iTURRET1POS
-        self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
+            idx_dict = {k: v for k, v in zip(range(1, 7), self.filter_positions)}
+            filter = self.microscope.status.iTURRET1POS
+            self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
 
-        fluor_shutter_state = self.microscope.status.iTURRET1SHUTTER
-        self.fluorescenceShutterPushButton.setChecked(fluor_shutter_state)
+            fluor_shutter_state = self.microscope.status.iTURRET1SHUTTER
+            self.fluorescenceShutterPushButton.setChecked(fluor_shutter_state)
 
-        dia_state = self.microscope.status.iSHUTTER_DIA
-        self.diaShutterPushButton.setChecked(dia_state)
+            dia_state = self.microscope.status.iSHUTTER_DIA
+            self.diaShutterPushButton.setChecked(dia_state)
+        except:
+            logging.critical('no connection to microscope, disabling controls')
+            self.microscopeGroupBox.setEnabled(False)
 
         xy_vel = self.stage.get_xy_vel()
         self.stageXYSpeedDoubleSpinBox.setValue(xy_vel)
@@ -444,6 +464,7 @@ class GUI(QtWidgets.QWidget):
 
         self.fgOutputTogglePushButton.clicked.connect(self.toggleFgOutput)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
+        self.pulsePushButton.clicked.connect(self.execute_pulse)
         self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
         self.fluorescenceToggleLampPushButton.clicked.connect(self.toggleFluorescenceLamp)
         self.fluorescenceShutterPushButton.clicked.connect(self.toggleFluorShutter)
@@ -476,6 +497,7 @@ class GUI(QtWidgets.QWidget):
         self.oetLampIntesnsityDoubleSpinBox.valueChanged.connect(self.dmd.set_dmd_current)
 
         self.image_viewer.enable_dmd_signal.connect(self.enable_dmd_controls)
+        self.image_processing.fps_signal.connect(self.fps_slot)
 
         self.imageAdjustmentClaheClipValueDoubleSpinBox.valueChanged.connect(self.apply_image_adjustment)
         self.imageAdjustmentClaheGridValueDoubleSpinBox.valueChanged.connect(self.apply_image_adjustment)
@@ -496,7 +518,13 @@ class GUI(QtWidgets.QWidget):
         self.oetControlDetectedPushButton.setEnabled(False)
 
         self.dmd.initialize_dmd()
-        self.fluorescence_controller.turn_all_off()
+        try:
+            self.fluorescence_controller.turn_all_off()
+        except:
+            logging.critical('fluorescence controller not connected, disabling controls')
+            self.fluorescenceGroupBox.setEnabled(False)
+
+
 
     @QtCore.pyqtSlot()
     def enable_dmd_controls(self):
@@ -573,9 +601,16 @@ class ImageViewer(QtWidgets.QWidget):
                         1,
                         255,
                         2)
+            # draw it three times to get over the stupid end cap business...
             cv2.line(np_img, (20, int(self.height() * .925) + 20),
                      (self.scale_bar_length, int(self.height() * .925) + 20),
-                     255, 3, 3)
+                     255, 1)
+            cv2.line(np_img, (20, int(self.height() * .925) + 21),
+                     (self.scale_bar_length, int(self.height() * .925) + 21),
+                     255, 1)
+            cv2.line(np_img, (20, int(self.height() * .925) + 22),
+                     (self.scale_bar_length, int(self.height() * .925) + 22),
+                     255, 1)
         if len(np_img.shape) > 2:
             # Format_RGB16
             qt_img = qimage2ndarray.array2qimage(np_img)
@@ -625,7 +660,8 @@ class ImageViewer(QtWidgets.QWidget):
             x_scaled = event.pos().x() / self.width()
             y_scaled = event.pos().y() / self.height()
             self.calibration_payload.append((x_scaled, y_scaled))
-            logging.info('calibration point marked:', x_scaled, y_scaled)
+            string = f'calibration point marked: {x_scaled}, {y_scaled}'
+            logging.info(string)
             if len(self.calibration_payload) > 2:
                 QtWidgets.QMessageBox.about(self, 'Calibration', 'Calibration Complete')
                 self.calibrating = False

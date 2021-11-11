@@ -9,15 +9,17 @@ class FluorescenceController():
     def __init__(self, parent=None):
         try:
             self.ser = self.get_connection()
+            self.lamp_index = 0
+            self.current_intensity = DEFAULT_INTENSITY
+            self.change_intensity(DEFAULT_INTENSITY)
+            self.turn_all_off()
         except Exception as e:
-            logging.warning('failed to connect to fluorescence controller')
+            logging.critical('failed to connect to fluorescence controller')
             self.ser = None
+
         # logging.info(self.send_receive('lh?'))
         # logging.info(self.send_receive(('ip=' + ','.join(['500' for i in range(4)]))))
-        self.lamp_index = 0
-        self.current_intensity = DEFAULT_INTENSITY
-        self.change_intensity(DEFAULT_INTENSITY)
-        self.turn_all_off()
+
 
     def __del__(self):
         if self.ser is not None:

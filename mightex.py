@@ -104,21 +104,28 @@ class Polygon1000():
         logging.info(f'reset dmd device: {self.led_clib.MTUSB_BLSDriverResetDevice(0)}')
         logging.info(f'open dmd led: {self.led_clib.MTUSB_BLSDriverOpenDevice(0)}')
         self.set_dmd_current(0)
-        # print()('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
-        # for channel in range(1, 2): # there are 4 total channels, but we will forget about them for now
-        #     print()(f'set led mode to enable for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
-        #     # print()(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
-        #     print()(f'set led current to 100% for channel {channel}:',
-        #           self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
+        print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
+        for channel in range(1, 4): # there are 4 total channels, but we will forget about them for now
+            print(f'set led mode to enable for channel {channel}:',
+                    self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
+            # print()(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
+            print(f'set led current to 100% for channel {channel}:',
+                  self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
 
     def set_dmd_current(self, current):
         current *= 10
         current = int(current)
         print(f'set led current to {current} for channel 1:',
               self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, 1, current))
+        self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, 2, current)
+        self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, 3, current)
+        self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, 4, current)
 
     def toggle_dmd_light(self, state):
         print(f'set led mode to enable for channel:', self.led_clib.MTUSB_BLSDriverSetMode(0, 1, int(state)))
+        print(f'set led mode to enable for channel:', self.led_clib.MTUSB_BLSDriverSetMode(0, 2, int(state)))
+        print(f'set led mode to enable for channel:', self.led_clib.MTUSB_BLSDriverSetMode(0, 3, int(state)))
+        print(f'set led mode to enable for channel:', self.led_clib.MTUSB_BLSDriverSetMode(0, 4, int(state)))
 
     def get_blank_image(self):
         offs = np.zeros((self.height, self.width * 2), dtype=np.uint8)
@@ -201,7 +208,8 @@ class Polygon1000():
             img[start_y:end_y, start_x:end_x] = cropped_projection
             img = np.logical_or(img, self.curr_img)
         else:
-            img[start_y:end_y, start_x:end_x] = cropped_projection
+            img[start_y:start_y + cropped_projection.shape[0], start_x:start_x + cropped_projection.shape[1]] = \
+                cropped_projection
 
         self.curr_img = img
 
@@ -244,17 +252,28 @@ class Polygon1000():
             cropped_projection = cropped_projection[:h // 2 + int(img.shape[0] - cy), :]
             end_y = img.shape[0]
 
+
+
         # fixing a dumb off-by-one bug...probably an easier way to do this...
         if end_x - start_x != cropped_projection.shape[1]:
+            diff = abs((end_x - start_x) - cropped_projection.shape[1])
             if start_x == 0:
-                end_x += 1
+                end_x += diff
             elif start_x > 0:
-                start_x -= 1
+                start_x -= diff
+
         if end_y - start_y != cropped_projection.shape[0]:
+            diff = abs((end_y - start_y) - cropped_projection.shape[0])
             if start_y == 0:
-                end_y += 1
+                end_y += diff
             elif start_y > 0:
-                start_y -= 1
+                start_y -= diff
+
+        # final crop to ensure that it fits within the dmd...
+        if cropped_projection.shape[0] > 1140:
+            cropped_projection = cropped_projection[0:1140, :]
+        if cropped_projection.shape[1] > 912 * 2:
+            cropped_projection = cropped_projection[:, 912 * 2]
 
         return start_x, end_x, start_y, end_y, cropped_projection
 

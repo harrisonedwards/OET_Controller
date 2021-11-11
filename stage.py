@@ -28,7 +28,9 @@ class Stage():
     def read_write(self, write):
         logging.info(f'writing command to stage: {write}')
         self.ser.write(str.encode(write + ' \r'))
-        return self.ser.readline()
+        ret = self.ser.readline()
+        logging.info(f'response received from stage: {ret}')
+        return ret
 
     def get_position(self):
         self.pos = self.read_write('?pos')
@@ -36,16 +38,14 @@ class Stage():
 
     def move_relative(self, x=0, y=0):
         ret = self.read_write(f'!mor {x} {y} 0')
-        # logging.info(ret)
         if b'OK' not in ret:
-            logging.info('warning: stage still moving...additional movement command ignored')
+            logging.warning('stage still moving...additional movement command ignored')
             # raise Exception(f'Stage movement error: {ret}')
 
     def halt(self):
         ret = self.read_write('!a')
         if b'OK' not in ret:
-            logging.info('STAGE ERROR')
-            # raise Exception(f'Stage movement error: {ret}')
+            logging.critical('stage halt error')
 
     def step(self, direction):
         if direction == 'l':
@@ -60,7 +60,7 @@ class Stage():
     def move_absolute(self, x=0, y=0):
         ret = self.read_write(f'moa {x} {y} 0')
         if ret != b'OK...\r' and ret != b'':
-            raise Exception(f'Stage movement error: {ret}')
+            logging.warning(f'Stage movement error: {ret}')
 
     def set_xystep_size(self, value):
         logging.info(f'xy step size set to: {value}')
@@ -86,13 +86,13 @@ class Stage():
 
     def set_xy_start_accel(self, value):
         cmd_string = f'!accel {value} {value} {value}'
-        logging.info(f'setting start acceleration: {value}')
+        logging.info(f'setting stage start acceleration: {value}')
         ret = self.read_write(cmd_string)
         return ret
 
     def set_xy_stop_accel(self, value):
         cmd_string = f'!stopaccel {value} {value} {value}'
-        logging.info(f'setting stop acceleration: {value}')
+        logging.info(f'setting stage stop acceleration: {value}')
         ret = self.read_write(cmd_string)
         return ret
 
