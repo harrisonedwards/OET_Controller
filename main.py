@@ -1,7 +1,7 @@
 import sys, logging
 import os, sys, time
 from time import strftime
-
+from inputs import get_gamepad
 import names
 import PyQt5.QtGui
 from PyQt5 import QtCore, QtGui, QtWidgets, QtTest
@@ -81,8 +81,6 @@ class Window(GUI):
 
         self.setupUI(self)
         self.initialize_gui_state()
-        self.statusBar.showMessage('unavailable instruments: ' + ','.join(self.unavailable_instruments), 10000)
-        self.showMaximized()
 
         self.image_processing.robot_signal.connect(self.robot_control_slot)
 
@@ -93,6 +91,7 @@ class Window(GUI):
 
         # make our image processor aware of the system state
         self.update_detection_params()
+        self.showMaximized()
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def fps_slot(self, fps):
@@ -216,6 +215,10 @@ class Window(GUI):
                 self.robots[robot]['cy'] = cy
                 self.robots[robot]['angle'] = angle
         self.dmd.update()
+
+
+    def handle_image_threshold_slider(self, value):
+        self.imageAdjustmentThresholdLabel.setText(str(value))
 
     def scale_up_oet_projection(self):
         adding = 0
@@ -400,6 +403,7 @@ class Window(GUI):
                          self.dmd, self.pump]:
             if hardware is not False:
                 hardware.__del__()
+        logging.info('shutdown complete. exiting...')
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -495,6 +499,7 @@ class Window(GUI):
     def toggleScaleBar(self):
         objective = self.magnificationComboBoxWidget.currentText()
         self.toggle_scale_bar_signal.emit(objective)
+
 
 if __name__ == '__main__':
     log_name = strftime('..\\logs\\%Y_%m_%d_%H_%M_%S.log', time.gmtime())

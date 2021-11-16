@@ -23,7 +23,7 @@ class FluorescenceController():
 
     def __del__(self):
         if self.ser is not None:
-            self.turn_all_off()
+            self.turn_all_off(suppress_msg=True)
             self.ser.reset_input_buffer()
             self.ser.reset_output_buffer()
             logging.info('closing fluorescence controller connection...')
@@ -61,7 +61,7 @@ class FluorescenceController():
 
     def issue_command(self, command, suppress_msg=False):
         command_string = '{}\r'.format(command)
-        if (not suppress_msg):
+        if not suppress_msg:
             logging.info('sending command to excitation lamp:{}'.format(command_string))
         self.ser.write(command_string.encode('utf-8'))
 
@@ -75,8 +75,8 @@ class FluorescenceController():
         self.send_receive('on?')
         self.send_receive('ip?')
 
-    def turn_all_off(self):
-        self.send_receive('of=a')
+    def turn_all_off(self, suppress_msg=False):
+        self.send_receive('of=a', suppress_msg)
         self.send_receive('on?')
 
     def change_fluorescence(self, index):

@@ -22,12 +22,12 @@ class FunctionGenerator():
     def __del__(self):
         try:
             if self.connection != None:
+                logging.info('closing function generator connection...')
                 self.set_voltage(0)
                 self.change_output(0)
-                logging.info('closing function generator connection...')
                 self.connection.close()
         except:
-            logging.warning('failed to close function generator connection')
+            pass
 
     def set_voltage(self, voltage):
         self.connection.write(f'SOURce:VOLTage:LEVel:IMMediate:AMPLitude {voltage}')

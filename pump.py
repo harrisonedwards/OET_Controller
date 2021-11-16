@@ -28,7 +28,7 @@ class Pump:
                         return s
             except Exception as e:
                 print(e)
-        raise Exception('failed to connect')
+        raise Exception('failed to connect to pump')
 
 
     def send_receive(self, cmd):

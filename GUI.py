@@ -1,7 +1,7 @@
 import copy
 import qimage2ndarray
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QThread
+from PyQt5.QtCore import QThread, Qt
 from image_processor import imageProcessor
 import logging
 import cv2
@@ -212,6 +212,11 @@ class GUI(QtWidgets.QMainWindow):
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setMaximum(200)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setSingleStep(1)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setDecimals(1)
+        self.imageAdjustmentThresholdPushButton = QtWidgets.QPushButton('Threshold')
+        self.imageAdjustmentThresholdPushButton.setCheckable(True)
+        self.imageAdjustmentThresholdSlider = QtWidgets.QSlider(Qt.Horizontal)
+        self.imageAdjustmentThresholdSlider.setMaximum(100)
+        self.imageAdjustmentThresholdLabel = QtWidgets.QLabel('0')
 
         self.takeScreenshotPushButton = QtWidgets.QPushButton(text='Screenshot')
         self.takeVideoPushbutton = QtWidgets.QPushButton('Record Video')
@@ -378,6 +383,9 @@ class GUI(QtWidgets.QMainWindow):
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClaheGridLabel)
         self.imageAdustmentLayout.addWidget(self.imageAdjustmentClaheGridValueDoubleSpinBox)
         self.imageAdustmentLayout.setAlignment(QtCore.Qt.AlignLeft)
+        self.imageAdustmentLayout.addWidget(self.imageAdjustmentThresholdPushButton)
+        self.imageAdustmentLayout.addWidget(self.imageAdjustmentThresholdSlider)
+        self.imageAdustmentLayout.addWidget(self.imageAdjustmentThresholdLabel)
         self.VBoxLayout.addWidget(self.imageAdustmentGroupBox)
 
         self.acquisitionGroupBox = QtWidgets.QGroupBox('Acquisition')
@@ -494,7 +502,8 @@ class GUI(QtWidgets.QMainWindow):
         self.oetControlDetectedPushButton.clicked.connect(self.toggleControlDetected)
         self.oetScaleUpPushButton.clicked.connect(self.scale_up_oet_projection)
         self.oetToggleLampPushButton.clicked.connect(self.toggle_dmd_lamp)
-        self.oetLampIntesnsityDoubleSpinBox.valueChanged.connect(self.dmd.set_dmd_current)
+        if self.dmd != False:
+            self.oetLampIntesnsityDoubleSpinBox.valueChanged.connect(self.dmd.set_dmd_current)
 
         self.image_viewer.enable_dmd_signal.connect(self.enable_dmd_controls)
         self.image_processing.fps_signal.connect(self.fps_slot)
@@ -503,6 +512,7 @@ class GUI(QtWidgets.QMainWindow):
         self.imageAdjustmentClaheGridValueDoubleSpinBox.valueChanged.connect(self.apply_image_adjustment)
         self.imageAdjustmentClahePushButton.clicked.connect(self.apply_image_adjustment)
         self.clahe_params_signal.connect(self.image_processing.clay_params_slot)
+        self.imageAdjustmentThresholdSlider.valueChanged.connect(self.handle_image_threshold_slider)
 
 
         self.oetProjectCirclePushButton.setEnabled(False)
@@ -517,7 +527,8 @@ class GUI(QtWidgets.QMainWindow):
         self.oetOpenRobotsPushButton.setEnabled(False)
         self.oetControlDetectedPushButton.setEnabled(False)
 
-        self.dmd.initialize_dmd()
+        if self.dmd != False:
+            self.dmd.initialize_dmd()
         try:
             self.fluorescence_controller.turn_all_off()
         except:

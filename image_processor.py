@@ -144,12 +144,12 @@ class imageProcessor(QtCore.QThread):
                 count += 1
                 if count % 5 == 0 and self.detection:
                     self.run_detection()
-                # calculate our fps and send it to be shown on status bar
-                t1 = time.time()
-                fps = 1 / (t1 - t0)
-                t0 = t1
-                self.fps_signal.emit(fps)
-
+                if count % 20 == 0:
+                    # calculate our fps and send it to be shown on status bar
+                    t1 = time.time()
+                    fps = 20 / (t1 - t0)
+                    t0 = t1
+                    self.fps_signal.emit(fps)
             else:
                 count += 1
                 logging.info(f'Camera dropped frame: {count}')

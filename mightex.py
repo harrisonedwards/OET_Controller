@@ -104,13 +104,14 @@ class Polygon1000():
         logging.info(f'reset dmd device: {self.led_clib.MTUSB_BLSDriverResetDevice(0)}')
         logging.info(f'open dmd led: {self.led_clib.MTUSB_BLSDriverOpenDevice(0)}')
         self.set_dmd_current(0)
-        print('get led channels:', self.led_clib.MTUSB_BLSDriverGetChannels(0))
+        ret = self.led_clib.MTUSB_BLSDriverGetChannels(0)
+        logging.info(f'num of led channels: {ret}')
         for channel in range(1, 4): # there are 4 total channels, but we will forget about them for now
-            print(f'set led mode to enable for channel {channel}:',
-                    self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1))
+            ret = self.led_clib.MTUSB_BLSDriverSetMode(0, channel, 1)
+            logging.info(f'set led mode to enable for channel {channel}, returned: {ret}')
             # print()(f'set softstart for channel {channel}:', self.led_clib.MTUSB_BLSDriverSetMode(0, channel))
-            print(f'set led current to 100% for channel {channel}:',
-                  self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000))
+            ret = self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, channel, 1000)
+            logging.info(f'set led current to 100% for channel {channel}, returned: {ret}')
 
     def set_dmd_current(self, current):
         current *= 10

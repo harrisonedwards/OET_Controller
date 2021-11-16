@@ -104,7 +104,7 @@ class Microscope():
         data_in.uiDataUsageMask = 0x0000000000100000 | 0x0000000000080000
         data_in.iDIALAMP_CTRLMODE = 0
         data_in.iDIALAMP_SWITCH = 0
-        self.issue_command(data_in)
+        # self.issue_command(data_in)
         self.close_microscope()
 
     def toggle_dia_light(self, state):
@@ -165,14 +165,14 @@ class Microscope():
     def move_rel_z(self, amount):
         self.status = self.get_status()
         z = self.status.iZPOSITION
-        logging.info('z pos before:', z)
+        log_str = f'z pos before: {z}'
+        logging.info(log_str)
         data_in = MIC_Data()
         data_in.uiDataUsageMask = 0x0000000000000001
         data_in.iZPOSITION = int(z) + int(amount)
         # data_in.iZPOSITIONTolerance = 10
         # data_in.iZPOSITIONSpeed = 1
         self.issue_command(data_in)
-        logging.info('z pos after: [self.status.iZPOSITION')
 
     def move_absolute_z(self, z=-500000):
         data_in = MIC_Data()
