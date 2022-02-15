@@ -1,4 +1,6 @@
 import copy
+
+import numpy as np
 import qimage2ndarray
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QThread, Qt
@@ -26,14 +28,14 @@ class GUI(QtWidgets.QMainWindow):
         self.xystageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.xystageStepSizeDoubleSpinBox.setSingleStep(0.005)
         self.xystageStepSizeDoubleSpinBox.setMinimum(0.0000)
-        self.xystageStepSizeDoubleSpinBox.setDecimals(3)
+        self.xystageStepSizeDoubleSpinBox.setDecimals(5)
         self.xystageStepSizeDoubleSpinBox.setMaximum(5)
-        self.xystageStepSizeDoubleSpinBox.setValue(0.005)
+        self.xystageStepSizeDoubleSpinBox.setValue(0.00001)
         self.xystageStepSizeDoubleSpinBox.setSuffix('mm')
         self.stageXYSpeedLabel = QtWidgets.QLabel('XY Step Speed:')
         self.stageXYSpeedDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.stageXYSpeedDoubleSpinBox.setSingleStep(0.005)
-        self.stageXYSpeedDoubleSpinBox.setDecimals(3)
+        self.stageXYSpeedDoubleSpinBox.setDecimals(5)
         self.stageXYSpeedDoubleSpinBox.setSuffix('mm/s')
         self.stageXYStartAccelerationLabel = QtWidgets.QLabel('XY Start Acceleration:')
         self.stageXYStartAccelerationDoubleSpinBox = QtWidgets.QDoubleSpinBox()
@@ -82,10 +84,11 @@ class GUI(QtWidgets.QMainWindow):
         self.frequencyLabel = QtWidgets.QLabel(text='Frequency:')
         self.frequencyDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.frequencyDoubleSpinBox.setDecimals(0)
-        self.frequencyDoubleSpinBox.setSingleStep(100)
-        self.frequencyDoubleSpinBox.setSuffix('Hz')
+        self.frequencyDoubleSpinBox.setSingleStep(5)
+        self.frequencyDoubleSpinBox.setSuffix('kHz')
         self.frequencyDoubleSpinBox.setFixedWidth(80)
-        self.frequencyDoubleSpinBox.setMaximum(100000000)
+        self.frequencyDoubleSpinBox.setMinimum(5)
+        self.frequencyDoubleSpinBox.setMaximum(100000)
         self.waveformComboBox = QtWidgets.QComboBox()
         self.waveformComboBox.addItems(['SIN', 'SQU'])
         self.waveformComboBox.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -98,6 +101,23 @@ class GUI(QtWidgets.QMainWindow):
         self.pulseDoubleSpinBox.setDecimals(3)
         self.pulseDoubleSpinBox.setMaximum(5000)
         self.pulsePushButton = QtWidgets.QPushButton('Pulse')
+        self.sweepLabel = QtWidgets.QLabel('Sweep')
+        self.sweepStartDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.sweepStartDoubleSpinBox.setSuffix('kHz')
+        self.sweepStartDoubleSpinBox.setMinimum(5)
+        self.sweepStartDoubleSpinBox.setSingleStep(5)
+        self.sweepStartDoubleSpinBox.setDecimals(0)
+        self.sweepStopDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.sweepStopDoubleSpinBox.setSuffix('kHz')
+        self.sweepStopDoubleSpinBox.setMinimum(10)
+        self.sweepStopDoubleSpinBox.setSingleStep(5)
+        self.sweepStopDoubleSpinBox.setDecimals(0)
+        self.sweepTimeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.sweepTimeDoubleSpinBox.setSuffix('s')
+        self.sweepTimeDoubleSpinBox.setValue(1)
+        self.sweepTimeDoubleSpinBox.setDecimals(0)
+        self.sweepPushButton = QtWidgets.QPushButton('Sweep')
+        self.sweepPushButton.setCheckable(True)
 
         self.setFunctionGeneratorPushButton = QtWidgets.QPushButton('Set')
 
@@ -151,17 +171,19 @@ class GUI(QtWidgets.QMainWindow):
         self.dilationSizeDoubleSpinBox.setSingleStep(5)
         self.dilationSizeDoubleSpinBox.setValue(30)
 
+        self.detectCellsPushButton = QtWidgets.QPushButton('Detect Cells')
+        self.detectCellsPushButton.setCheckable(True)
+
         self.drawPathsPushButton = QtWidgets.QPushButton('Draw Paths')
         self.drawPathsPushButton.setCheckable(True)
-        self.drawShapePushButton = QtWidgets.QPushButton('Draw Shape')
-        self.drawShapePushButton.setCheckable(True)
-        self.oetClearOverlayPushButton = QtWidgets.QPushButton('Clear Paths')
+        self.drawPathsPushButton.setEnabled(False)
+        self.oetClearPathsPushButton = QtWidgets.QPushButton('Clear Paths')
+        self.oetClearPathsPushButton.setEnabled(False)
         self.oetCalibratePushButton = QtWidgets.QPushButton('Calibrate')
+        self.oetToggleDMDAreaOverlayPushButton = QtWidgets.QPushButton('Show DMD Area')
+        self.oetToggleDMDAreaOverlayPushButton.setCheckable(True)
         self.oetProjectDetectionPushButton = QtWidgets.QPushButton('Project Detection Pattern')
-        self.oetOpenRobotsPushButton = QtWidgets.QPushButton('Open Robots')
-        self.oetOpenRobotsPushButton.setCheckable(True)
-        self.oetControlDetectedPushButton = QtWidgets.QPushButton('Control Detected Robot')
-        self.oetControlDetectedPushButton.setCheckable(True)
+        # self.oetOpenRobotsPushButton = QtWidgets.QPushButton('Open Robots')
         self.oetScaleLabel = QtWidgets.QLabel('Scale:')
         self.oetScaleDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.oetScaleDoubleSpinBox.setSuffix('%')
@@ -181,14 +203,24 @@ class GUI(QtWidgets.QMainWindow):
         self.oetTranslateDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.oetTranslateDoubleSpinBox.setValue(5)
         self.oetScaleUpPushButton = QtWidgets.QPushButton('Scale Image')
-        self.oetProjectCirclePushButton = QtWidgets.QPushButton('Project Circle')
-        self.oetProjectCirclePushButton.setCheckable(True)
+        self.oetProjectCircleBrushPushButton = QtWidgets.QPushButton('Circular Brush')
+        self.oetProjectCircleBrushPushButton.setCheckable(True)
+        self.oetProjectCircleEraserPushButton = QtWidgets.QPushButton('Circular Eraser')
+        self.oetProjectCircleEraserPushButton.setCheckable(True)
+        self.oetProjectCircleEraserPushButton.setEnabled(False)
+        self.oetBrushRadiusLabel = QtWidgets.QLabel('Thickness:')
+        self.oetBrushRadiusDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.oetBrushRadiusDoubleSpinBox.setSuffix('px')
+        self.oetBrushRadiusDoubleSpinBox.setMinimum(1)
+        self.oetBrushRadiusDoubleSpinBox.setValue(25)
+        self.oetBrushRadiusDoubleSpinBox.setDecimals(0)
+        self.oetBrushRadiusDoubleSpinBox.setEnabled(False)
         self.oetLoadProjectionImagePushButton = QtWidgets.QPushButton('Load Projection Image')
         self.oetProjectImagePushButton = QtWidgets.QPushButton('Project Image')
         self.oetProjectImagePushButton.setCheckable(True)
         self.oetControlProjectionsPushButton = QtWidgets.QPushButton('Control Projections')
         self.oetControlProjectionsPushButton.setCheckable(True)
-        self.oetClearPushButton = QtWidgets.QPushButton('Clear Controls')
+        self.oetClearPushButton = QtWidgets.QPushButton('Clear Pattern')
         self.oetToggleLampPushButton = QtWidgets.QPushButton('Lamp')
         self.oetToggleLampPushButton.setCheckable(True)
         self.oetLampIntesnsityLabel = QtWidgets.QLabel('Intensity:')
@@ -212,11 +244,13 @@ class GUI(QtWidgets.QMainWindow):
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setMaximum(200)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setSingleStep(1)
         self.imageAdjustmentClaheClipValueDoubleSpinBox.setDecimals(1)
-        self.imageAdjustmentThresholdPushButton = QtWidgets.QPushButton('Threshold')
+        self.imageAdjustmentThresholdPushButton = QtWidgets.QPushButton('Threshold Image')
         self.imageAdjustmentThresholdPushButton.setCheckable(True)
         self.imageAdjustmentThresholdSlider = QtWidgets.QSlider(Qt.Horizontal)
         self.imageAdjustmentThresholdSlider.setMaximum(100)
-        self.imageAdjustmentThresholdLabel = QtWidgets.QLabel('0')
+        self.imageAdjustmentThresholdSlider.setValue(50)
+        self.imageAdjustmentThresholdSlider.setSingleStep(1)
+        self.imageAdjustmentThresholdLabel = QtWidgets.QLabel('50')
 
         self.takeScreenshotPushButton = QtWidgets.QPushButton(text='Screenshot')
         self.takeVideoPushbutton = QtWidgets.QPushButton('Record Video')
@@ -270,20 +304,30 @@ class GUI(QtWidgets.QMainWindow):
             self.microscopeGroupBox.setEnabled(False)
 
         self.functionGeneratorGroupBox = QtWidgets.QGroupBox('Function Generator')
-        self.functionGeneratorLayout = QtWidgets.QHBoxLayout()
+        self.functionGeneratorLayout = QtWidgets.QVBoxLayout()
         self.functionGeneratorGroupBox.setLayout(self.functionGeneratorLayout)
-        self.functionGeneratorLayout.addWidget(self.voltageLabel)
-        self.functionGeneratorLayout.addWidget(self.voltageDoubleSpinBox)
-        self.functionGeneratorLayout.addWidget(self.frequencyLabel)
-        self.functionGeneratorLayout.addWidget(self.frequencyDoubleSpinBox)
-        self.functionGeneratorLayout.addWidget(self.waveformComboBox)
-        self.functionGeneratorLayout.addWidget(self.setFunctionGeneratorPushButton)
-        self.functionGeneratorLayout.addWidget(self.fgOutputTogglePushButton)
-        self.functionGeneratorLayout.addWidget(self.pulseLabel)
-        self.functionGeneratorLayout.addWidget(self.pulseDoubleSpinBox)
-        self.functionGeneratorLayout.addWidget(self.pulsePushButton)
+        self.functionGeneratorLayoutUpper = QtWidgets.QHBoxLayout()
+        self.functionGeneratorLayoutUpper.addWidget(self.voltageLabel)
+        self.functionGeneratorLayoutUpper.addWidget(self.voltageDoubleSpinBox)
+        self.functionGeneratorLayoutUpper.addWidget(self.frequencyLabel)
+        self.functionGeneratorLayoutUpper.addWidget(self.frequencyDoubleSpinBox)
+        self.functionGeneratorLayoutUpper.addWidget(self.waveformComboBox)
+        self.functionGeneratorLayoutUpper.addWidget(self.setFunctionGeneratorPushButton)
+        self.functionGeneratorLayoutUpper.addWidget(self.fgOutputTogglePushButton)
+        self.functionGeneratorLayoutUpper.setAlignment(QtCore.Qt.AlignLeft)
+        self.functionGeneratorLayout.addLayout(self.functionGeneratorLayoutUpper)
 
-        self.functionGeneratorLayout.setAlignment(QtCore.Qt.AlignLeft)
+        self.functionGeneratorLayoutLower = QtWidgets.QHBoxLayout()
+        self.functionGeneratorLayoutLower.addWidget(self.pulseLabel)
+        self.functionGeneratorLayoutLower.addWidget(self.pulseDoubleSpinBox)
+        self.functionGeneratorLayoutLower.addWidget(self.pulsePushButton)
+        self.functionGeneratorLayoutLower.addWidget(self.sweepLabel)
+        self.functionGeneratorLayoutLower.addWidget(self.sweepStartDoubleSpinBox)
+        self.functionGeneratorLayoutLower.addWidget(self.sweepStopDoubleSpinBox)
+        self.functionGeneratorLayoutLower.addWidget(self.sweepTimeDoubleSpinBox)
+        self.functionGeneratorLayoutLower.addWidget(self.sweepPushButton)
+        self.functionGeneratorLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
+        self.functionGeneratorLayout.addLayout(self.functionGeneratorLayoutLower)
         self.VBoxLayout.addWidget(self.functionGeneratorGroupBox)
         if not self.function_generator:
             self.functionGeneratorGroupBox.setEnabled(False)
@@ -322,54 +366,65 @@ class GUI(QtWidgets.QMainWindow):
         self.oetGroupBox = QtWidgets.QGroupBox('OET Controls')
         self.oetLayout = QtWidgets.QVBoxLayout()
         self.oetGroupBox.setLayout(self.oetLayout)
-        self.oetLayoutUpper = QtWidgets.QHBoxLayout()
-        self.oetLayoutUpper.addWidget(self.detectRobotsPushButton)
-        self.oetLayoutUpper.addWidget(self.bufferSizeLabel)
-        self.oetLayoutUpper.addWidget(self.bufferSizeDoubleSpinBox)
-        self.oetLayoutUpper.addWidget(self.dilationSizeLabel)
-        self.oetLayoutUpper.addWidget(self.dilationSizeDoubleSpinBox)
-        self.oetLayoutUpper.addWidget(self.drawPathsPushButton)
-        self.oetLayoutUpper.addWidget(self.drawShapePushButton)
-        self.oetLayoutUpper.addWidget(self.oetClearOverlayPushButton)
-        self.oetLayoutUpper.addWidget(self.oetCalibratePushButton)
-        self.oetLayoutUpper.addWidget(self.oetClearPushButton)
-        self.oetLayoutUpper.addWidget(self.oetToggleLampPushButton)
-        self.oetLayoutUpper.addWidget(self.oetLampIntesnsityLabel)
-        self.oetLayoutUpper.addWidget(self.oetLampIntesnsityDoubleSpinBox)
-        self.oetLayoutUpper.setAlignment(QtCore.Qt.AlignLeft)
-        self.oetLayout.addLayout(self.oetLayoutUpper)
 
-        self.oetLayoutMiddle = QtWidgets.QHBoxLayout()
-        self.oetLayoutMiddle.addWidget(self.oetProjectCirclePushButton)
-        self.oetLayoutMiddle.addWidget(self.oetLoadProjectionImagePushButton)
-        self.oetLayoutMiddle.addWidget(self.oetProjectImagePushButton)
-        self.oetLayoutMiddle.addWidget(self.oetControlProjectionsPushButton)
-        self.oetLayoutMiddle.addWidget(self.oetProjectDetectionPushButton)
-        self.oetLayoutMiddle.addWidget(self.oetOpenRobotsPushButton)
-        self.oetLayoutMiddle.addWidget(self.oetControlDetectedPushButton)
-        self.oetLayout.addLayout(self.oetLayoutMiddle)
+        self.oetLayoutFirstLevel = QtWidgets.QHBoxLayout()
+        self.oetLayoutFirstLevel.addWidget(self.oetToggleLampPushButton)
+        self.oetLayoutFirstLevel.addWidget(self.oetLampIntesnsityLabel)
+        self.oetLayoutFirstLevel.addWidget(self.oetLampIntesnsityDoubleSpinBox)
+        self.oetLayoutFirstLevel.addWidget(self.oetCalibratePushButton)
+        self.oetLayoutFirstLevel.addWidget(self.oetToggleDMDAreaOverlayPushButton)
+        self.oetLayoutFirstLevel.addWidget(self.oetClearPushButton)
+        self.oetLayoutFirstLevel.setAlignment(QtCore.Qt.AlignLeft)
+        self.oetLayout.addLayout(self.oetLayoutFirstLevel)
 
-        self.oetLayoutLower = QtWidgets.QHBoxLayout()
-        self.oetLayoutLower.addWidget(self.oetScaleLabel)
-        self.oetLayoutLower.addWidget(self.oetScaleDoubleSpinBox)
-        self.oetLayoutLower.addWidget(self.oetScaleUpPushButton)
-        self.oetLayoutLower.addWidget(self.oetRotationLabel)
-        self.oetLayoutLower.addWidget(self.oetRotationDoubleSpinBox)
-        self.oetLayoutLower.addWidget(self.oetTranslateLabel)
-        self.oetLayoutLower.addWidget(self.oetTranslateDoubleSpinBox)
-        self.oetLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
+        self.oetLayoutSecondLevel = QtWidgets.QHBoxLayout()
+        self.oetLayoutSecondLevel.addWidget(self.oetProjectCircleBrushPushButton)
+        self.oetLayoutSecondLevel.addWidget(self.oetProjectCircleEraserPushButton)
+        self.oetLayoutSecondLevel.addWidget(self.oetBrushRadiusLabel)
+        self.oetLayoutSecondLevel.addWidget(self.oetBrushRadiusDoubleSpinBox)
+        self.oetLayoutSecondLevel.addWidget(self.oetLoadProjectionImagePushButton)
+        self.oetLayoutSecondLevel.addWidget(self.oetProjectImagePushButton)
+        self.oetLayoutSecondLevel.addWidget(self.oetControlProjectionsPushButton)
+        self.oetLayoutSecondLevel.setAlignment(QtCore.Qt.AlignLeft)
+        self.oetLayoutSecondLevel.addWidget(self.oetScaleLabel)
+        self.oetLayoutSecondLevel.addWidget(self.oetScaleDoubleSpinBox)
+        self.oetLayoutSecondLevel.addWidget(self.oetScaleUpPushButton)
+        self.oetLayoutSecondLevel.addWidget(self.oetRotationLabel)
+        self.oetLayoutSecondLevel.addWidget(self.oetRotationDoubleSpinBox)
+        self.oetLayoutSecondLevel.addWidget(self.oetTranslateLabel)
+        self.oetLayoutSecondLevel.addWidget(self.oetTranslateDoubleSpinBox)
+        self.oetLayout.addLayout(self.oetLayoutSecondLevel)
 
-        self.oetRobotsGroupBox = QtWidgets.QGroupBox('Robots')
+        self.oetLayoutThirdLevel = QtWidgets.QHBoxLayout()
+        self.oetLayoutThirdLevel.addWidget(self.detectRobotsPushButton)
+        self.oetLayoutThirdLevel.addWidget(self.bufferSizeLabel)
+        self.oetLayoutThirdLevel.addWidget(self.bufferSizeDoubleSpinBox)
+        self.oetLayoutThirdLevel.addWidget(self.dilationSizeLabel)
+        self.oetLayoutThirdLevel.addWidget(self.dilationSizeDoubleSpinBox)
+        self.oetLayoutThirdLevel.addWidget(self.oetProjectDetectionPushButton)
+        self.oetLayoutThirdLevel.addWidget(self.drawPathsPushButton)
+        self.oetLayoutThirdLevel.addWidget(self.oetClearPathsPushButton)
+        self.oetLayoutThirdLevel.addWidget(self.detectCellsPushButton)
+        # self.oetLayoutSecondLevel.addWidget(self.oetOpenRobotsPushButton)
+        self.oetLayoutThirdLevel.setAlignment(QtCore.Qt.AlignLeft)
+        self.oetLayout.addLayout(self.oetLayoutThirdLevel)
+
+        # self.oetLayoutFourthLevel = QtWidgets.QHBoxLayout()
+        # self.oetLayoutFourthLevel.setAlignment(QtCore.Qt.AlignLeft)
+        # self.oetLayout.addLayout(self.oetLayoutFourthLevel)
+
+
+        self.oetObjectsGroupBox = QtWidgets.QGroupBox('Projected Objects:')
         self.oetRobotsLayout = QtWidgets.QHBoxLayout()
-        self.oetRobotsGroupBox.setLayout(self.oetRobotsLayout)
+        self.oetObjectsGroupBox.setLayout(self.oetRobotsLayout)
         self.oetRobotsLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.oetRobotsEmptyLabel = QtWidgets.QLabel('(empty)')
         self.oetRobotsLayout.addWidget(self.oetRobotsEmptyLabel)
         self.oetLayoutBottom = QtWidgets.QHBoxLayout()
-        self.oetLayout.addWidget(self.oetRobotsGroupBox)
-        self.oetRobotsGroupBox.setEnabled(False)
+        self.oetLayout.addWidget(self.oetObjectsGroupBox)
+        self.oetObjectsGroupBox.setEnabled(False)
 
-        self.oetLayout.addLayout(self.oetLayoutLower)
+        self.oetLayout.addLayout(self.oetLayoutThirdLevel)
         self.VBoxLayout.addWidget(self.oetGroupBox)
         if not self.dmd:
             self.oetGroupBox.setEnabled(False)
@@ -397,10 +452,6 @@ class GUI(QtWidgets.QMainWindow):
         self.VBoxLayout.addWidget(self.acquisitionGroupBox)
 
         self.image_viewer = ImageViewer()
-        self.image_viewer.height()
-
-        # TODO: fix this...
-        # self.image_viewer.calibration_signal.connect(self.dmd.calibration_slot)
 
         self.image_processing = imageProcessor(self.image_viewer.height(), self.image_viewer.width())
         self.image_processing_thread = QThread()
@@ -418,15 +469,15 @@ class GUI(QtWidgets.QMainWindow):
         self.image_processing.moveToThread(self.image_processing_thread)
 
         self.image_viewer.click_event_signal.connect(self.handle_click)
+        self.image_viewer.move_event_signal.connect(self.handle_mouse_move)
 
         self.VBoxLayout.setAlignment(QtCore.Qt.AlignTop)
 
         self.HBoxLayout.addLayout(self.VBoxLayout)
         self.HBoxLayout.addWidget(self.image_viewer)
 
-
-    def initialize_gui_state(self):
-        # get the initial state and make the GUI synced to it
+    def update_gui_state(self):
+        # get the state and make the GUI synced to it
         try:
             idx_dict = {k: v for k, v in zip(range(1, 7), self.objectives)}
             objective = self.microscope.status.iNOSEPIECE
@@ -444,6 +495,9 @@ class GUI(QtWidgets.QMainWindow):
         except:
             logging.critical('no connection to microscope, disabling controls')
             self.microscopeGroupBox.setEnabled(False)
+
+    def initialize_gui_state(self):
+        self.update_gui_state()
 
         xy_vel = self.stage.get_xy_vel()
         self.stageXYSpeedDoubleSpinBox.setValue(xy_vel)
@@ -471,6 +525,7 @@ class GUI(QtWidgets.QMainWindow):
         self.scaleBarTogglePushButton.clicked.connect(self.toggleScaleBar)
 
         self.fgOutputTogglePushButton.clicked.connect(self.toggleFgOutput)
+        self.sweepPushButton.clicked.connect(self.toggle_fg_sweep)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
         self.pulsePushButton.clicked.connect(self.execute_pulse)
         self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
@@ -485,21 +540,22 @@ class GUI(QtWidgets.QMainWindow):
 
         self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
         self.detectRobotsPushButton.clicked.connect(self.toggle_robot_detection)
+        self.detectCellsPushButton.clicked.connect(self.toggle_cell_detection)
         self.dilationSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
         self.bufferSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
         self.update_detection_params_signal.connect(self.image_processing.update_detection_params_slot)
-        self.enable_robot_detection_signal.connect(self.image_processing.toggle_detection_slot)
-        self.oetClearOverlayPushButton.clicked.connect(self.image_processing.clear_paths_overlay_slot)
+        self.enable_robot_detection_signal.connect(self.image_processing.toggle_robot_detection_slot)
+        self.oetClearPathsPushButton.clicked.connect(self.image_processing.clear_paths_overlay_slot)
 
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
+        self.oetToggleDMDAreaOverlayPushButton.clicked.connect(self.toggle_dmd_overlay)
         self.oetClearPushButton.clicked.connect(self.clear_dmd)
-        self.oetProjectCirclePushButton.clicked.connect(self.toggle_project_circle)
+        self.oetProjectCircleBrushPushButton.clicked.connect(self.toggle_project_brush)
+        self.oetProjectCircleEraserPushButton.clicked.connect(self.toggle_erase_brush)
         self.oetLoadProjectionImagePushButton.clicked.connect(self.load_oet_projection)
         self.oetProjectImagePushButton.clicked.connect(self.toggle_project_image)
         self.oetControlProjectionsPushButton.clicked.connect(self.toggle_controL_projections)
         self.oetProjectDetectionPushButton.clicked.connect(self.project_detection_pattern)
-        self.oetOpenRobotsPushButton.clicked.connect(self.update_detection_params)
-        self.oetControlDetectedPushButton.clicked.connect(self.toggleControlDetected)
         self.oetScaleUpPushButton.clicked.connect(self.scale_up_oet_projection)
         self.oetToggleLampPushButton.clicked.connect(self.toggle_dmd_lamp)
         if self.dmd != False:
@@ -511,11 +567,12 @@ class GUI(QtWidgets.QMainWindow):
         self.imageAdjustmentClaheClipValueDoubleSpinBox.valueChanged.connect(self.apply_image_adjustment)
         self.imageAdjustmentClaheGridValueDoubleSpinBox.valueChanged.connect(self.apply_image_adjustment)
         self.imageAdjustmentClahePushButton.clicked.connect(self.apply_image_adjustment)
-        self.clahe_params_signal.connect(self.image_processing.clay_params_slot)
-        self.imageAdjustmentThresholdSlider.valueChanged.connect(self.handle_image_threshold_slider)
+        self.image_adjustment_params_signal.connect(self.image_processing.image_adjustment_params_slot)
+        self.imageAdjustmentThresholdSlider.valueChanged.connect(self.apply_image_adjustment)
+        self.imageAdjustmentThresholdPushButton.clicked.connect(self.apply_image_adjustment)
 
 
-        self.oetProjectCirclePushButton.setEnabled(False)
+        self.oetProjectCircleBrushPushButton.setEnabled(False)
         self.oetLoadProjectionImagePushButton.setEnabled(False)
         self.oetProjectImagePushButton.setEnabled(False)
         self.oetControlProjectionsPushButton.setEnabled(False)
@@ -524,8 +581,7 @@ class GUI(QtWidgets.QMainWindow):
         self.oetTranslateDoubleSpinBox.setEnabled(False)
         self.oetScaleUpPushButton.setEnabled(False)
         self.oetProjectDetectionPushButton.setEnabled(False)
-        self.oetOpenRobotsPushButton.setEnabled(False)
-        self.oetControlDetectedPushButton.setEnabled(False)
+        self.oetToggleDMDAreaOverlayPushButton.setEnabled(False)
 
         if self.dmd != False:
             self.dmd.initialize_dmd()
@@ -536,14 +592,16 @@ class GUI(QtWidgets.QMainWindow):
             self.fluorescenceGroupBox.setEnabled(False)
 
 
-
     @QtCore.pyqtSlot()
     def enable_dmd_controls(self):
-        self.oetProjectCirclePushButton.setEnabled(True)
+        self.oetProjectCircleBrushPushButton.setEnabled(True)
         self.oetLoadProjectionImagePushButton.setEnabled(True)
         self.oetProjectDetectionPushButton.setEnabled(True)
-        self.oetOpenRobotsPushButton.setEnabled(True)
-        self.oetControlDetectedPushButton.setEnabled(True)
+        self.drawPathsPushButton.setEnabled(True)
+        self.oetClearPathsPushButton.setEnabled(True)
+        self.oetProjectCircleEraserPushButton.setEnabled(True)
+        self.oetBrushRadiusDoubleSpinBox.setEnabled(True)
+        self.oetToggleDMDAreaOverlayPushButton.setEnabled(True)
 
     def setChildrenFocusPolicy(self, policy):
         def recursiveSetChildFocusPolicy(parentQWidget):
@@ -561,6 +619,7 @@ class GUI(QtWidgets.QMainWindow):
 class ImageViewer(QtWidgets.QWidget):
     resize_event_signal = QtCore.pyqtSignal(QtCore.QSize, 'PyQt_PyObject')
     click_event_signal = QtCore.pyqtSignal(QtGui.QMouseEvent)
+    move_event_signal = QtCore.pyqtSignal(QtGui.QMouseEvent)
     path_signal = QtCore.pyqtSignal('PyQt_PyObject')
     control_signal = QtCore.pyqtSignal('PyQt_PyObject')
     calibration_signal = QtCore.pyqtSignal('PyQt_PyObject')
@@ -586,6 +645,7 @@ class ImageViewer(QtWidgets.QWidget):
                                  '40x': ['10um', 63]}
         self.scale_bar_value = 'Unk'
         self.scale_bar_length = 10
+        self.show_dmd_overlay = False
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -601,6 +661,9 @@ class ImageViewer(QtWidgets.QWidget):
         self.scale_bar_shown = not self.scale_bar_shown
         self.scale_bar_value = self.scale_bar_values[objective][0]
         self.scale_bar_length = self.scale_bar_values[objective][1]
+
+    def toggle_dmd_overlay(self, state):
+        self.show_dmd_overlay = state
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def setImage(self, np_img):
@@ -622,6 +685,15 @@ class ImageViewer(QtWidgets.QWidget):
             cv2.line(np_img, (20, int(self.height() * .925) + 22),
                      (self.scale_bar_length, int(self.height() * .925) + 22),
                      255, 1)
+        # if self.show_dmd_overlay:
+        #     np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR).astype(np.uint8)
+        #     dmd_overlay = np.zeros(np_img.shape, dtype=np.uint8)
+        #     cv2.rectangle(dmd_overlay, (int(self.calibration_payload[0][0] * self.width()),
+        #                                 int(self.calibration_payload[-1][0] * self.height())),
+        #                   (int(self.calibration_payload[0][1] * self.width()),
+        #                    int(self.calibration_payload[-1][1] * self.height())),
+        #                   (255, 0, 0), 5)
+        #     np_img = cv2.addWeighted(np_img, 1, dmd_overlay, 0.25, 0)
         if len(np_img.shape) > 2:
             # Format_RGB16
             qt_img = qimage2ndarray.array2qimage(np_img)
@@ -661,6 +733,9 @@ class ImageViewer(QtWidgets.QWidget):
             self.path_payload['end_y'] = event.pos().y()
             self.path_signal.emit(copy.deepcopy(self.path_payload))
 
+    def mouseMoveEvent(self, event):
+        self.move_event_signal.emit(event)
+
     def mousePressEvent(self, event):
         self.ignore_release = True
         self.click_event_signal.emit(event)
@@ -673,7 +748,7 @@ class ImageViewer(QtWidgets.QWidget):
             self.calibration_payload.append((x_scaled, y_scaled))
             string = f'calibration point marked: {x_scaled}, {y_scaled}'
             logging.info(string)
-            if len(self.calibration_payload) > 2:
+            if len(self.calibration_payload) > 1:
                 QtWidgets.QMessageBox.about(self, 'Calibration', 'Calibration Complete')
                 self.calibrating = False
                 self.enable_dmd_signal.emit()

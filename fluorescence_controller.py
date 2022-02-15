@@ -20,14 +20,17 @@ class FluorescenceController():
         # logging.info(self.send_receive('lh?'))
         # logging.info(self.send_receive(('ip=' + ','.join(['500' for i in range(4)]))))
 
-
-    def __del__(self):
-        if self.ser is not None:
-            self.turn_all_off(suppress_msg=True)
-            self.ser.reset_input_buffer()
-            self.ser.reset_output_buffer()
-            logging.info('closing fluorescence controller connection...')
-            self.ser.close()
+    # having a del function messes everything up for some reason...
+    # def __del__(self):
+    #     try:
+    #         if self.ser is not None:
+    #                 self.turn_all_off(suppress_msg=True)
+    #                 self.ser.reset_input_buffer()
+    #                 self.ser.reset_output_buffer()
+    #                 logging.info('closing fluorescence controller connection...')
+    #                 self.ser.close()
+    #     except Exception as e:
+    #         pass
 
     def get_connection(self):
         possible_coms = range(1, 11)

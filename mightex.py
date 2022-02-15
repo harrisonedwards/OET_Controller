@@ -86,7 +86,8 @@ class Polygon1000():
         if set_trigger_status != 0:
             raise Exception('Unable to set Polygon 1000 trigger settings')
         self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(self.buff1), c_int(1))
-        # os.chdir(current_dir)
+
+        self.render_to_dmd(self.get_blank_image())
 
     def __del__(self):
         for channel in range(1, 2):
@@ -116,8 +117,9 @@ class Polygon1000():
     def set_dmd_current(self, current):
         current *= 10
         current = int(current)
-        print(f'set led current to {current} for channel 1:',
-              self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, 1, current))
+        log_str = f'set led current to {current} for channel 1:', \
+                  self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, 1, current)
+        print(log_str)
         self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, 2, current)
         self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, 3, current)
         self.led_clib.MTUSB_BLSDriverSetNormalCurrent(0, 4, current)
@@ -212,21 +214,34 @@ class Polygon1000():
             img[start_y:start_y + cropped_projection.shape[0], start_x:start_x + cropped_projection.shape[1]] = \
                 cropped_projection
 
-        self.curr_img = img
+        self.curr_img = img.astype(np.uint8)
 
         return cx, cy, angle
 
     def update(self):
         self.render_to_dmd(self.curr_img)
 
-    def project_circle(self, dmd_scaled_x, dmd_scaled_y):
-        cx = int(dmd_scaled_x * 912 * 2)
-        cy = int(dmd_scaled_y * 1140)
-        offs = self.get_blank_image()
-        img = cv2.circle(offs, (cx, cy), self.circle_radius, 255, -1)
+    def project_brush(self, dmd_scaled_x, dmd_scaled_y, radius, prev_scaled_x=None, prev_scaled_y=None):
+        x = int(dmd_scaled_x * 912 * 2)
+        y = int(dmd_scaled_y * 1140)
+        if prev_scaled_x == None or prev_scaled_y == None:
+            img = cv2.circle(self.curr_img, (x, y), int(radius), 255, -1)
+        else:
+            prev_x = int(prev_scaled_x * 912 * 2)
+            prev_y = int(prev_scaled_y * 1140)
+            img = cv2.line(self.curr_img, (prev_x, prev_y), (x, y), 255, int(2 * radius))
         self.render_to_dmd(img)
-        self.cx = cx
-        self.cy = cy
+
+    def project_eraser(self, dmd_scaled_x, dmd_scaled_y, radius, prev_scaled_x=None, prev_scaled_y=None):
+        x = int(dmd_scaled_x * 912 * 2)
+        y = int(dmd_scaled_y * 1140)
+        if prev_scaled_x == None or prev_scaled_y == None:
+            img = cv2.circle(self.curr_img, (x, y), int(radius), 255, -1)
+        else:
+            prev_x = int(prev_scaled_x * 912 * 2)
+            prev_y = int(prev_scaled_y * 1140)
+            img = cv2.line(self.curr_img, (prev_x, prev_y), (x, y), 0, int(2 * radius))
+        self.render_to_dmd(img)
 
     def get_crop(self, projection_image, cx, cy):
         # project as much of the image as possible, and clip as necessary to fit within the dmd working area

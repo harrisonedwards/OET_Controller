@@ -49,6 +49,19 @@ class FunctionGenerator():
         ret = self.connection.query('OUTP?')
         logging.info(f'function generator output: {ret}')
 
+    def set_sweep_freqs(self, start, stop, time):
+        self.connection.write(f'FREQ:START {start}')
+        self.connection.write(f'FREQ:STOP {stop}')
+        self.connection.write(f'SWE:TIME {time}')
+        logging.info(f'function generator sweep set: {start} to {stop} in {time}s')
+
+    def toggle_sweep(self, state, start, stop, time):
+        self.set_sweep_freqs(start, stop, time)
+        if state:
+            self.connection.write('SWE:STAT ON')
+        else:
+            self.connection.write('SWE:STAT OFF')
+
 
 if __name__ == '__main__':
     function_generator = FunctionGenerator()

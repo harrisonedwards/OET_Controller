@@ -1,8 +1,29 @@
-import cv2
+import cv2, os
 import numpy as np
+import logging
+import tensorflow as tf
 
+# load ai model
+model_loc = r'C:\Users\Mohamed\Desktop\Harrison\OET\cnn_models\8515_vaL_model_augmented'
+try:
+    u_net = tf.keras.models.load_model(model_loc)
+    logging.info('Loaded AI detection model.')
+except Exception as e:
+    logging.warning(f'Failed to load AI detection model: {str(e)}')
+    logging.warning(f'CURRENT DIR: {os.getcwd()}')
 
-def detect(img):
+def create_mask(pred_mask):
+    pred_mask = tf.argmax(pred_mask, axis=-1)
+    pred_mask = pred_mask[..., tf.newaxis]
+    return pred_mask[0]
+
+def detect_cells(img):
+    # finds and fills the located cells
+    pred_mask = u_net.predict(img)
+    pred_mask = create_mask(pred_mask)
+    return np.copy(pred_mask)
+
+def detect_robots(img):
     # finds and fills the located robots
     img = cv2.convertScaleAbs(img, 1, 1.5)
     structure = np.ones((3, 3))
@@ -75,7 +96,7 @@ def get_robots(large_contours, detect, objective):
 
 
 def get_robot_control(img, objective):
-    detected = detect(img)
+    detected = detect_robots(img)
 
     large_contours = get_large_contours(detected)
 

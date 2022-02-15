@@ -7,7 +7,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import cv2
 import enum
 from control.micromanager import Camera
-from detection import get_robot_control
+from detection import get_robot_control, detect_cells
 import imageio
 import matplotlib.pyplot as plt
 
@@ -40,13 +40,15 @@ class imageProcessor(QtCore.QThread):
         self.total = 0
         self.width = width
         self.height = height
-        self.detection = False
+        self.robot_detection = False
+        self.cell_detection = False
         self.robots = {}
         self.recording = False
         self.writer = None
         self.video_dir = 'C:\\Users\\Mohamed\\Desktop\\Harrison\\Videos\\'
         self.vid_name = ''
-        self.clahe_params = {'status': False, 'clip': 3.0, 'grid': 8}
+        self.image_adjustment_params = {'clahe': False, 'clip': 3.0, 'grid': 8, 'threshold': False,
+                                        'threshold_percent': 50}
 
         logging.info('initializing camera...')
         if camera_type is CameraType.NIKON:
@@ -60,6 +62,7 @@ class imageProcessor(QtCore.QThread):
         self.dilation_size = 30
         self.open_robots = False
 
+
         # initialize all of our empty masks
         self.path_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
         self.detection_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
@@ -68,6 +71,8 @@ class imageProcessor(QtCore.QThread):
         self.window_size = QtCore.QSize(self.height, self.width)  # original image size
         self.qt_image = QtGui.QImage(self.image.data, self.height,
                                      self.width, QtGui.QImage.Format_Grayscale8)
+
+
 
     def init_nikon(self):
         # start micromanager and grab camera
@@ -88,7 +93,8 @@ class imageProcessor(QtCore.QThread):
             self.mmc.setProperty('camera', 'Exposure', self.exposure)
             # self.mmc.setProperty('camera', 'PixelType', '8bit')
             for p in properties:
-                log_string = p + str(self.mmc.getProperty('camera', p)) + str(self.mmc.getAllowedPropertyValues('camera', p))
+                log_string = p + str(self.mmc.getProperty('camera', p)) + ': ' + \
+                             str(self.mmc.getAllowedPropertyValues('camera', p))
                 logging.info(log_string)
             self.mmc.startContinuousSequenceAcquisition(1)
             self.run_video = True
@@ -114,7 +120,6 @@ class imageProcessor(QtCore.QThread):
         self.buffer_size = params_dict['buffer_size']
         self.dilation_size = params_dict['dilation_size']
         self.objective = params_dict['objective']
-        self.open_robots = params_dict['open_robots']
         logging.info('detection params updated:', params_dict)
 
     @QtCore.pyqtSlot()
@@ -134,20 +139,20 @@ class imageProcessor(QtCore.QThread):
                     img = (img / 256).astype(np.uint8)
                     if self.recording:
                         self.writer.append_data(img)
-                        writer = imageio.get_writer()
-                        writer.app
                     self.image = img
                 except Exception as e:
                     logging.warning(f'camera dropped frame {count}, {e}')
                 # self.VideoSignal.emit(img)
                 self.process_and_emit_image(img)
                 count += 1
-                if count % 5 == 0 and self.detection:
-                    self.run_detection()
+                if count % 5 == 0 and self.robot_detection:
+                    self.run_robot_detection()
+                if count % 5 == 0 and self.cell_detection:
+                    self.run_cell_detection()
                 if count % 20 == 0:
                     # calculate our fps and send it to be shown on status bar
                     t1 = time.time()
-                    fps = 20 / (t1 - t0)
+                    fps = min(20 / (t1 - t0), 1000/self.exposure)
                     t0 = t1
                     self.fps_signal.emit(fps)
             else:
@@ -158,22 +163,29 @@ class imageProcessor(QtCore.QThread):
     def process_and_emit_image(self, np_img):
         # np_img is native resolution from camera
 
-        if self.clahe_params['status']:
-            clahe = cv2.createCLAHE(clipLimit=self.clahe_params['clip'],
-                                    tileGridSize=(int(self.clahe_params['grid']), int(self.clahe_params['grid'])))
+        # apply all of our visual adjustments to the feed
+        if self.image_adjustment_params['threshold']:
+            # first remove our hot pixels
+            median = np.median(np_img)
+            np_img[np.where(np_img > 2 * median)] = 0
+            percent = self.image_adjustment_params['threshold_percent']
+            _, binary_inv = cv2.threshold(np_img, int(percent * 255), 255, cv2.THRESH_BINARY_INV)
+            _, to_zero = cv2.threshold(np_img, int(percent * 255), 255, cv2.THRESH_TOZERO)
+            np_img = binary_inv + to_zero
+        if self.image_adjustment_params['clahe']:
+            clahe = cv2.createCLAHE(clipLimit=self.image_adjustment_params['clip'],
+                                    tileGridSize=(int(self.image_adjustment_params['grid']), int(self.image_adjustment_params['grid'])))
             np_img = clahe.apply(np_img)
-
-        if self.detection:
+        if self.robot_detection:
             np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
-            np_img = cv2.addWeighted(np_img, 1, self.detection_overlay, 0.8, 0)
+            np_img = cv2.addWeighted(np_img, 1, self.robot_detection_overlay, 0.8, 0)
             np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.8, 0)
-
-        window_h = self.window_size.height()
-        window_w = self.window_size.width()
-
+        if self.cell_detection:
+            np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
+            np_img = cv2.addWeighted(np_img, 1, self.cell_detection_overlay, 0.8, 0)
         # resize
         self.resize_lock.lock()
-        np_img = cv2.resize(np_img, (window_w, window_h))
+        np_img = cv2.resize(np_img, (self.window_size.width(), self.window_size.height()))
         self.resize_lock.unlock()
 
         # emit our array, whatever shape it may be
@@ -181,11 +193,19 @@ class imageProcessor(QtCore.QThread):
             self.VideoSignal.emit(np_img)
 
     @QtCore.pyqtSlot('PyQt_PyObject')
-    def toggle_detection_slot(self, state):
-        self.detection = state
-        if not self.detection:
+    def toggle_robot_detection_slot(self, state):
+        self.robot_detection = state
+        if not self.robot_detection:
             self.clear_paths_overlay_slot()
             self.robots = {}
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def toggle_cell_detection_slot(self, state):
+        self.cell_detection = state
+
+    def run_cell_detection(self):
+        # process current image to find robots
+        self.cell_detection_overlay = detect_cells(self.image)
 
     def get_control_mask(self, robots):
         objective_calibration_dict = {'2x': [8, 0.25],
@@ -237,7 +257,7 @@ class imageProcessor(QtCore.QThread):
 
         return robot_control_mask
 
-    def run_detection(self):
+    def run_robot_detection(self):
         # process current image to find robots
         robot_contours, robot_angles = get_robot_control(self.image, self.objective)
 
@@ -315,8 +335,8 @@ class imageProcessor(QtCore.QThread):
         return nearest_robot_cx * self.width, nearest_robot_cy * self.height, nearest_robot
 
     @QtCore.pyqtSlot('PyQt_PyObject')
-    def clay_params_slot(self, clahe_params):
-        self.clahe_params = clahe_params
+    def image_adjustment_params_slot(self, image_adjustment_params):
+        self.image_adjustment_params = image_adjustment_params
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def path_slot(self, payload):

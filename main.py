@@ -24,8 +24,9 @@ class Window(GUI):
     start_record_video_signal = QtCore.pyqtSignal()
     stop_record_video_signal = QtCore.pyqtSignal()
     enable_robot_detection_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    enable_cell_detection_signal = QtCore.pyqtSignal('PyQt_PyObject')
     update_detection_params_signal = QtCore.pyqtSignal('PyQt_PyObject')
-    clahe_params_signal = QtCore.pyqtSignal('PyQt_PyObject')
+    image_adjustment_params_signal = QtCore.pyqtSignal('PyQt_PyObject')
     toggle_scale_bar_signal = QtCore.pyqtSignal('PyQt_PyObject')
 
     def __init__(self):
@@ -76,6 +77,7 @@ class Window(GUI):
         self.dispenseMode = None  # should be set by the GUI immediately
         self.project_circle_mode = False
         self.project_image_mode = False
+        self.project_eraser_mode = False
         self.robots = {}
         self.projection_image = None
 
@@ -93,6 +95,13 @@ class Window(GUI):
         self.update_detection_params()
         self.showMaximized()
 
+    def toggle_fg_sweep(self):
+        state = self.sweepPushButton.isChecked()
+        start = self.sweepStartDoubleSpinBox.value() * 1000
+        stop = self.sweepStopDoubleSpinBox.value() * 1000
+        time = self.sweepTimeDoubleSpinBox.value()
+        self.function_generator.toggle_sweep(state, start, stop, time)
+
     @QtCore.pyqtSlot('PyQt_PyObject')
     def fps_slot(self, fps):
         fps = int(fps)
@@ -106,12 +115,7 @@ class Window(GUI):
         QtTest.QTest.qWait(duration)
         self.fgOutputTogglePushButton.click()
 
-    @QtCore.pyqtSlot(QtGui.QMouseEvent)
-    def handle_click(self, event):
-        # see if we are calibrated
-        if len(self.image_viewer.calibration_payload) < 3:
-            logging.info('not calibrated...ignoring click')
-            return
+    def get_scaled_position(self, event):
         x = event.pos().x()
         y = event.pos().y()
 
@@ -122,8 +126,8 @@ class Window(GUI):
         # check if we can illuminate the clicked area with the dmd
         check = self.check_if_in_dmd_area(unit_scaled_viewer_x, unit_scaled_viewer_y)
         if not check:
-            logging.info('not within DMD area...ignoring click')
-            return
+            logging.info('not within DMD area...unable to render')
+            return -1, -1
 
         # get the full scale of our dmd area
         dmd_fs_x = self.image_viewer.calibration_payload[-1][0] - self.image_viewer.calibration_payload[0][0]
@@ -133,9 +137,21 @@ class Window(GUI):
         dmd_scaled_x = (unit_scaled_viewer_x - self.image_viewer.calibration_payload[0][0]) / dmd_fs_x
         dmd_scaled_y = (unit_scaled_viewer_y - self.image_viewer.calibration_payload[0][1]) / dmd_fs_y
 
+        return dmd_scaled_x, dmd_scaled_y
+
+    def handle_mouse_down(self, event):
+        # see if we are calibrated
+        if len(self.image_viewer.calibration_payload) < 2:
+            return
+
+        dmd_scaled_x, dmd_scaled_y = self.get_scaled_position(event)
+
         # project in the proper mode
         if self.project_circle_mode:
-            self.dmd.project_circle(dmd_scaled_x, dmd_scaled_y)
+            self.dmd.project_brush(dmd_scaled_x, dmd_scaled_y, self.oetBrushRadiusDoubleSpinBox.value())
+            self.dmd.update()
+        elif self.project_eraser_mode:
+            self.dmd.project_eraser(dmd_scaled_x, dmd_scaled_y, self.oetBrushRadiusDoubleSpinBox.value())
             self.dmd.update()
         elif self.project_image_mode == 'adding_robots':
             cx, cy, angle = self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, 0,
@@ -150,8 +166,27 @@ class Window(GUI):
             self.oetRobotsLayout.addWidget(checkbox)
             self.oetRobotsEmptyLabel.setVisible(False)
             self.dmd.update()
-        # elif self.project_image_mode == 'controlling_robots':
-        #     self.dmd.project_loaded_image(dmd_scaled_x, dmd_scaled_y, adding_only=False)
+        self.prev_scaled_x, self.prev_scaled_y = dmd_scaled_x, dmd_scaled_y
+
+    @QtCore.pyqtSlot(QtGui.QMouseEvent)
+    def handle_mouse_move(self, event):
+        dmd_scaled_x, dmd_scaled_y = self.get_scaled_position(event)
+        if dmd_scaled_x == -1 or dmd_scaled_y == -1:
+            return
+        if self.project_circle_mode:
+            self.dmd.project_brush(dmd_scaled_x, dmd_scaled_y, self.oetBrushRadiusDoubleSpinBox.value(),
+                                   self.prev_scaled_x, self.prev_scaled_y)
+            self.dmd.update()
+        elif self.project_eraser_mode:
+            self.dmd.project_eraser(dmd_scaled_x, dmd_scaled_y, self.oetBrushRadiusDoubleSpinBox.value(),
+                                   self.prev_scaled_x, self.prev_scaled_y)
+            self.dmd.update()
+        self.prev_scaled_x, self.prev_scaled_y = dmd_scaled_x, dmd_scaled_y
+
+    @QtCore.pyqtSlot(QtGui.QMouseEvent)
+    def handle_click(self, event):
+        if event.type() == QtCore.QEvent.MouseButtonPress:
+            self.handle_mouse_down(event)
 
     def handle_robot_movement(self, key):
         adding = 0
@@ -216,10 +251,6 @@ class Window(GUI):
                 self.robots[robot]['angle'] = angle
         self.dmd.update()
 
-
-    def handle_image_threshold_slider(self, value):
-        self.imageAdjustmentThresholdLabel.setText(str(value))
-
     def scale_up_oet_projection(self):
         adding = 0
         for robot in self.robots:
@@ -249,11 +280,13 @@ class Window(GUI):
         self.dmd.clear_oet_projection()
         self.oetClearPushButton.setChecked(False)
 
+
+
     def toggle_project_image(self):
         if self.oetProjectImagePushButton.isChecked():
             self.project_image_mode = 'adding_robots'
-            self.oetRobotsGroupBox.setEnabled(False)
-            self.oetProjectCirclePushButton.setChecked(False)
+            self.oetObjectsGroupBox.setEnabled(False)
+            self.oetProjectCircleBrushPushButton.setChecked(False)
             self.oetControlProjectionsPushButton.setChecked(False)
             self.project_circle_mode = False
         elif not self.oetProjectImagePushButton.isChecked():
@@ -262,17 +295,27 @@ class Window(GUI):
     def toggle_controL_projections(self):
         if self.oetControlProjectionsPushButton.isChecked():
             self.project_image_mode = 'controlling_robots'
-            self.oetRobotsGroupBox.setEnabled(True)
+            self.oetObjectsGroupBox.setEnabled(True)
             self.oetProjectImagePushButton.setChecked(False)
-            self.oetProjectCirclePushButton.setChecked(False)
+            self.oetProjectCircleBrushPushButton.setChecked(False)
             self.project_circle_mode = False
             self.oetScaleDoubleSpinBox.setEnabled(True)
             self.oetScaleUpPushButton.setEnabled(True)
             self.oetRotationDoubleSpinBox.setEnabled(True)
             self.oetTranslateDoubleSpinBox.setEnabled(True)
 
-    def toggle_project_circle(self):
-        self.project_circle_mode = self.oetProjectCirclePushButton.isChecked()
+    def toggle_project_brush(self):
+        self.project_circle_mode = self.oetProjectCircleBrushPushButton.isChecked()
+        self.oetProjectCircleEraserPushButton.setChecked(False)
+        self.project_eraser_mode = False
+        self.oetProjectImagePushButton.setChecked(False)
+        self.oetControlProjectionsPushButton.setChecked(False)
+        self.project_image_mode = False
+
+    def toggle_erase_brush(self):
+        self.project_eraser_mode = self.oetProjectCircleEraserPushButton.isChecked()
+        self.oetProjectCircleBrushPushButton.setChecked(False)
+        self.project_circle_mode = False
         self.oetProjectImagePushButton.setChecked(False)
         self.oetControlProjectionsPushButton.setChecked(False)
         self.project_image_mode = False
@@ -307,11 +350,18 @@ class Window(GUI):
         self.dmd.render_to_dmd(img)
 
     def apply_image_adjustment(self, value):
+
+        clahe = self.imageAdjustmentClahePushButton.isChecked()
         clip = self.imageAdjustmentClaheClipValueDoubleSpinBox.value()
         grid = self.imageAdjustmentClaheGridValueDoubleSpinBox.value()
-        status = self.imageAdjustmentClahePushButton.isChecked()
-        clahe_values = {'status': status, 'clip': clip, 'grid': grid}
-        self.clahe_params_signal.emit(clahe_values)
+
+        threshold = self.imageAdjustmentThresholdPushButton.isChecked()
+        threshold_percent = self.imageAdjustmentThresholdSlider.value() / 100
+        self.imageAdjustmentThresholdLabel.setText(str(self.imageAdjustmentThresholdSlider.value()))
+
+        image_adjustment_params = {'clahe': clahe, 'clip': clip, 'grid': grid, 'threshold': threshold,
+                                   'threshold_percent': threshold_percent}
+        self.image_adjustment_params_signal.emit(image_adjustment_params)
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def robot_control_slot(self, robot_signal):
@@ -321,6 +371,10 @@ class Window(GUI):
     def toggle_robot_detection(self):
         state = self.detectRobotsPushButton.isChecked()
         self.enable_robot_detection_signal.emit(state)
+
+    def toggle_cell_detection(self):
+        state = self.detectCellsPushButton.isChecked()
+        self.enable_cell_detection_signal.emit(state)
 
     def toggleVideoRecording(self):
         state = self.takeVideoPushbutton.isChecked()
@@ -339,6 +393,10 @@ class Window(GUI):
     def toggle_dmd_lamp(self):
         state = self.oetToggleLampPushButton.isChecked()
         self.dmd.toggle_dmd_light(state)
+
+    def toggle_dmd_overlay(self):
+        state = self.oetToggleDMDAreaOverlayPushButton.isChecked()
+        self.image_viewer.toggle_dmd_overlay(state)
 
     def load_oet_projection(self):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file for projection')
@@ -360,8 +418,7 @@ class Window(GUI):
         logging.info('calibrating dmd...')
         # now we want to project 3 circles on the dmd for the user to click so that we can calibrate
         QtWidgets.QMessageBox.about(self, 'Calibration',
-                                    'Please click the center of the 3 (clipped) projected circles in a CLOCKWISE \
-                                    fashion to calibrate the DMD. Ensure that the DMD Lamp is on and visible.')
+                                    'Please click the center of the upper left and lower right corners of the DMD.')
         self.dmd.project_calibration_image()
         self.image_viewer.calibration_payload = []
         self.image_viewer.calibrating = True
@@ -369,8 +426,7 @@ class Window(GUI):
     def update_detection_params(self):
         params_dict = {'buffer_size': int(self.bufferSizeDoubleSpinBox.value()),
                        'dilation_size': int(self.dilationSizeDoubleSpinBox.value()),
-                       'objective': self.magnificationComboBoxWidget.currentText(),
-                       'open_robots': self.oetOpenRobotsPushButton.isChecked()}
+                       'objective': self.magnificationComboBoxWidget.currentText()}
         self.update_detection_params_signal.emit(params_dict)
 
     def check_if_in_dmd_area(self, scaled_x, scaled_y):
@@ -462,7 +518,7 @@ class Window(GUI):
 
     def setFunctionGenerator(self):
         v = self.voltageDoubleSpinBox.value()
-        f = self.frequencyDoubleSpinBox.value()
+        f = self.frequencyDoubleSpinBox.value() * 1000
         w = self.waveformComboBox.currentText()
         self.function_generator.set_voltage(v)
         self.function_generator.set_frequency(f)

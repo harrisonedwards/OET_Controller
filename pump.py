@@ -1,5 +1,5 @@
 import serial
-
+import logging
 
 class Pump:
 
@@ -7,12 +7,12 @@ class Pump:
         try:
             self.ser = self.connect()
         except Exception as e:
-            print('failed to connect to pump...')
+            logging.warning('failed to connect to pump...')
             self.ser = None
 
     def __del__(self):
         if self.ser is not None:
-            print('closing pump connection...')
+            logging.info('closing pump connection...')
             self.ser.close()
 
     def connect(self):
@@ -24,10 +24,10 @@ class Pump:
                 s.write('addr \r\n'.encode())
                 r = s.read(100).decode()
                 if 'Pump' in r:
-                        print('connected to pump')
+                        logging.info('connected to pump')
                         return s
             except Exception as e:
-                print(e)
+                logging.warning(e)
         raise Exception('failed to connect to pump')
 
 
@@ -39,22 +39,22 @@ class Pump:
         self.send_receive('ctvolume')
         self.send_receive('cvolume')
         r = self.send_receive('irate {} ul/min'.format(rate))
-        print('received:', r)
+        logging.info(f'received: {r}')
         r = self.send_receive('tvolume {} ul/min'.format(amount))
-        print('received:', r)
+        logging.info(f'received: {r}')
         r = self.send_receive('irun')
-        print('received:', r)
+        logging.info(f'received: {r}')
 
     def withdraw(self, amount, rate):
         self.send_receive('ctvolume')
         self.send_receive('cvolume')
         r = self.send_receive('wrate {} ul/min'.format(rate))
-        print('received:', r)
+        logging.info(f'received: {r}')
         r = self.send_receive('tvolume {} ul/min'.format(amount))
-        print('received:', r)
+        logging.info(f'received: {r}')
         r = self.send_receive('wrun')
-        print('received:', r)
+        logging.info(f'received: {r}')
 
     def halt(self):
         r = self.send_receive('stop')
-        print('received:', r)
+        logging.info(f'received: {r}')

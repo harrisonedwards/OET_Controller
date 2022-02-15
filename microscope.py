@@ -96,7 +96,7 @@ class Microscope():
         data_in.iDIALAMP_CTRLMODE = 1
         data_in.iDIALAMP_VOLTAGE = int(5)
         self.issue_command(data_in)
-        self.status = self.get_status()
+        self.get_status()
         logging.info(self.status)
 
     def __del__(self):
@@ -129,7 +129,7 @@ class Microscope():
         if ret != 0:
             logging.info('get_status failed!', ret)
             self.close_microscope()
-        return data_in
+        self.status = data_in
 
     def open_microscope(self):
         device_index = ctypes.c_int32(0)
