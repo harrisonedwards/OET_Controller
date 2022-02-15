@@ -545,6 +545,7 @@ class GUI(QtWidgets.QMainWindow):
         self.bufferSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
         self.update_detection_params_signal.connect(self.image_processing.update_detection_params_slot)
         self.enable_robot_detection_signal.connect(self.image_processing.toggle_robot_detection_slot)
+        self.enable_cell_detection_signal.connect(self.image_processing.toggle_cell_detection_slot)
         self.oetClearPathsPushButton.clicked.connect(self.image_processing.clear_paths_overlay_slot)
 
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)

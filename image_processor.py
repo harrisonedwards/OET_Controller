@@ -65,7 +65,8 @@ class imageProcessor(QtCore.QThread):
 
         # initialize all of our empty masks
         self.path_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
-        self.detection_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
+        self.robot_detection_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
+        self.cell_detection_overlay = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT, 3), dtype=np.uint8)
 
         self.image = np.zeros((NATIVE_CAMERA_WIDTH, NATIVE_CAMERA_HEIGHT))
         self.window_size = QtCore.QSize(self.height, self.width)  # original image size
@@ -276,7 +277,7 @@ class imageProcessor(QtCore.QThread):
             # update our understanding of the robots
             self.update_robot_information(robot_contours, robot_angles)
 
-        self.detection_overlay = self.get_control_mask(self.robots).astype(np.uint8)
+        self.robot_detection_overlay = self.get_control_mask(self.robots).astype(np.uint8)
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def robot_control_slot(self, payload):
