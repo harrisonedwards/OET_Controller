@@ -19,6 +19,7 @@ def create_mask(pred_mask):
 
 def detect_cells(img):
     # finds and fills the located cells
+    img = np.expand_dims(img, axis=-1)
     pred_mask = u_net.predict(img)
     pred_mask = create_mask(pred_mask)
     return np.copy(pred_mask)
