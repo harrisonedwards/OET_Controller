@@ -7,7 +7,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import cv2
 import enum
 from control.micromanager import Camera
-from detection import get_robot_control, detect_cells
+from detection import get_robot_control, get_cell_overlay
 import imageio
 import matplotlib.pyplot as plt
 
@@ -206,7 +206,7 @@ class imageProcessor(QtCore.QThread):
 
     def run_cell_detection(self):
         # process current image to find robots
-        self.cell_detection_overlay = detect_cells(self.image)
+        self.cell_detection_overlay = get_cell_overlay(self.image)
 
     def get_control_mask(self, robots):
         objective_calibration_dict = {'2x': [8, 0.25],

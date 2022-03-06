@@ -1,7 +1,7 @@
 import os, logging
 from ctypes import *
 import numpy as np
-from pyglet.gl import *
+# from pyglet.gl import *
 import cv2
 from PyQt5 import QtCore, QtWidgets
 import matplotlib.pyplot as plt

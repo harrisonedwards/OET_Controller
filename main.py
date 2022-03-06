@@ -1,7 +1,7 @@
 import sys, logging
 import os, sys, time
 from time import strftime
-from inputs import get_gamepad
+# from inputs import get_gamepad
 import names
 import PyQt5.QtGui
 from PyQt5 import QtCore, QtGui, QtWidgets, QtTest

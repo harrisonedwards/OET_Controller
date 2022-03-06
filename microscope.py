@@ -218,8 +218,6 @@ class Microscope():
         data_in.iSHUTTER_DIA = state
         self.issue_command(data_in)
 
-
-
     def set_filter(self, filter):
         data_in = MIC_Data()
         data_in.uiDataUsageMask = 0x0000000000000040

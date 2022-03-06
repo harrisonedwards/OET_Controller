@@ -6,23 +6,29 @@ import tensorflow as tf
 # load ai model
 model_loc = r'C:\Users\Mohamed\Desktop\Harrison\OET\cnn_models\8515_vaL_model_augmented'
 try:
+    print(f'loading AI detection model: {model_loc}\n tensorflow version: {tf.__version__}')
     u_net = tf.keras.models.load_model(model_loc)
     logging.info('Loaded AI detection model.')
 except Exception as e:
     logging.warning(f'Failed to load AI detection model: {str(e)}')
     logging.warning(f'CURRENT DIR: {os.getcwd()}')
 
-def create_mask(pred_mask):
-    pred_mask = tf.argmax(pred_mask, axis=-1)
-    pred_mask = pred_mask[..., tf.newaxis]
-    return pred_mask[0]
 
-def detect_cells(img):
-    # finds and fills the located cells
-    img = np.expand_dims(img, axis=-1)
+def get_cell_overlay(img):
+    img = np.expand_dims(img, 0)
+    if len(img.shape) < 4:
+        img = np.expand_dims(img, -1)
+
     pred_mask = u_net.predict(img)
-    pred_mask = create_mask(pred_mask)
-    return np.copy(pred_mask)
+    pred_mask = np.round(pred_mask, 0)
+
+    red_mask = np.where(pred_mask == 1, 255, 0)
+    green_mask = np.where(pred_mask == 2, 255, 0)
+
+    cell_detection_overlay = np.stack((red_mask, green_mask, np.zeros(img.shape)), axis=-1)
+    cell_detection_overlay = np.squeeze(cell_detection_overlay).astype(np.uint8)
+
+    return cell_detection_overlay
 
 def detect_robots(img):
     # finds and fills the located robots
