@@ -1,6 +1,11 @@
-import sys, logging
-import os, sys, time
+import logging, time, sys, os
 from time import strftime
+log_name = strftime('..\\logs\\%Y_%m_%d_%H_%M_%S.log', time.gmtime())
+
+logging.basicConfig(filename=log_name, level=logging.DEBUG)
+logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+
+
 # from inputs import get_gamepad
 import names
 import PyQt5.QtGui
@@ -15,6 +20,8 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from GUI import GUI
+
+
 
 
 class Window(GUI):
@@ -558,18 +565,9 @@ class Window(GUI):
 
 
 if __name__ == '__main__':
-    log_name = strftime('..\\logs\\%Y_%m_%d_%H_%M_%S.log', time.gmtime())
-    logging.basicConfig(filename=log_name,
-        level=logging.DEBUG,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(log_name),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
+    print('done')
     app = QtWidgets.QApplication(sys.argv)
     window = Window()
-    # window.setGeometry(500, 300, 800, 600)
     window.show()
     window.activateWindow()
     sys.exit(app.exec_())
