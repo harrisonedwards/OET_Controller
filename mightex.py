@@ -236,7 +236,7 @@ class Polygon1000():
         x = int(dmd_scaled_x * 912 * 2)
         y = int(dmd_scaled_y * 1140)
         if prev_scaled_x == None or prev_scaled_y == None:
-            img = cv2.circle(self.curr_img, (x, y), int(radius), 255, -1)
+            img = cv2.circle(self.curr_img, (x, y), int(radius), 0, -1)
         else:
             prev_x = int(prev_scaled_x * 912 * 2)
             prev_y = int(prev_scaled_y * 1140)

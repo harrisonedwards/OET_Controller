@@ -559,14 +559,12 @@ class Window(GUI):
 
 if __name__ == '__main__':
     log_name = strftime('..\\logs\\%Y_%m_%d_%H_%M_%S.log', time.gmtime())
-
-    # logging.basicConfig(filename=log_name, level=logging.DEBUG)
-    logging.basicConfig(
+    logging.basicConfig(filename=log_name,
         level=logging.DEBUG,
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
             logging.FileHandler(log_name),
-            logging.StreamHandler()
+            logging.StreamHandler(sys.stdout)
         ]
     )
     app = QtWidgets.QApplication(sys.argv)

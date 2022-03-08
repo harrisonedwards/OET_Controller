@@ -4,7 +4,7 @@ import logging
 import tensorflow as tf
 
 # load ai model
-model_loc = r'C:\Users\Mohamed\Desktop\Harrison\OET\cnn_models\8515_vaL_model_augmented'
+model_loc = r'C:\Users\Mohamed\Desktop\Harrison\OET\cnn_models\8515_vaL_model_augmented_w_gfp_class_weighted2'
 try:
     print(f'loading AI detection model: {model_loc}\n tensorflow version: {tf.__version__}')
     u_net = tf.keras.models.load_model(model_loc)
@@ -20,12 +20,12 @@ def get_cell_overlay(img):
         img = np.expand_dims(img, -1)
 
     pred_mask = u_net.predict(img)
-    pred_mask = np.round(pred_mask, 0)
+    pred_mask = tf.argmax(pred_mask, axis=-1)
 
     red_mask = np.where(pred_mask == 1, 255, 0)
     green_mask = np.where(pred_mask == 2, 255, 0)
 
-    cell_detection_overlay = np.stack((red_mask, green_mask, np.zeros(img.shape)), axis=-1)
+    cell_detection_overlay = np.stack((red_mask, green_mask, np.zeros(red_mask.shape)), axis=-1)
     cell_detection_overlay = np.squeeze(cell_detection_overlay).astype(np.uint8)
 
     return cell_detection_overlay

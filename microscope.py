@@ -163,7 +163,7 @@ class Microscope():
         self.step_size = value
 
     def move_rel_z(self, amount):
-        self.status = self.get_status()
+        self.get_status()
         z = self.status.iZPOSITION
         log_str = f'z pos before: {z}'
         logging.info(log_str)

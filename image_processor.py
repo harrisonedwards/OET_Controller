@@ -182,7 +182,10 @@ class imageProcessor(QtCore.QThread):
             np_img = cv2.addWeighted(np_img, 1, self.robot_detection_overlay, 0.8, 0)
             np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.8, 0)
         if self.cell_detection:
-            np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
+            np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2RGB)
+            if self.cell_detection_overlay.shape != np_img.shape:
+                height, width = np_img.shape[:2]
+                self.cell_detection_overlay = cv2.resize(self.cell_detection_overlay, (width, height))
             np_img = cv2.addWeighted(np_img, 1, self.cell_detection_overlay, 0.8, 0)
         # resize
         self.resize_lock.lock()
@@ -205,8 +208,11 @@ class imageProcessor(QtCore.QThread):
         self.cell_detection = state
 
     def run_cell_detection(self):
-        # process current image to find robots
-        self.cell_detection_overlay = get_cell_overlay(self.image)
+        # process current image to find cells
+        if self.image.shape != (2060, 2044):
+            self.image = cv2.resize(self.image, (2044, 2060))
+        self.cell_detection_overlay = get_cell_overlay(np.copy(self.image))
+
 
     def get_control_mask(self, robots):
         objective_calibration_dict = {'2x': [8, 0.25],
