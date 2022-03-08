@@ -465,7 +465,11 @@ class GUI(QtWidgets.QMainWindow):
         self.set_camera_exposure_signal.connect(self.image_processing.set_exposure_slot)
 
         self.image_processing.VideoSignal.connect(self.image_viewer.setImage)
-        self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
+
+        self.image_viewer.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
+                                        QtWidgets.QSizePolicy.MinimumExpanding)
+
+
         self.image_processing.moveToThread(self.image_processing_thread)
 
         self.image_viewer.click_event_signal.connect(self.handle_click)
@@ -474,7 +478,11 @@ class GUI(QtWidgets.QMainWindow):
         self.VBoxLayout.setAlignment(QtCore.Qt.AlignTop)
 
         self.HBoxLayout.addLayout(self.VBoxLayout)
-        self.HBoxLayout.addWidget(self.image_viewer)
+        # self.imageBoxLayout = QtWidgets.QVBoxLayout()
+        # self.imageBoxLayout.set
+        # self.imageBoxLayout.setAlignment(QtCore.Qt.AlignVCenter)
+        # self.imageBoxLayout.addWidget(self.image_viewer)
+        self.HBoxLayout.addWidget(self.image_viewer, QtCore.Qt.AlignCenter)
 
     def update_gui_state(self):
         # get the state and make the GUI synced to it
@@ -647,6 +655,8 @@ class ImageViewer(QtWidgets.QWidget):
         self.scale_bar_value = 'Unk'
         self.scale_bar_length = 10
         self.show_dmd_overlay = False
+        self.sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
+                                                QtWidgets.QSizePolicy.MinimumExpanding,)
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
