@@ -183,9 +183,6 @@ class imageProcessor(QtCore.QThread):
             np_img = cv2.addWeighted(np_img, 1, self.path_overlay, 0.8, 0)
         if self.cell_detection:
             np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2RGB)
-            if self.cell_detection_overlay.shape != np_img.shape:
-                height, width = np_img.shape[:2]
-                self.cell_detection_overlay = cv2.resize(self.cell_detection_overlay, (width, height))
             np_img = cv2.addWeighted(np_img, 1, self.cell_detection_overlay, 0.8, 0)
         # resize
         self.resize_lock.lock()

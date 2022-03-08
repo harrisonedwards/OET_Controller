@@ -1,11 +1,8 @@
 import logging, time, sys, os
 from time import strftime
 log_name = strftime('..\\logs\\%Y_%m_%d_%H_%M_%S.log', time.gmtime())
-
 logging.basicConfig(filename=log_name, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
-
-
 # from inputs import get_gamepad
 import names
 import PyQt5.QtGui

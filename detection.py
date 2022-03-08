@@ -22,12 +22,13 @@ def get_cell_overlay(img):
     pred_mask = u_net.predict(img)
     pred_mask = tf.argmax(pred_mask, axis=-1)
 
-    red_mask = np.where(pred_mask == 1, 255, 0)
-    green_mask = np.where(pred_mask == 2, 255, 0)
+    red_mask = tf.where(pred_mask == 1, 255, 0)
+    green_mask = tf.where(pred_mask == 2, 255, 0)
 
-    cell_detection_overlay = np.stack((red_mask, green_mask, np.zeros(red_mask.shape)), axis=-1)
-    cell_detection_overlay = np.squeeze(cell_detection_overlay).astype(np.uint8)
+    cell_detection_overlay = tf.stack((red_mask, green_mask, np.zeros(red_mask.shape)), axis=-1)
+    cell_detection_overlay = tf.squeeze(cell_detection_overlay)
 
+    cell_detection_overlay = tf.image.resize(cell_detection_overlay, (2048, 2060)).numpy().astype(np.uint8)
     return cell_detection_overlay
 
 def detect_robots(img):
