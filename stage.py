@@ -58,8 +58,8 @@ class Stage():
             self.move_relative(x=self.step_size)
 
     def move_absolute(self, x=0, y=0):
-        ret = self.read_write(f'moa {x} {y} 0')
-        if ret != b'OK...\r' and ret != b'':
+        ret = self.read_write(f'!moa {x} {y} 0')
+        if 'OK...' not in ret.decode():
             logging.warning(f'Stage movement error: {ret}')
 
     def set_xystep_size(self, value):

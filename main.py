@@ -5,7 +5,7 @@ logging.basicConfig(filename=log_name, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 # logging.getLogger().addHandler(logging.Formatter(fmt=' %(name)s :: %(levelname)-8s :: %(message)s'.replace('\n', '')))
 # from inputs import get_gamepad
-import names
+import names, re
 import PyQt5.QtGui
 from PyQt5 import QtCore, QtGui, QtWidgets, QtTest
 from function_generator import FunctionGenerator
@@ -122,13 +122,23 @@ class Window(GUI):
     def fps_slot(self, fps):
         self.fps = float(fps)
         x, y, z = self.get_system_position()
-        self.statusBar.showMessage(f'FPS: {fps:.2f}     Stage Position: {x}, {y} {z}')
+        self.statusBar.showMessage(f'FPS: {fps:.2f}     Position: {x}mm, {y}mm, {z/40}um')
 
     def bookmark_current_location(self):
         x, y, z = self.get_system_position()
         index = self.bookMarkComboBox.count() + 1
-        bookmark_string = f'{index}:  {x}, {y} {z}'
+        bookmark_string = f'{index}:  {x}mm, {y}mm, {z/40}um'
         self.bookMarkComboBox.addItem(bookmark_string)
+        self.bookMarkComboBox.setCurrentIndex(index - 1)
+        if self.bookMarkComboBox.count() == 1:
+            self.bookMarkComboBox.currentIndexChanged.connect(self.move_to_bookmarked_location)
+
+    def move_to_bookmarked_location(self, index):
+        bookmark = self.bookMarkComboBox.currentText()
+        x = float(re.search(': (.+?)mm', bookmark).group(1))
+        y = float(re.search('mm, (.+?)mm', bookmark).group(1))
+        self.stage.move_absolute(x, y)
+
 
 
     def execute_pulse(self):
@@ -504,10 +514,10 @@ class Window(GUI):
             elif key == QtCore.Qt.Key_Down:
                 self.stage.step('l')
         if key == QtCore.Qt.Key_PageUp:
-            self.microscope.move_rel_z(self.zstageStepSizeDoubleSpinBox.value())
+            self.microscope.move_rel_z(self.zstageStepSizeDoubleSpinBox.value() * 40)
             return
         elif key == QtCore.Qt.Key_PageDown:
-            self.microscope.move_rel_z(-self.zstageStepSizeDoubleSpinBox.value())
+            self.microscope.move_rel_z(-self.zstageStepSizeDoubleSpinBox.value() * 40)
             return
         if self.project_image_mode:
             self.handle_robot_movement(key)

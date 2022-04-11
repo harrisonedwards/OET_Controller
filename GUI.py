@@ -47,11 +47,12 @@ class GUI(QtWidgets.QMainWindow):
         self.stageXYStopAccelerationDoubleSpinBox.setSuffix('mm/s\u00B2')
         self.zstageStepSizeLabel = QtWidgets.QLabel('Z Step Size:')
         self.zstageStepSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.zstageStepSizeDoubleSpinBox.setSingleStep(1000)
-        self.zstageStepSizeDoubleSpinBox.setMinimum(50)
-        self.zstageStepSizeDoubleSpinBox.setDecimals(0)
+        self.zstageStepSizeDoubleSpinBox.setSingleStep(.05)
+        self.zstageStepSizeDoubleSpinBox.setMinimum(.001)
+        self.zstageStepSizeDoubleSpinBox.setDecimals(3)
         self.zstageStepSizeDoubleSpinBox.setMaximum(50000)
-        self.zstageStepSizeDoubleSpinBox.setValue(10000)
+        self.zstageStepSizeDoubleSpinBox.setValue(0.1)
+        self.zstageStepSizeDoubleSpinBox.setSuffix('um')
         self.filterLabel = QtWidgets.QLabel(text='Filter:')
         self.filterComboBoxWidget = QtWidgets.QComboBox()
         self.filterComboBoxWidget.addItems(self.filter_positions)
@@ -307,7 +308,7 @@ class GUI(QtWidgets.QMainWindow):
         self.microscopeLayoutLower.addWidget(self.bookMarkLabel)
         self.microscopeLayoutLower.addWidget(self.bookMarkPushButton)
         self.microscopeLayoutLower.addWidget(self.bookMarkComboBox)
-        self.bookMarkComboBox.setMinimumWidth(200)
+        self.bookMarkComboBox.setMinimumWidth(280)
         self.microscopeLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
         self.microscopeLayout.addLayout(self.microscopeLayoutLower)
 
@@ -545,6 +546,7 @@ class GUI(QtWidgets.QMainWindow):
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.scaleBarTogglePushButton.clicked.connect(self.toggleScaleBar)
         self.bookMarkPushButton.clicked.connect(self.bookmark_current_location)
+
 
         self.fgOutputTogglePushButton.clicked.connect(self.toggleFgOutput)
         self.sweepPushButton.clicked.connect(self.toggle_fg_sweep)
