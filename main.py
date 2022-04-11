@@ -122,7 +122,14 @@ class Window(GUI):
     def fps_slot(self, fps):
         self.fps = float(fps)
         x, y, z = self.get_system_position()
-        self.statusBar.showMessage(f'FPS: {fps:.2f}     Position: {x}mm, {y}mm, {z/40}um')
+        if self.pump:
+            pump_status = self.pump.get_pump_status()
+        else:
+            pump_status = 'disconnected'
+        spacer = ' ' * 20
+        self.statusBar.showMessage(f'FPS: {fps:.2f}{spacer}POSITION: {x}mm, {y}mm, {z/40:.3f}um{spacer}'
+                                   f'PUMP: {pump_status}')
+
 
     def bookmark_current_location(self):
         x, y, z = self.get_system_position()
