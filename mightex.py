@@ -1,4 +1,5 @@
 import os, logging
+import time
 from ctypes import *
 import numpy as np
 # from pyglet.gl import *
@@ -308,7 +309,7 @@ class Polygon1000():
         img = np.rot90(np.rot90(img))
         img = np.copy(img).T.flatten()
         image_bytes = np.packbits(img).tobytes()
-        data = (c_byte * len(image_bytes))(*image_bytes)
+        data = (c_ubyte * len(image_bytes))(*image_bytes)
         self.dmd_clib.MTPLG_SetDevStaticImageFromMemory(c_int(self.dev_id), byref(data), c_int(1))
 
     def draw_pyglet(self):
@@ -327,5 +328,10 @@ class Polygon1000():
 
 
 if __name__ == '__main__':
-    poly = Polygon1000(100, 100)
-    poly.initialize_dmd()
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.DEBUG)
+    poly = Polygon1000(1140, 912)
+    #poly.initialize_dmd()
+    #poly.set_dmd_current(100)
+    poly.render_to_dmd(np.ones((1140,912*2),np.uint8))
+    time.sleep(10)

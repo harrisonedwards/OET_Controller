@@ -3,6 +3,7 @@ from time import strftime
 log_name = strftime('..\\logs\\%Y_%m_%d_%H_%M_%S.log', time.gmtime())
 logging.basicConfig(filename=log_name, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+# logging.getLogger().addHandler(logging.Formatter(fmt=' %(name)s :: %(levelname)-8s :: %(message)s'.replace('\n', '')))
 # from inputs import get_gamepad
 import names
 import PyQt5.QtGui
@@ -84,6 +85,8 @@ class Window(GUI):
         self.project_eraser_mode = False
         self.robots = {}
         self.projection_image = None
+        self.fps = 0
+        self.stage_pos = (0, 0)
 
         self.setupUI(self)
         self.initialize_gui_state()
@@ -108,8 +111,16 @@ class Window(GUI):
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def fps_slot(self, fps):
-        fps = int(fps)
-        self.statusBar.showMessage(f'FPS: {fps}')
+        self.fps = float(fps)
+
+        pos = self.stage.get_position()
+        x, y = pos.decode().split(' ')[0], pos.decode().split(' ')[1]
+        self.stage_pos = (x, y)
+
+        response = self.microscope.get_z()
+        z = float(response.iZPOSITION)
+
+        self.statusBar.showMessage(f'FPS: {fps:.2f}     Stage Position: {x}, {y} {z}')
 
     def execute_pulse(self):
         duration = self.pulseDoubleSpinBox.value()
@@ -126,6 +137,11 @@ class Window(GUI):
         # scale everything
         unit_scaled_viewer_x = x / self.image_viewer.width()
         unit_scaled_viewer_y = y / self.image_viewer.height()
+
+        # see if we are calibrated
+        if len(self.image_viewer.calibration_payload) < 2:
+            logging.info('not within DMD area...unable to render')
+            return -1, -1
 
         # check if we can illuminate the clicked area with the dmd
         check = self.check_if_in_dmd_area(unit_scaled_viewer_x, unit_scaled_viewer_y)

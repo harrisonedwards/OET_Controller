@@ -158,6 +158,7 @@ class GUI(QtWidgets.QMainWindow):
         # DMD
         self.detectRobotsPushButton = QtWidgets.QPushButton('Detect Robots')
         self.detectRobotsPushButton.setCheckable(True)
+        self.detectRobotsPushButton.setEnabled(False)
         self.bufferSizeLabel = QtWidgets.QLabel('Buffer:')
         self.bufferSizeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.bufferSizeDoubleSpinBox.setSuffix('px')

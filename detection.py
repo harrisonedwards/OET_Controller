@@ -6,7 +6,7 @@ import tensorflow as tf
 # load ai model
 model_loc = r'C:\Users\Mohamed\Desktop\Harrison\OET\cnn_models\8515_vaL_model_augmented_w_gfp_class_weighted2'
 try:
-    print(f'loading AI detection model: {model_loc}\n tensorflow version: {tf.__version__}')
+    logging.info(f'loading AI detection model: {model_loc}\ntensorflow version: {tf.__version__}')
     u_net = tf.keras.models.load_model(model_loc)
     logging.info('Loaded AI detection model.')
 except Exception as e:

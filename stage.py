@@ -26,10 +26,10 @@ class Stage():
                 logging.info(f'did not connect stage on port {port}')
 
     def read_write(self, write):
-        logging.info(f'writing command to stage: {write}')
+        # logging.info(f'writing command to stage: {write}')
         self.ser.write(str.encode(write + ' \r'))
         ret = self.ser.readline()
-        logging.info(f'response received from stage: {ret}')
+        # logging.info(f'response received from stage: {ret}')
         return ret
 
     def get_position(self):

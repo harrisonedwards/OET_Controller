@@ -8,7 +8,7 @@ import cv2
 import enum
 from control.micromanager import Camera
 from detection import get_robot_control, get_cell_overlay
-import imageio
+import imageio_ffmpeg
 import matplotlib.pyplot as plt
 
 
@@ -45,6 +45,7 @@ class imageProcessor(QtCore.QThread):
         self.robots = {}
         self.recording = False
         self.writer = None
+        self.fps = None
         self.video_dir = 'C:\\Users\\Mohamed\\Desktop\\Harrison\\Videos\\'
         self.vid_name = ''
         self.image_adjustment_params = {'clahe': False, 'clip': 3.0, 'grid': 8, 'threshold': False,
@@ -130,8 +131,6 @@ class imageProcessor(QtCore.QThread):
         t0 = time.time()
         QtWidgets.QApplication.processEvents()
         while self.run_video:
-            # TODO fix, if possible
-            # time.sleep(1 / self.exposure + .05)  # add extra time, see later if we can increase performance later
             QtWidgets.QApplication.processEvents()
             if self.mmc.getRemainingImageCount() > 0:
                 try:
@@ -139,23 +138,24 @@ class imageProcessor(QtCore.QThread):
                     # img = np.right_shift(img, 1)
                     img = (img / 256).astype(np.uint8)
                     if self.recording:
-                        self.writer.append_data(img)
+                        self.writer.send(img)
                     self.image = img
                 except Exception as e:
                     logging.warning(f'camera dropped frame {count}, {e}')
                 # self.VideoSignal.emit(img)
                 self.process_and_emit_image(img)
                 count += 1
-                if count % 5 == 0 and self.robot_detection:
-                    self.run_robot_detection()
-                if count % 5 == 0 and self.cell_detection:
-                    self.run_cell_detection()
+                if count % 5 == 0:
+                    if self.robot_detection:
+                        self.run_robot_detection()
+                    if self.cell_detection:
+                        self.run_cell_detection()
                 if count % 20 == 0:
                     # calculate our fps and send it to be shown on status bar
                     t1 = time.time()
-                    fps = min(20 / (t1 - t0), 1000/self.exposure)
+                    self.fps = min(20 / (t1 - t0), 1000/self.exposure)
                     t0 = t1
-                    self.fps_signal.emit(fps)
+                    self.fps_signal.emit(self.fps)
             else:
                 count += 1
                 logging.info(f'Camera dropped frame: {count}')
@@ -175,7 +175,8 @@ class imageProcessor(QtCore.QThread):
             np_img = binary_inv + to_zero
         if self.image_adjustment_params['clahe']:
             clahe = cv2.createCLAHE(clipLimit=self.image_adjustment_params['clip'],
-                                    tileGridSize=(int(self.image_adjustment_params['grid']), int(self.image_adjustment_params['grid'])))
+                                    tileGridSize=(int(self.image_adjustment_params['grid']),
+                                                  int(self.image_adjustment_params['grid'])))
             np_img = clahe.apply(np_img)
         if self.robot_detection:
             np_img = cv2.cvtColor(np_img, cv2.COLOR_GRAY2BGR)
@@ -206,8 +207,7 @@ class imageProcessor(QtCore.QThread):
 
     def run_cell_detection(self):
         # process current image to find cells
-        if self.image.shape != (2060, 2044):
-            self.image = cv2.resize(self.image, (2044, 2060))
+        self.image = cv2.resize(self.image, (2044, 2060))
         self.cell_detection_overlay = get_cell_overlay(np.copy(self.image))
 
 
@@ -414,10 +414,12 @@ class imageProcessor(QtCore.QThread):
 
     @QtCore.pyqtSlot()
     def start_recording_video_slot(self):
-        self.recording = True
         self.vid_name = self.video_dir + strftime('%Y_%m_%d_%H_%M_%S.mp4', time.gmtime())
-        logging.info(f'recording video: {self.vid_name}')
-        self.writer = imageio.get_writer(self.vid_name, mode='I')
+        logging.info(f'recording video: {self.vid_name} at {self.fps}fps')
+        self.writer = imageio_ffmpeg.write_frames(self.vid_name, (2060, 2048), macro_block_size=1, pix_fmt_in='gray',
+                                                  fps=30)
+        self.writer.send(None)
+        self.recording = True
 
     @QtCore.pyqtSlot()
     def stop_video_slot(self):

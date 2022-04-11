@@ -130,6 +130,13 @@ class Microscope():
             logging.info('get_status failed!', ret)
             self.close_microscope()
         self.status = data_in
+        return data_in
+
+    def get_z(self):
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000000000001
+        ret = c_lib.MIC_DataGet(ctypes.byref(data_in))
+        return data_in
 
     def open_microscope(self):
         device_index = ctypes.c_int32(0)
