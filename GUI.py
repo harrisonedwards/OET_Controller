@@ -74,6 +74,9 @@ class GUI(QtWidgets.QMainWindow):
         self.cameraExposureDoubleSpinBox.setValue(200)
         self.scaleBarTogglePushButton = QtWidgets.QPushButton('Scale Bar')
         self.scaleBarTogglePushButton.setCheckable(True)
+        self.bookMarkLabel = QtWidgets.QLabel('Bookmarks:')
+        self.bookMarkPushButton = QtWidgets.QPushButton('Bookmark')
+        self.bookMarkComboBox = QtWidgets.QComboBox()
 
         # FUNCTION GENERATOR
         self.voltageLabel = QtWidgets.QLabel(text='Voltage:')
@@ -285,21 +288,30 @@ class GUI(QtWidgets.QMainWindow):
         self.microscopeLayoutUpper.setAlignment(QtCore.Qt.AlignLeft)
         self.microscopeLayout.addLayout(self.microscopeLayoutUpper)
 
+        self.microscopeLayoutMiddle = QtWidgets.QHBoxLayout()
+        self.microscopeLayoutMiddle.addWidget(self.magnificationLabel)
+        self.microscopeLayoutMiddle.addWidget(self.magnificationComboBoxWidget)
+        self.microscopeLayoutMiddle.addWidget(self.filterLabel)
+        self.microscopeLayoutMiddle.addWidget(self.filterComboBoxWidget)
+        self.microscopeLayoutMiddle.addWidget(self.diaShutterPushButton)
+        self.microscopeLayoutMiddle.addWidget(self.diaLightPushbutton)
+        self.microscopeLayoutMiddle.addWidget(self.diaVoltageLabel)
+        self.microscopeLayoutMiddle.addWidget(self.diaVoltageDoubleSpinBox)
+        self.microscopeLayoutMiddle.addWidget(self.cameraExposureLabel)
+        self.microscopeLayoutMiddle.addWidget(self.cameraExposureDoubleSpinBox)
+        self.microscopeLayoutMiddle.addWidget(self.scaleBarTogglePushButton)
+        self.microscopeLayoutMiddle.setAlignment(QtCore.Qt.AlignLeft)
+        self.microscopeLayout.addLayout(self.microscopeLayoutMiddle)
+
         self.microscopeLayoutLower = QtWidgets.QHBoxLayout()
-        self.microscopeLayoutLower.addWidget(self.magnificationLabel)
-        self.microscopeLayoutLower.addWidget(self.magnificationComboBoxWidget)
-        self.microscopeLayoutLower.addWidget(self.filterLabel)
-        self.microscopeLayoutLower.addWidget(self.filterComboBoxWidget)
-        self.microscopeLayoutLower.addWidget(self.diaShutterPushButton)
-        self.microscopeLayoutLower.addWidget(self.diaLightPushbutton)
-        self.microscopeLayoutLower.addWidget(self.diaVoltageLabel)
-        self.microscopeLayoutLower.addWidget(self.diaVoltageDoubleSpinBox)
-        self.microscopeLayoutLower.addWidget(self.cameraExposureLabel)
-        self.microscopeLayoutLower.addWidget(self.cameraExposureDoubleSpinBox)
-        self.microscopeLayoutLower.addWidget(self.scaleBarTogglePushButton)
+        self.microscopeLayoutLower.addWidget(self.bookMarkLabel)
+        self.microscopeLayoutLower.addWidget(self.bookMarkPushButton)
+        self.microscopeLayoutLower.addWidget(self.bookMarkComboBox)
+        self.bookMarkComboBox.setMinimumWidth(200)
+        self.microscopeLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
         self.microscopeLayout.addLayout(self.microscopeLayoutLower)
 
-        self.microscopeLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
+        self.microscopeLayoutMiddle.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.microscopeGroupBox)
         if not self.microscope:
             self.microscopeGroupBox.setEnabled(False)
@@ -508,6 +520,7 @@ class GUI(QtWidgets.QMainWindow):
     def initialize_gui_state(self):
         self.update_gui_state()
 
+        # connect all of our control signals
         xy_vel = self.stage.get_xy_vel()
         self.stageXYSpeedDoubleSpinBox.setValue(xy_vel)
         self.stageXYSpeedDoubleSpinBox.valueChanged.connect(self.stage.set_xy_vel)
@@ -517,7 +530,6 @@ class GUI(QtWidgets.QMainWindow):
         self.stageXYStopAccelerationDoubleSpinBox.valueChanged.connect(self.stage.set_xy_stop_accel)
         self.stageXYStartAccelerationDoubleSpinBox.valueChanged.connect(self.stage.set_xy_start_accel)
 
-        # connect all of our control signals
         self.takeScreenshotPushButton.clicked.connect(self.image_processing.take_screenshot_slot)
         self.start_record_video_signal.connect(self.image_processing.start_recording_video_slot)
         self.stop_record_video_signal.connect(self.image_processing.stop_video_slot)
@@ -532,6 +544,7 @@ class GUI(QtWidgets.QMainWindow):
         self.diaVoltageDoubleSpinBox.valueChanged.connect(self.microscope.set_dia_voltage)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.scaleBarTogglePushButton.clicked.connect(self.toggleScaleBar)
+        self.bookMarkPushButton.clicked.connect(self.bookmark_current_location)
 
         self.fgOutputTogglePushButton.clicked.connect(self.toggleFgOutput)
         self.sweepPushButton.clicked.connect(self.toggle_fg_sweep)

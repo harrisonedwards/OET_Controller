@@ -109,18 +109,27 @@ class Window(GUI):
         time = self.sweepTimeDoubleSpinBox.value()
         self.function_generator.toggle_sweep(state, start, stop, time)
 
-    @QtCore.pyqtSlot('PyQt_PyObject')
-    def fps_slot(self, fps):
-        self.fps = float(fps)
-
+    def get_system_position(self):
         pos = self.stage.get_position()
         x, y = pos.decode().split(' ')[0], pos.decode().split(' ')[1]
         self.stage_pos = (x, y)
-
         response = self.microscope.get_z()
         z = float(response.iZPOSITION)
+        return x, y, z
 
+
+    @QtCore.pyqtSlot('PyQt_PyObject')
+    def fps_slot(self, fps):
+        self.fps = float(fps)
+        x, y, z = self.get_system_position()
         self.statusBar.showMessage(f'FPS: {fps:.2f}     Stage Position: {x}, {y} {z}')
+
+    def bookmark_current_location(self):
+        x, y, z = self.get_system_position()
+        index = self.bookMarkComboBox.count() + 1
+        bookmark_string = f'{index}:  {x}, {y} {z}'
+        self.bookMarkComboBox.addItem(bookmark_string)
+
 
     def execute_pulse(self):
         duration = self.pulseDoubleSpinBox.value()
