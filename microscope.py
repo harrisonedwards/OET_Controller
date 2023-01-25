@@ -100,11 +100,12 @@ class Microscope():
         logging.info(self.status)
 
     def __del__(self):
+        print('closing microscope:')
         data_in = MIC_Data()
         data_in.uiDataUsageMask = 0x0000000000100000 | 0x0000000000080000
         data_in.iDIALAMP_CTRLMODE = 0
         data_in.iDIALAMP_SWITCH = 0
-        # self.issue_command(data_in)
+        self.issue_command(data_in)
         self.close_microscope()
 
     def toggle_dia_light(self, state):
@@ -144,17 +145,22 @@ class Microscope():
         error_message_size = ctypes.c_int32(2 ** 32)
         error_message = ctypes.c_wchar_p()
         logging.info('attempting connection to microscope...')
-        try:
+        ret = -1
+        while ret != 0:
+            c_lib.MIC_Close()
             ret = c_lib.MIC_Open(device_index,
                                  ctypes.byref(accessories_mask),
                                  error_message_size,
                                  error_message)
-            if ret != 0:
-                raise Exception('nonzero code returned while attempting to connect to microscope')
-            else:
-                logging.info('connected to microscope')
-        except:
-            logging.critical('failed to connect to microscope')
+
+
+
+
+        #         raise Exception('nonzero code returned while attempting to connect to microscope after 3 tries')
+        #
+        #         logging.info('connected to microscope')
+        # except:
+        #     logging.critical('failed to connect to microscope')
 
         # logging.info('accessories mask:', accessories_mask.value)
         # logging.info('connection error message:', error_message.value)
@@ -245,6 +251,31 @@ class Microscope():
         data_in.iTURRET1SHUTTER = state
         self.issue_command(data_in)
 
+    def set_condenser_position(self, position):
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000000000400
+        data_in.iCONDENSER = position
+        print(f'setting condenser to:{position}')
+        self.issue_command(data_in)
+
+    def set_aperture(self, value):
+        print(f'setting aperture to:{value}mm')
+        # need to multiply by ten and make int
+        value = int(value * 10)
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000080000000
+        data_in.iAPERTURESTOP = value
+        self.issue_command(data_in)
+
+    def set_field_stop(self, value):
+        print(f'setting field stop to:{value}mm')
+        # need to multiply by ten and make int
+        value = int(value * 10)
+        data_in = MIC_Data()
+        data_in.uiDataUsageMask = 0x0000000040000000
+        data_in.iDIAFIELDSTOP = value
+        self.issue_command(data_in)
+
     def issue_command(self, data_in):
         data_out = MIC_Data()
         data_out.uiDataUsageMask = default_mask
@@ -264,7 +295,11 @@ class Microscope():
 if __name__ == '__main__':
     scope = Microscope()
     # scope.set_z(-500000)
-    scope.set_turret_pos(3, 1, 0)
+    # scope.set_turret_pos(3, 1, 0)
     # scope.set_objective(1)
-    scope.close_microscope()
-    time.sleep(3)
+    # scope.set_dia_shutter(0)
+    # scope.set_dia_voltage(0)
+    # scope.set_condenser_position(1)
+    scope.set_field_stop(1.5)
+    # scope.close_microscope()
+    # time.sleep(3)

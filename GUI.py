@@ -20,6 +20,7 @@ class GUI(QtWidgets.QMainWindow):
 
         # MICROSCOPE
         self.filter_positions = ['DAPI', 'GFP', 'Red', 'Brightfield', 'Cy5', 'PE-Cy7']
+        self.condenser_positions = [str(i) for i in range(1, 8)]
         self.objectives = ['2x', '4x', '10x', '20x', '40x', 'empty']
         self.magnificationLabel = QtWidgets.QLabel(text='Magnification:')
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
@@ -70,14 +71,56 @@ class GUI(QtWidgets.QMainWindow):
         self.cameraExposureDoubleSpinBox = QtWidgets.QDoubleSpinBox()
         self.cameraExposureDoubleSpinBox.setSuffix('ms')
         self.cameraExposureDoubleSpinBox.setMaximum(5000)
-        self.cameraExposureDoubleSpinBox.setMinimum(5)
+        self.cameraExposureDoubleSpinBox.setMinimum(25)
         self.cameraExposureDoubleSpinBox.setSingleStep(20)
         self.cameraExposureDoubleSpinBox.setValue(200)
         self.scaleBarTogglePushButton = QtWidgets.QPushButton('Scale Bar')
         self.scaleBarTogglePushButton.setCheckable(True)
-        self.bookMarkLabel = QtWidgets.QLabel('Bookmarks:')
-        self.bookMarkPushButton = QtWidgets.QPushButton('Bookmark')
-        self.bookMarkComboBox = QtWidgets.QComboBox()
+        self.xyBookMarkPushButton = QtWidgets.QPushButton('Bookmark')
+        self.xyBookMarkComboBox = QtWidgets.QComboBox()
+        self.xyBookMarkComboBox.setMinimumWidth(200)
+        self.goToCurrentXYBookMarkPushButton = QtWidgets.QPushButton('Go to current XY')
+        self.clearXYBookMarksPushButton = QtWidgets.QPushButton('Clear XY  Bookmarks')
+
+        self.opticalSaveConfigPushbutton = QtWidgets.QPushButton('Save Config')
+        self.opticalConfigComboBox = QtWidgets.QComboBox()
+        self.opticalConfigComboBox.setMinimumWidth(200)
+        self.goToCurrentOpticalConfigurationPushButton = QtWidgets.QPushButton('Go to Current Optical Config')
+        self.clearCurrentOpticalConfigurationPushButton = QtWidgets.QPushButton('Clear Current Config')
+
+
+        self.condenserPositionLabel = QtWidgets.QLabel('Position:')
+        self.condenserPositionComboBox = QtWidgets.QComboBox()
+        self.condenserPositionComboBox.addItems(self.condenser_positions)
+        self.condenserApertureSlider = QtWidgets.QSlider(Qt.Horizontal)
+        self.condenserApertureSlider.setMinimum(2)
+        self.condenserApertureSlider.setMaximum(30.6)
+        self.condenserApertureSlider.setSingleStep(1.0)
+        self.condenserApertureSlider.setTickInterval(4)
+        self.condenserApertureSlider.setValue(30.6)
+        self.condenserApertureSlider.setTickPosition(QtWidgets.QSlider.TicksBelow)
+        self.condenserApertureLabel = QtWidgets.QLabel(f'Aperture:{self.condenserApertureSlider.value()}mm')
+
+        self.condenserFieldStopSlider = QtWidgets.QSlider(Qt.Horizontal)
+        self.condenserFieldStopSlider.setMinimum(1.5)
+        self.condenserFieldStopSlider.setMaximum(30.6)
+        self.condenserFieldStopSlider.setSingleStep(1.0)
+        self.condenserFieldStopSlider.setTickInterval(4)
+        self.condenserFieldStopSlider.setValue(30.6)
+        self.condenserFieldStopSlider.setTickPosition(QtWidgets.QSlider.TicksBelow)
+        self.condenserFieldStopLabel = QtWidgets.QLabel(f'Field Stop:{self.condenserFieldStopSlider.value()}mm')
+
+        # FLUORESCENCE CONTROLLER
+        self.fluorescenceIntensityLabel = QtWidgets.QLabel(text='Intensity')
+        self.fluorescenceIntensityDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        self.fluorescenceIntensityDoubleSpinBox.setSuffix('%')
+        self.fluorescenceIntensityDoubleSpinBox.setMinimum(5)
+        self.fluorescenceIntensityDoubleSpinBox.setMaximum(100)
+        self.fluorescenceIntensityDoubleSpinBox.setSingleStep(5)
+        self.fluorescenceShutterPushButton = QtWidgets.QPushButton('Shutter')
+        self.fluorescenceShutterPushButton.setCheckable(True)
+        self.fluorescenceToggleLampPushButton = QtWidgets.QPushButton('Lamp')
+        self.fluorescenceToggleLampPushButton.setCheckable(True)
 
         # FUNCTION GENERATOR
         self.voltageLabel = QtWidgets.QLabel(text='Voltage:')
@@ -92,9 +135,10 @@ class GUI(QtWidgets.QMainWindow):
         self.frequencyDoubleSpinBox.setSuffix('kHz')
         self.frequencyDoubleSpinBox.setFixedWidth(80)
         self.frequencyDoubleSpinBox.setMinimum(5)
+        self.frequencyDoubleSpinBox.setValue(20)
         self.frequencyDoubleSpinBox.setMaximum(100000)
         self.waveformComboBox = QtWidgets.QComboBox()
-        self.waveformComboBox.addItems(['SIN', 'SQU'])
+        self.waveformComboBox.addItems(['SQU', 'SIN'])
         self.waveformComboBox.setFocusPolicy(QtCore.Qt.NoFocus)
         self.fgOutputTogglePushButton = QtWidgets.QPushButton('Output')
         self.fgOutputTogglePushButton.setCheckable(True)
@@ -105,37 +149,25 @@ class GUI(QtWidgets.QMainWindow):
         self.pulseDoubleSpinBox.setDecimals(3)
         self.pulseDoubleSpinBox.setMaximum(5000)
         self.pulsePushButton = QtWidgets.QPushButton('Pulse')
-        self.sweepLabel = QtWidgets.QLabel('Sweep')
-        self.sweepStartDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.sweepStartDoubleSpinBox.setSuffix('kHz')
-        self.sweepStartDoubleSpinBox.setMinimum(5)
-        self.sweepStartDoubleSpinBox.setSingleStep(5)
-        self.sweepStartDoubleSpinBox.setDecimals(0)
-        self.sweepStopDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.sweepStopDoubleSpinBox.setSuffix('kHz')
-        self.sweepStopDoubleSpinBox.setMinimum(10)
-        self.sweepStopDoubleSpinBox.setSingleStep(5)
-        self.sweepStopDoubleSpinBox.setDecimals(0)
-        self.sweepTimeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.sweepTimeDoubleSpinBox.setSuffix('s')
-        self.sweepTimeDoubleSpinBox.setValue(1)
-        self.sweepTimeDoubleSpinBox.setDecimals(0)
-        self.sweepPushButton = QtWidgets.QPushButton('Sweep')
-        self.sweepPushButton.setCheckable(True)
+        # self.sweepLabel = QtWidgets.QLabel('Sweep')
+        # self.sweepStartDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        # self.sweepStartDoubleSpinBox.setSuffix('kHz')
+        # self.sweepStartDoubleSpinBox.setMinimum(5)
+        # self.sweepStartDoubleSpinBox.setSingleStep(5)
+        # self.sweepStartDoubleSpinBox.setDecimals(0)
+        # self.sweepStopDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        # self.sweepStopDoubleSpinBox.setSuffix('kHz')
+        # self.sweepStopDoubleSpinBox.setMinimum(10)
+        # self.sweepStopDoubleSpinBox.setSingleStep(5)
+        # self.sweepStopDoubleSpinBox.setDecimals(0)
+        # self.sweepTimeDoubleSpinBox = QtWidgets.QDoubleSpinBox()
+        # self.sweepTimeDoubleSpinBox.setSuffix('s')
+        # self.sweepTimeDoubleSpinBox.setValue(1)
+        # self.sweepTimeDoubleSpinBox.setDecimals(0)
+        # self.sweepPushButton = QtWidgets.QPushButton('Sweep')
+        # self.sweepPushButton.setCheckable(True)
 
         self.setFunctionGeneratorPushButton = QtWidgets.QPushButton('Set')
-
-        # FLUORESCENCE CONTROLLER
-        self.fluorescenceIntensityLabel = QtWidgets.QLabel(text='Intensity')
-        self.fluorescenceIntensityDoubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.fluorescenceIntensityDoubleSpinBox.setSuffix('%')
-        self.fluorescenceIntensityDoubleSpinBox.setMinimum(5)
-        self.fluorescenceIntensityDoubleSpinBox.setMaximum(100)
-        self.fluorescenceIntensityDoubleSpinBox.setSingleStep(5)
-        self.fluorescenceShutterPushButton = QtWidgets.QPushButton('Shutter')
-        self.fluorescenceShutterPushButton.setCheckable(True)
-        self.fluorescenceToggleLampPushButton = QtWidgets.QPushButton('Lamp')
-        self.fluorescenceToggleLampPushButton.setCheckable(True)
 
         # PUMP
         self.pumpSpeedLabel = QtWidgets.QLabel(text='Rate')
@@ -178,6 +210,7 @@ class GUI(QtWidgets.QMainWindow):
 
         self.detectCellsPushButton = QtWidgets.QPushButton('Detect Cells')
         self.detectCellsPushButton.setCheckable(True)
+        self.changeDetectionModel = QtWidgets.QPushButton('Change Cell Detection Model')
 
         self.drawPathsPushButton = QtWidgets.QPushButton('Draw Paths')
         self.drawPathsPushButton.setCheckable(True)
@@ -302,20 +335,60 @@ class GUI(QtWidgets.QMainWindow):
         self.microscopeLayoutMiddle.addWidget(self.cameraExposureDoubleSpinBox)
         self.microscopeLayoutMiddle.addWidget(self.scaleBarTogglePushButton)
         self.microscopeLayoutMiddle.setAlignment(QtCore.Qt.AlignLeft)
+        self.microscopeLayoutMiddle.setAlignment(QtCore.Qt.AlignLeft)
         self.microscopeLayout.addLayout(self.microscopeLayoutMiddle)
 
         self.microscopeLayoutLower = QtWidgets.QHBoxLayout()
-        self.microscopeLayoutLower.addWidget(self.bookMarkLabel)
-        self.microscopeLayoutLower.addWidget(self.bookMarkPushButton)
-        self.microscopeLayoutLower.addWidget(self.bookMarkComboBox)
-        self.bookMarkComboBox.setMinimumWidth(280)
-        self.microscopeLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
+
+        self.xyBookMarkGroupBox = QtWidgets.QGroupBox('XY Bookmarks')
+        self.xyBookmarksLayout = QtWidgets.QVBoxLayout()
+        self.xyBookMarkGroupBox.setLayout(self.xyBookmarksLayout)
+        self.xyBookmarksLayout.addWidget(self.xyBookMarkPushButton)
+        self.xyBookmarksLayout.addWidget(self.xyBookMarkComboBox)
+        self.xyBookmarksLayout.addWidget(self.goToCurrentXYBookMarkPushButton)
+        self.xyBookmarksLayout.addWidget(self.clearXYBookMarksPushButton)
+        self.microscopeLayoutLower.addWidget(self.xyBookMarkGroupBox)
+
+        self.opticalConfigurationGroupBox = QtWidgets.QGroupBox('Optical Configurations')
+        self.opticalConfigurationLayout = QtWidgets.QVBoxLayout()
+        self.opticalConfigurationGroupBox.setLayout(self.opticalConfigurationLayout)
+        self.opticalConfigurationLayout.addWidget(self.opticalSaveConfigPushbutton)
+        self.opticalConfigurationLayout.addWidget(self.opticalConfigComboBox)
+        self.opticalConfigurationLayout.addWidget(self.goToCurrentOpticalConfigurationPushButton)
+        self.opticalConfigurationLayout.addWidget(self.clearCurrentOpticalConfigurationPushButton)
+        self.microscopeLayoutLower.addWidget(self.opticalConfigurationGroupBox)
+
+        self.condenserGroupBox = QtWidgets.QGroupBox('Condenser')
+        self.condenserLayout = QtWidgets.QVBoxLayout()
+        self.condenserGroupBox.setLayout(self.condenserLayout)
+        self.condenserLayout.addWidget(self.condenserPositionLabel)
+        self.condenserLayout.addWidget(self.condenserPositionComboBox)
+        self.condenserLayout.addWidget(self.condenserApertureLabel)
+        self.condenserLayout.addWidget(self.condenserApertureSlider)
+        self.condenserLayout.addWidget(self.condenserFieldStopLabel)
+        self.condenserLayout.addWidget(self.condenserFieldStopSlider)
+        self.condenserLayout.setAlignment(QtCore.Qt.AlignLeft)
+
+        self.microscopeLayoutLower.addWidget(self.condenserGroupBox)
         self.microscopeLayout.addLayout(self.microscopeLayoutLower)
 
-        self.microscopeLayoutMiddle.setAlignment(QtCore.Qt.AlignLeft)
+
         self.VBoxLayout.addWidget(self.microscopeGroupBox)
         if not self.microscope:
+            self.microscopeGroupBox.setTitle('Microscope: DISCONNECTED')
             self.microscopeGroupBox.setEnabled(False)
+
+        self.fluorescenceGroupBox = QtWidgets.QGroupBox('Fluorescence')
+        self.fluorescenceLayout = QtWidgets.QHBoxLayout()
+        self.fluorescenceGroupBox.setLayout(self.fluorescenceLayout)
+        self.fluorescenceLayout.addWidget(self.fluorescenceShutterPushButton)
+        self.fluorescenceLayout.addWidget(self.fluorescenceToggleLampPushButton)
+        self.fluorescenceLayout.addWidget(self.fluorescenceIntensityLabel)
+        self.fluorescenceLayout.addWidget(self.fluorescenceIntensityDoubleSpinBox)
+        self.fluorescenceLayout.setAlignment(QtCore.Qt.AlignLeft)
+        self.VBoxLayout.addWidget(self.fluorescenceGroupBox)
+        if not self.fluorescence_controller:
+            self.fluorescenceGroupBox.setEnabled(False)
 
         self.functionGeneratorGroupBox = QtWidgets.QGroupBox('Function Generator')
         self.functionGeneratorLayout = QtWidgets.QVBoxLayout()
@@ -335,28 +408,17 @@ class GUI(QtWidgets.QMainWindow):
         self.functionGeneratorLayoutLower.addWidget(self.pulseLabel)
         self.functionGeneratorLayoutLower.addWidget(self.pulseDoubleSpinBox)
         self.functionGeneratorLayoutLower.addWidget(self.pulsePushButton)
-        self.functionGeneratorLayoutLower.addWidget(self.sweepLabel)
-        self.functionGeneratorLayoutLower.addWidget(self.sweepStartDoubleSpinBox)
-        self.functionGeneratorLayoutLower.addWidget(self.sweepStopDoubleSpinBox)
-        self.functionGeneratorLayoutLower.addWidget(self.sweepTimeDoubleSpinBox)
-        self.functionGeneratorLayoutLower.addWidget(self.sweepPushButton)
+        # self.functionGeneratorLayoutLower.addWidget(self.sweepLabel)
+        # self.functionGeneratorLayoutLower.addWidget(self.sweepStartDoubleSpinBox)
+        # self.functionGeneratorLayoutLower.addWidget(self.sweepStopDoubleSpinBox)
+        # self.functionGeneratorLayoutLower.addWidget(self.sweepTimeDoubleSpinBox)
+        # self.functionGeneratorLayoutLower.addWidget(self.sweepPushButton)
         self.functionGeneratorLayoutLower.setAlignment(QtCore.Qt.AlignLeft)
         self.functionGeneratorLayout.addLayout(self.functionGeneratorLayoutLower)
         self.VBoxLayout.addWidget(self.functionGeneratorGroupBox)
         if not self.function_generator:
+            self.functionGeneratorGroupBox.setTitle('Function Generator: DISCONNECTED')
             self.functionGeneratorGroupBox.setEnabled(False)
-
-        self.fluorescenceGroupBox = QtWidgets.QGroupBox('Fluorescence')
-        self.fluorescenceLayout = QtWidgets.QHBoxLayout()
-        self.fluorescenceGroupBox.setLayout(self.fluorescenceLayout)
-        self.fluorescenceLayout.addWidget(self.fluorescenceShutterPushButton)
-        self.fluorescenceLayout.addWidget(self.fluorescenceToggleLampPushButton)
-        self.fluorescenceLayout.addWidget(self.fluorescenceIntensityLabel)
-        self.fluorescenceLayout.addWidget(self.fluorescenceIntensityDoubleSpinBox)
-        self.fluorescenceLayout.setAlignment(QtCore.Qt.AlignLeft)
-        self.VBoxLayout.addWidget(self.fluorescenceGroupBox)
-        if not self.fluorescence_controller:
-            self.fluorescenceGroupBox.setEnabled(False)
 
         self.pumpGroupBox = QtWidgets.QGroupBox('Pump')
         self.pumpLayout = QtWidgets.QHBoxLayout()
@@ -375,6 +437,7 @@ class GUI(QtWidgets.QMainWindow):
         self.pumpLayout.setAlignment(QtCore.Qt.AlignLeft)
         self.VBoxLayout.addWidget(self.pumpGroupBox)
         if not self.pump.ser:
+            self.pumpGroupBox.setTitle('Pump: DISCONNECTED')
             self.pumpGroupBox.setEnabled(False)
 
         self.oetGroupBox = QtWidgets.QGroupBox('OET Controls')
@@ -413,19 +476,20 @@ class GUI(QtWidgets.QMainWindow):
         self.oetLayoutThirdLevel.addWidget(self.oetTranslateDoubleSpinBox)
         self.oetLayout.addLayout(self.oetLayoutThirdLevel)
 
-        self.oetLayoutFourthLevel = QtWidgets.QHBoxLayout()
-        self.oetLayoutFourthLevel.addWidget(self.detectRobotsPushButton)
-        self.oetLayoutFourthLevel.addWidget(self.bufferSizeLabel)
-        self.oetLayoutFourthLevel.addWidget(self.bufferSizeDoubleSpinBox)
-        self.oetLayoutFourthLevel.addWidget(self.dilationSizeLabel)
-        self.oetLayoutFourthLevel.addWidget(self.dilationSizeDoubleSpinBox)
-        self.oetLayoutFourthLevel.addWidget(self.oetProjectDetectionPushButton)
-        self.oetLayoutFourthLevel.addWidget(self.drawPathsPushButton)
-        self.oetLayoutFourthLevel.addWidget(self.oetClearPathsPushButton)
-        self.oetLayoutFourthLevel.addWidget(self.detectCellsPushButton)
+        # self.oetLayoutFourthLevel = QtWidgets.QHBoxLayout()
+        # self.oetLayoutFourthLevel.addWidget(self.detectRobotsPushButton)
+        # self.oetLayoutFourthLevel.addWidget(self.bufferSizeLabel)
+        # self.oetLayoutFourthLevel.addWidget(self.bufferSizeDoubleSpinBox)
+        # self.oetLayoutFourthLevel.addWidget(self.dilationSizeLabel)
+        # self.oetLayoutFourthLevel.addWidget(self.dilationSizeDoubleSpinBox)
+        # self.oetLayoutFourthLevel.addWidget(self.oetProjectDetectionPushButton)
+        # self.oetLayoutFourthLevel.addWidget(self.drawPathsPushButton)
+        # self.oetLayoutFourthLevel.addWidget(self.oetClearPathsPushButton)
+        # self.oetLayoutFourthLevel.addWidget(self.detectCellsPushButton)
+        # self.oetLayoutFourthLevel.addWidget(self.changeDetectionModel)
         # self.oetLayoutFourthLevel.addWidget(self.oetOpenRobotsPushButton)
-        self.oetLayoutFourthLevel.setAlignment(QtCore.Qt.AlignLeft)
-        self.oetLayout.addLayout(self.oetLayoutFourthLevel)
+        # self.oetLayoutFourthLevel.setAlignment(QtCore.Qt.AlignLeft)
+        # self.oetLayout.addLayout(self.oetLayoutFourthLevel)
 
 
         self.oetObjectsGroupBox = QtWidgets.QGroupBox('Projected Objects:')
@@ -440,8 +504,8 @@ class GUI(QtWidgets.QMainWindow):
 
         self.oetLayout.addLayout(self.oetLayoutThirdLevel)
         self.VBoxLayout.addWidget(self.oetGroupBox)
-        if not self.dmd:
-            self.oetGroupBox.setEnabled(False)
+        # if not self.dmd:
+        #     self.oetGroupBox.setEnabled(False)
 
         self.imageAdustmentGroupBox = QtWidgets.QGroupBox('Image Adjustment')
         self.imageAdustmentLayout = QtWidgets.QHBoxLayout()
@@ -505,6 +569,9 @@ class GUI(QtWidgets.QMainWindow):
             objective = self.microscope.status.iNOSEPIECE
             self.magnificationComboBoxWidget.setCurrentText(idx_dict[objective])
 
+            condenser_position = self.microscope.status.iCONDENSER
+            self.condenserPositionComboBox.setCurrentIndex(condenser_position)
+
             idx_dict = {k: v for k, v in zip(range(1, 7), self.filter_positions)}
             filter = self.microscope.status.iTURRET1POS
             self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
@@ -514,8 +581,8 @@ class GUI(QtWidgets.QMainWindow):
 
             dia_state = self.microscope.status.iSHUTTER_DIA
             self.diaShutterPushButton.setChecked(dia_state)
-        except:
-            logging.critical('no connection to microscope, disabling controls')
+        except Exception as e:
+            logging.critical(f'no connection to microscope, disabling controls: {e}')
             self.microscopeGroupBox.setEnabled(False)
 
     def initialize_gui_state(self):
@@ -545,11 +612,24 @@ class GUI(QtWidgets.QMainWindow):
         self.diaVoltageDoubleSpinBox.valueChanged.connect(self.microscope.set_dia_voltage)
         self.cameraExposureDoubleSpinBox.valueChanged.connect(self.setCameraExposure)
         self.scaleBarTogglePushButton.clicked.connect(self.toggleScaleBar)
-        self.bookMarkPushButton.clicked.connect(self.bookmark_current_location)
 
+        self.xyBookMarkPushButton.clicked.connect(self.bookmark_current_location)
+        self.goToCurrentXYBookMarkPushButton.clicked.connect(self.go_to_current_bookmark)
+        self.clearXYBookMarksPushButton.clicked.connect(self.xyBookMarkComboBox.clear)
+
+        self.opticalSaveConfigPushbutton.clicked.connect(self.save_optical_config)
+        self.opticalConfigComboBox.currentTextChanged.connect(self.set_optical_config)
+        self.opticalConfigComboBox.addItem('New')
+        self.opticalConfigComboBox.setCurrentText('New')
+        self.goToCurrentOpticalConfigurationPushButton.clicked.connect(self.go_to_current_optical_config)
+        self.clearCurrentOpticalConfigurationPushButton.clicked.connect(self.clear_current_optical_config)
+
+        self.condenserPositionComboBox.currentIndexChanged.connect(self.change_condenser_position)
+        self.condenserApertureSlider.valueChanged.connect(self.update_condenser_aperture)
+        self.condenserFieldStopSlider.valueChanged.connect(self.update_condenser_field_stop)
 
         self.fgOutputTogglePushButton.clicked.connect(self.toggleFgOutput)
-        self.sweepPushButton.clicked.connect(self.toggle_fg_sweep)
+        # self.sweepPushButton.clicked.connect(self.toggle_fg_sweep)
         self.setFunctionGeneratorPushButton.clicked.connect(self.setFunctionGenerator)
         self.pulsePushButton.clicked.connect(self.execute_pulse)
         self.fluorescenceIntensityDoubleSpinBox.valueChanged.connect(self.fluorescence_controller.change_intensity)
@@ -562,15 +642,17 @@ class GUI(QtWidgets.QMainWindow):
         self.pumpStopPushButton.clicked.connect(self.pump.halt)
         self.pumpTimeRadioButton.click()
 
-        self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
-        self.detectRobotsPushButton.clicked.connect(self.toggle_robot_detection)
-        self.detectCellsPushButton.clicked.connect(self.toggle_cell_detection)
-        self.dilationSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
-        self.bufferSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
-        self.update_detection_params_signal.connect(self.image_processing.update_detection_params_slot)
-        self.enable_robot_detection_signal.connect(self.image_processing.toggle_robot_detection_slot)
-        self.enable_cell_detection_signal.connect(self.image_processing.toggle_cell_detection_slot)
-        self.oetClearPathsPushButton.clicked.connect(self.image_processing.clear_paths_overlay_slot)
+        # self.drawPathsPushButton.clicked.connect(self.toggleDrawPaths)
+        # self.detectRobotsPushButton.clicked.connect(self.toggle_robot_detection)
+        # self.detectCellsPushButton.clicked.connect(self.toggle_cell_detection)
+        # self.changeDetectionModel.clicked.connect(self.change_detection_model)
+
+        # self.dilationSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
+        # self.bufferSizeDoubleSpinBox.valueChanged.connect(self.update_detection_params)
+        # self.update_detection_params_signal.connect(self.image_processing.update_detection_params_slot)
+        # self.enable_robot_detection_signal.connect(self.image_processing.toggle_robot_detection_slot)
+        # self.enable_cell_detection_signal.connect(self.image_processing.toggle_cell_detection_slot)
+        # self.oetClearPathsPushButton.clicked.connect(self.image_processing.clear_paths_overlay_slot)
 
         self.oetCalibratePushButton.clicked.connect(self.calibrate_dmd)
         self.oetToggleDMDAreaOverlayPushButton.clicked.connect(self.toggle_dmd_overlay)

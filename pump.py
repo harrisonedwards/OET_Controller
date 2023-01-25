@@ -1,6 +1,7 @@
 import serial
 import logging
 
+
 class Pump:
 
     def __init__(self):
@@ -9,6 +10,7 @@ class Pump:
         except Exception as e:
             logging.warning('failed to connect to pump...')
             self.ser = None
+        self.mode = ''
         self.statuses = [':', '>', '<', 'T*', '*']
 
     def __del__(self):
@@ -17,7 +19,7 @@ class Pump:
             self.ser.close()
 
     def connect(self):
-        for i in range(1,10):
+        for i in range(1, 10):
             try:
                 s = serial.Serial('COM' + str(i), baudrate=115200, stopbits=2, timeout=.25)
                 s.flushInput()
@@ -25,11 +27,13 @@ class Pump:
                 s.write('addr \r\n'.encode())
                 r = s.read(100).decode()
                 if 'Pump' in r:
-                        logging.info('connected to pump')
-                        return s
+                    logging.info('connected to pump')
+                    return s
             except Exception as e:
                 logging.warning(e)
         raise Exception('failed to connect to pump')
+        logging.warning('failed to connect to pump')
+        return False
 
     def get_response(self):
         response = ''
@@ -39,46 +43,36 @@ class Pump:
                 response += piece.decode('utf-8')
         return response
 
-    def get_pump_status(self):
-        withdrawn = self.send_receive('wvolume')
-        infused = self.send_receive('ivolume').replace('>', '').replace('<', '').replace('T*', '')
-        # buggy here??
-        if '>' in withdrawn:
-            withdrawn = withdrawn.replace('>', ', infusing')
-            return f'infused: {withdrawn}, withdrawn: {infused}'
-        if '<' in withdrawn:
-            withdrawn = withdrawn.replace('<', ', withdrawing')
-            return f'infused: {withdrawn}, withdrawn: {infused}'
-        if 'T*' in withdrawn:
-            withdrawn = withdrawn.replace('T*', ', target reached')
-            return f'infused: {infused}, withdrawn: {withdrawn}'
-
-
     def send_receive(self, cmd):
-        self.ser.write('{} \r\n'.format(cmd).encode())
-        response = self.get_response()
-        return response.replace('\n', '').replace('\r', '')
+        try:
+            self.ser.write('{} \r\n'.format(cmd).encode())
+            response = self.get_response()
+            # logging.info(f'cmd sent to pump: {cmd}\tresponse from pump: {response}')
+            return response.replace('\n', '').replace('\r', '')
+        except Exception as e:
+            logging.critical(f'pump command failed: {e}')
+
+    def re_init(self):
+        self.send_receive('\r')
+        self.send_receive('cvol')
+
+    def get_pump_status(self):
+        rate = self.send_receive('crate')
+        return f'{rate}'
 
     def dispense(self, amount, rate):
-        self.send_receive('ctvolume')
-        self.send_receive('cvolume')
-        r = self.send_receive('irate {} ul/min'.format(rate))
-        logging.info(f'received: {r}')
-        r = self.send_receive('tvolume {} ul/min'.format(amount))
-        logging.info(f'received: {r}')
-        r = self.send_receive('irun')
-        logging.info(f'pump received: {r}')
+        self.re_init()
+        self.send_receive(f'irate {rate} ul/min')
+        self.send_receive(f'tvolume {amount} ul/min')
+        self.send_receive('irun')
+        self.mode = 'd'
 
     def withdraw(self, amount, rate):
-        self.send_receive('ctvolume')
-        self.send_receive('cvolume')
-        r = self.send_receive('wrate {} ul/min'.format(rate))
-        logging.info(f'received: {r}')
-        r = self.send_receive('tvolume {} ul/min'.format(amount))
-        logging.info(f'received: {r}')
-        r = self.send_receive('wrun')
-        logging.info(f'pump received: {r}')
+        self.re_init()
+        self.send_receive(f'wrate {rate} ul/min')
+        self.send_receive(f'tvolume {amount} ul/min')
+        self.send_receive('wrun')
+        self.mode = 'w'
 
     def halt(self):
-        r = self.send_receive('stop')
-        logging.info(f'received: {r}')
+        self.send_receive('stop')

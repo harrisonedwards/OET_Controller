@@ -2,16 +2,40 @@ import cv2, os
 import numpy as np
 import logging
 import tensorflow as tf
+import time
 
 # load ai model
 model_loc = r'C:\Users\Mohamed\Desktop\Harrison\OET\cnn_models\8515_vaL_model_augmented_w_gfp_class_weighted2'
 try:
     logging.info(f'loading AI detection model: {model_loc}\ntensorflow version: {tf.__version__}')
     u_net = tf.keras.models.load_model(model_loc)
-    logging.info('Loaded AI detection model.')
+    # blank inference to start the graph
+    u_net.predict(np.zeros((1, 2060, 2044, 1)))
+    logging.info('loaded AI detection model.')
 except Exception as e:
     logging.warning(f'Failed to load AI detection model: {str(e)}')
     logging.warning(f'CURRENT DIR: {os.getcwd()}')
+
+
+class MyMeanIOU(tf.keras.metrics.MeanIoU):
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        return super().update_state(tf.argmax(y_true, axis=-1), tf.argmax(y_pred, axis=-1), sample_weight)
+
+
+def change_model(model_loc):
+    try:
+        logging.info(f'loading AI detection model: {model_loc}\ntensorflow version: {tf.__version__}')
+        if 'miou' in model_loc:
+            u_net = tf.keras.models.load_model(model_loc, custom_objects={'MyMeanIOU': MyMeanIOU})
+        else:
+            u_net = tf.keras.models.load_model(model_loc)
+        # blank inference to start the graph
+        u_net.predict(np.zeros((1, 2060, 2044, 1)))
+        logging.info('loaded AI detection model.')
+    except Exception as e:
+        logging.warning(f'Failed to load AI detection model: {str(e)}')
+        logging.warning(f'CURRENT DIR: {os.getcwd()}')
 
 
 def get_cell_overlay(img):
@@ -19,7 +43,9 @@ def get_cell_overlay(img):
     if len(img.shape) < 4:
         img = np.expand_dims(img, -1)
 
+    t0 = time.time()
     pred_mask = u_net.predict(img)
+    print(f'inference time: {time.time() - t0}')
     pred_mask = tf.argmax(pred_mask, axis=-1)
 
     red_mask = tf.where(pred_mask == 1, 255, 0)
@@ -30,6 +56,7 @@ def get_cell_overlay(img):
 
     cell_detection_overlay = tf.image.resize(cell_detection_overlay, (2048, 2060)).numpy().astype(np.uint8)
     return cell_detection_overlay
+
 
 def detect_robots(img):
     # finds and fills the located robots
@@ -67,12 +94,12 @@ def get_robot_angle(contour, center):
 
 def get_robots(large_contours, detect, objective):
     # get memory
-    robot_control_mask  = np.zeros(detect.shape)
+    robot_control_mask = np.zeros(detect.shape)
     large_contour_image = cv2.drawContours(np.copy(robot_control_mask), large_contours, -1, 1, -1)
 
     # probably needs more adjustment in the future, so will make a dict for now
     objective_calibration_dict = {'2x': 4,
-                                  '4x':  2,
+                                  '4x': 2,
                                   '10x': 1,
                                   '20x': 1,
                                   '40x': 1}

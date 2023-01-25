@@ -1,5 +1,9 @@
-import logging, time, sys, os
+import logging, time, sys, os, yaml
+import pickle
 from time import strftime
+
+import detection
+
 log_name = strftime('..\\logs\\%Y_%m_%d_%H_%M_%S.log', time.gmtime())
 logging.basicConfig(filename=log_name, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
@@ -18,8 +22,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from GUI import GUI
-
-
+import threading
 
 
 class Window(GUI):
@@ -37,6 +40,16 @@ class Window(GUI):
     def __init__(self):
         super(Window, self).__init__()
         self.unavailable_instruments = []
+        self.dmd = False
+        self.unavailable_instruments.append('DMD')
+        try:
+            dmd_start_thread = threading.Thread(target=self.start_dmd)
+            dmd_start_thread.start()
+        except Exception as e:
+            logging.warning(f'unable to connect to polygon: {e}')
+            self.dmd = False
+            self.unavailable_instruments.append('DMD')
+
         try:
             self.function_generator = FunctionGenerator()
         except Exception as e:
@@ -72,13 +85,6 @@ class Window(GUI):
             self.microscope = False
             self.unavailable_instruments.append('microscope')
 
-        try:
-            self.dmd = Polygon1000(1140, 912)
-        except Exception as e:
-            logging.warning(f'unable to connect to polygon: {e}')
-            self.dmd = False
-            self.unavailable_instruments.append('DMD')
-
         self.dispenseMode = None  # should be set by the GUI immediately
         self.project_circle_mode = False
         self.project_image_mode = False
@@ -87,7 +93,14 @@ class Window(GUI):
         self.projection_image = None
         self.fps = 0
         self.stage_pos = (0, 0)
+        self.pump_status = ''
+        self.detection_model_loc = r'C:\Users\Mohamed\Desktop\Harrison\OET\cnn_models' \
+                                   r'\8515_vaL_model_augmented_w_gfp_class_weighted2 '
+        self.default_directory = r'C:\Users\Mohamed\Desktop\Harrison'
+        self.gui_update_thread = threading.Thread(target=self.get_system_position, daemon=True)
 
+        if self.dmd:
+            dmd_start_thread.join()
         self.setupUI(self)
         self.initialize_gui_state()
 
@@ -101,6 +114,10 @@ class Window(GUI):
         # make our image processor aware of the system state
         self.update_detection_params()
         self.showMaximized()
+        self.gui_update_thread.start()
+
+    def start_dmd(self):
+        self.dmd = Polygon1000(1140, 912)
 
     def toggle_fg_sweep(self):
         state = self.sweepPushButton.isChecked()
@@ -110,43 +127,96 @@ class Window(GUI):
         self.function_generator.toggle_sweep(state, start, stop, time)
 
     def get_system_position(self):
-        pos = self.stage.get_position()
-        x, y = pos.decode().split(' ')[0], pos.decode().split(' ')[1]
-        self.stage_pos = (x, y)
-        response = self.microscope.get_z()
-        z = float(response.iZPOSITION)
-        return x, y, z
+        while True:
+            try:
+                pos = self.stage.get_position()
+                x, y = pos.decode().split(' ')[0], pos.decode().split(' ')[1]
+                self.stage_pos = (x, y)
 
+                if self.pump.ser is not None:
+                    self.pump_status = self.pump.get_pump_status()
+                else:
+                    self.pump_status = 'disconnected'
+
+                time.sleep(.1)
+            except Exception as e:
+                logging.info(f'minor error encountered when communicating with system: {e}')
+        # response = self.microscope.get_z()
+        # z = float(response.iZPOSITION)
 
     @QtCore.pyqtSlot('PyQt_PyObject')
     def fps_slot(self, fps):
         self.fps = float(fps)
-        x, y, z = self.get_system_position()
-        if self.pump:
-            pump_status = self.pump.get_pump_status()
-        else:
-            pump_status = 'disconnected'
-        spacer = ' ' * 20
-        self.statusBar.showMessage(f'FPS: {fps:.2f}{spacer}POSITION: {x}mm, {y}mm, {z/40:.3f}um{spacer}'
-                                   f'PUMP: {pump_status}')
+        x, y = self.stage_pos
 
+        spacer = ' ' * 20
+        self.statusBar.showMessage(f'Controls: Arrows->XY, PageU/D->Z, ESC->HALT, Space->FG ON/OFF, WASD->Robot Move'
+                                   f'{spacer}FPS: {fps:.2f}{spacer}POSITION: {x}mm, {y}mm{spacer}'
+                                   f'PUMP: {self.pump_status}{spacer} DETECTOR: {self.detection_model_loc}')
 
     def bookmark_current_location(self):
-        x, y, z = self.get_system_position()
-        index = self.bookMarkComboBox.count() + 1
-        bookmark_string = f'{index}:  {x}mm, {y}mm, {z/40}um'
-        self.bookMarkComboBox.addItem(bookmark_string)
-        self.bookMarkComboBox.setCurrentIndex(index - 1)
-        if self.bookMarkComboBox.count() == 1:
-            self.bookMarkComboBox.currentIndexChanged.connect(self.move_to_bookmarked_location)
+        x, y = self.stage_pos
+        index = self.xyBookMarkComboBox.count() + 1
+        bookmark_string = f'{index}:  {x}mm, {y}mm'
+        self.xyBookMarkComboBox.addItem(bookmark_string)
+        self.xyBookMarkComboBox.setCurrentIndex(index - 1)
+        if self.xyBookMarkComboBox.count() == 1:
+            self.xyBookMarkComboBox.currentIndexChanged.connect(self.move_to_bookmarked_location)
 
     def move_to_bookmarked_location(self, index):
-        bookmark = self.bookMarkComboBox.currentText()
-        x = float(re.search(': (.+?)mm', bookmark).group(1))
-        y = float(re.search('mm, (.+?)mm', bookmark).group(1))
-        self.stage.move_absolute(x, y)
+        bookmark = self.xyBookMarkComboBox.currentText()
+        if self.xyBookMarkComboBox.count() != 0:
+            x = float(re.search(': (.+?)mm', bookmark).group(1))
+            y = float(re.search('mm, (.+?)mm', bookmark).group(1))
+            self.stage.move_absolute(x, y)
 
+    def go_to_current_bookmark(self):
+        self.move_to_bookmarked_location(-1)
 
+    def bookmark_optical_config(self):
+        logging.info('bookmarking optical config')
+
+    def set_optical_config(self, text):
+        logging.info(f'setting optical config to: {text}')
+
+    def go_to_current_optical_config(self):
+        self.set_optical_config(-1)
+
+    def clear_current_optical_config(self):
+        value = self.opticalConfigComboBox.currentIndex()
+        logging.info(f'clearing optical config{value}')
+
+    def change_condenser_position(self, index):
+        index += 1
+        logging.info(f'changing condenser position:f{index}')
+        self.microscope.set_condenser_position(index)
+
+    def update_condenser_aperture(self, value):
+        logging.info(f'setting condenser aperture: {value}')
+        self.condenserApertureLabel.setText(f'Aperture:{value}mm')
+        self.microscope.set_aperture(value)
+
+    def update_condenser_field_stop(self, value):
+        logging.info(f'setting condenser field stop: {value}')
+        self.condenserFieldStopLabel.setText(f'Field Stop:{value}mm')
+        self.microscope.set_field_stop(value)
+
+    def save_optical_config(self):
+        print('saving config...')
+        if self.opticalConfigComboBox.currentText() == 'New':
+            name, ok = QtWidgets.QInputDialog.getText(self, 'Name new config', 'Enter configuration name:')
+        status = self.microscope.get_status()
+        with open(f'C:\\Users\\Mohamed\\Desktop\\Harrison\\OET\\configs\\{name}_config.p', 'wb+') as f:
+            pickle.dump(status, f)
+        print(f'wrote new configuration:{name}')
+        self.opticalConfigComboBox.setCurrentText(name)
+        # ' '.join([f'{field_name} {getattr(status, field_name)}' for field_name, field_type in status._fields_])
+
+    def go_to_current_optical_config(self):
+        print('going to config...')
+
+    def clear_current_optical_config(self):
+        print('clearing current config')
 
     def execute_pulse(self):
         duration = self.pulseDoubleSpinBox.value()
@@ -225,7 +295,7 @@ class Window(GUI):
             self.dmd.update()
         elif self.project_eraser_mode:
             self.dmd.project_eraser(dmd_scaled_x, dmd_scaled_y, self.oetBrushRadiusDoubleSpinBox.value(),
-                                   self.prev_scaled_x, self.prev_scaled_y)
+                                    self.prev_scaled_x, self.prev_scaled_y)
             self.dmd.update()
         self.prev_scaled_x, self.prev_scaled_y = dmd_scaled_x, dmd_scaled_y
 
@@ -326,8 +396,6 @@ class Window(GUI):
         self.dmd.clear_oet_projection()
         self.oetClearPushButton.setChecked(False)
 
-
-
     def toggle_project_image(self):
         if self.oetProjectImagePushButton.isChecked():
             self.project_image_mode = 'adding_robots'
@@ -372,7 +440,7 @@ class Window(GUI):
             self.detectRobotsPushButton.click()
 
         # grab our current controlled robots, project a control dmd image around them, and stop detection
-        img = self.image_processing.detection_overlay
+        # img = self.image_processing.detection_overlay
 
         # resize to our viewer window image size
         img = cv2.resize(img, (self.image_viewer.height() * 2060 // 2048, self.image_viewer.height()))
@@ -422,6 +490,14 @@ class Window(GUI):
         state = self.detectCellsPushButton.isChecked()
         self.enable_cell_detection_signal.emit(state)
 
+    def change_detection_model(self):
+        file_name = QtWidgets.QFileDialog.getExistingDirectory(self,
+                                                               'Open detection model',
+                                                               self.default_directory + '/OET/cnn_models')
+        self.detection_model_loc = file_name
+        detection.change_model(file_name)
+
+
     def toggleVideoRecording(self):
         state = self.takeVideoPushbutton.isChecked()
         if state:
@@ -445,7 +521,7 @@ class Window(GUI):
         self.image_viewer.toggle_dmd_overlay(state)
 
     def load_oet_projection(self):
-        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file for projection')
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file for projection', self.default_directory)
         if file_name != '':
             self.load_projection_image(file_name)
             self.oetProjectImagePushButton.setEnabled(True)
@@ -501,7 +577,7 @@ class Window(GUI):
 
     def closeEvent(self, event):
         logging.info('closing all connections...')
-        for hardware in [self.microscope, self.fluorescence_controller, self.function_generator,
+        for hardware in [self.microscope, self.function_generator,
                          self.dmd, self.pump]:
             if hardware is not False:
                 hardware.__del__()
@@ -604,7 +680,6 @@ class Window(GUI):
 
 
 if __name__ == '__main__':
-    print('done')
     app = QtWidgets.QApplication(sys.argv)
     window = Window()
     window.show()
