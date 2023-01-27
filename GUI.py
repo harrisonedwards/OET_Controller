@@ -1,4 +1,5 @@
 import copy
+import os
 
 import numpy as np
 import qimage2ndarray
@@ -20,8 +21,8 @@ class GUI(QtWidgets.QMainWindow):
 
         # MICROSCOPE
         self.filter_positions = ['DAPI', 'GFP', 'Red', 'Brightfield', 'Cy5', 'PE-Cy7']
-        self.condenser_positions = [str(i) for i in range(1, 8)]
-        self.objectives = ['2x', '4x', '10x', '20x', '40x', 'empty']
+        self.condenser_positions = ['1', '2', '3', '4', '5', '6']
+        self.objectives = ['2x', '4x', '10x', '20x', '40x', '20xPhC']
         self.magnificationLabel = QtWidgets.QLabel(text='Magnification:')
         self.magnificationComboBoxWidget = QtWidgets.QComboBox()
         self.magnificationComboBoxWidget.addItems(self.objectives)
@@ -562,26 +563,48 @@ class GUI(QtWidgets.QMainWindow):
         # self.imageBoxLayout.addWidget(self.image_viewer)
         self.HBoxLayout.addWidget(self.image_viewer, QtCore.Qt.AlignCenter)
 
-    def update_gui_state(self):
+    def addSavedOpticalConfigurations(self):
+        optical_dir = 'C:\\Users\\Mohamed\\Desktop\\Harrison\\OET\\configs\\'
+        configs = os.listdir(optical_dir)
+        self.opticalConfigComboBox.addItems(configs)
+
+    def update_gui_state(self, loading=False):
         # get the state and make the GUI synced to it
         try:
-            idx_dict = {k: v for k, v in zip(range(1, 7), self.objectives)}
-            objective = self.microscope.status.iNOSEPIECE
-            self.magnificationComboBoxWidget.setCurrentText(idx_dict[objective])
+            status = copy.copy(self.microscope.status)
+            idx_dict = {k: v for k, v in zip(range(0, 7), self.objectives)}
+            objective = status.iNOSEPIECE
+            self.magnificationComboBoxWidget.setCurrentText(idx_dict[objective - 1])
 
-            condenser_position = self.microscope.status.iCONDENSER
-            self.condenserPositionComboBox.setCurrentIndex(condenser_position)
+            condenser_position = status.iCONDENSER
+            self.condenserPositionComboBox.setCurrentText(self.condenser_positions[condenser_position - 1])
 
-            idx_dict = {k: v for k, v in zip(range(1, 7), self.filter_positions)}
-            filter = self.microscope.status.iTURRET1POS
-            self.filterComboBoxWidget.setCurrentText(idx_dict[filter])
+            idx_dict = {k: v for k, v in zip(range(0, 7), self.filter_positions)}
+            filter = status.iTURRET1POS
+            self.filterComboBoxWidget.setCurrentText(idx_dict[filter - 1])
 
-            fluor_shutter_state = self.microscope.status.iTURRET1SHUTTER
+            fluor_shutter_state = status.iTURRET1SHUTTER
             self.fluorescenceShutterPushButton.setChecked(fluor_shutter_state)
 
-            dia_state = self.microscope.status.iSHUTTER_DIA
+            dia_state = status.iSHUTTER_DIA
             self.diaShutterPushButton.setChecked(dia_state)
+
+            dia_lamp = status.iDIALAMP_SWITCH
+            self.diaLightPushbutton.setChecked(dia_lamp)
+
+            dia_voltage = status.iDIALAMP_VOLTAGE
+            self.diaVoltageDoubleSpinBox.setValue(dia_voltage)
+
+            aperture_state = status.iAPERTURESTOP
+            self.condenserApertureSlider.setValue(int(aperture_state / 10))
+
+            field_stop_state = status.iDIAFIELDSTOP
+            self.condenserFieldStopSlider.setValue(int(field_stop_state / 10))
+
+            if not loading:
+                self.addSavedOpticalConfigurations()
         except Exception as e:
+            print(e)
             logging.critical(f'no connection to microscope, disabling controls: {e}')
             self.microscopeGroupBox.setEnabled(False)
 
@@ -617,10 +640,11 @@ class GUI(QtWidgets.QMainWindow):
         self.goToCurrentXYBookMarkPushButton.clicked.connect(self.go_to_current_bookmark)
         self.clearXYBookMarksPushButton.clicked.connect(self.xyBookMarkComboBox.clear)
 
-        self.opticalSaveConfigPushbutton.clicked.connect(self.save_optical_config)
-        self.opticalConfigComboBox.currentTextChanged.connect(self.set_optical_config)
         self.opticalConfigComboBox.addItem('New')
         self.opticalConfigComboBox.setCurrentText('New')
+        self.opticalSaveConfigPushbutton.clicked.connect(self.save_optical_config)
+        self.opticalConfigComboBox.currentTextChanged.connect(self.set_optical_config)
+
         self.goToCurrentOpticalConfigurationPushButton.clicked.connect(self.go_to_current_optical_config)
         self.clearCurrentOpticalConfigurationPushButton.clicked.connect(self.clear_current_optical_config)
 
@@ -749,7 +773,9 @@ class ImageViewer(QtWidgets.QWidget):
                                  '4x': ['200um', 125],
                                  '10x': ['100um', 156],
                                  '20x': ['50um', 152],
-                                 '40x': ['10um', 63]}
+                                 '40x': ['10um', 63],
+                                 '20xPhC': ['50um', 152]}
+
         self.scale_bar_value = 'Unk'
         self.scale_bar_length = 10
         self.show_dmd_overlay = False

@@ -100,7 +100,7 @@ class Microscope():
         logging.info(self.status)
 
     def __del__(self):
-        print('closing microscope:')
+        print('closing microscope...')
         data_in = MIC_Data()
         data_in.uiDataUsageMask = 0x0000000000100000 | 0x0000000000080000
         data_in.iDIALAMP_CTRLMODE = 0
@@ -275,6 +275,12 @@ class Microscope():
         data_in.uiDataUsageMask = 0x0000000040000000
         data_in.iDIAFIELDSTOP = value
         self.issue_command(data_in)
+
+    def load_config(self, config):
+        data_in = config
+        data_in.uiDataUsageMask = 0x0000000000000020 | 0x0000000080000000 | 0x0000000000000040 | 0x0000000000010000 | 0x0000000000000400 | 0x0000000040000000 | 0x0000000000080000 | 0x0000000000100000 | 0x0000000000040000
+        self.issue_command(data_in)
+
 
     def issue_command(self, data_in):
         data_out = MIC_Data()

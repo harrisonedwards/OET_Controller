@@ -1,4 +1,4 @@
-import logging, time, sys, os, yaml
+import logging, time, sys, os
 import pickle
 from time import strftime
 
@@ -43,6 +43,7 @@ class Window(GUI):
         self.dmd = False
         self.unavailable_instruments.append('DMD')
         try:
+            # raise Exception('test')
             dmd_start_thread = threading.Thread(target=self.start_dmd)
             dmd_start_thread.start()
         except Exception as e:
@@ -173,18 +174,68 @@ class Window(GUI):
     def go_to_current_bookmark(self):
         self.move_to_bookmarked_location(-1)
 
-    def bookmark_optical_config(self):
-        logging.info('bookmarking optical config')
-
     def set_optical_config(self, text):
+        if self.opticalConfigComboBox.currentText() == 'New':
+            return
         logging.info(f'setting optical config to: {text}')
+        config = f'C:\\Users\\Mohamed\\Desktop\\Harrison\\OET\\configs\\{text}'
+        fluorescence_intensity, fluorescence_state, exposure, status = pickle.load(open(config, 'rb'))
+        self.fluorescenceIntensityDoubleSpinBox.setValue(fluorescence_intensity)
+        self.fluorescenceShutterPushButton.setChecked(fluorescence_state)
+        self.cameraExposureDoubleSpinBox.setValue(exposure)
+        self.microscope.load_config(status)
+        self.microscope.get_status()
+        self.update_gui_state(loading=True)
+        # TODO: need to set xylis configs and exposure
 
     def go_to_current_optical_config(self):
-        self.set_optical_config(-1)
+        text = self.opticalConfigComboBox.currentText()
+        self.set_optical_config(text)
+        print('going to config...')
 
     def clear_current_optical_config(self):
-        value = self.opticalConfigComboBox.currentIndex()
-        logging.info(f'clearing optical config{value}')
+        config = self.opticalConfigComboBox.currentText()
+        reply = QtWidgets.QMessageBox.question(self, 'Overwrite', f'Are you sure you want to overwrite {config}?',
+                                               QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                                               QtWidgets.QMessageBox.No)
+        if reply == QtWidgets.QMessageBox.Yes:
+            logging.info(f'clearing optical config{config}')
+            print(f'clearing optical config: {config}')
+            index = self.opticalConfigComboBox.currentIndex()
+            self.opticalConfigComboBox.setCurrentText('New')
+            self.opticalConfigComboBox.removeItem(index)
+            os.remove(f'C:\\Users\\Mohamed\\Desktop\\Harrison\\OET\\configs\\{config}')
+        else:
+            print(f'not removing {config}')
+            return
+
+    def save_optical_config(self):
+        print('saving config...')
+        status = self.microscope.get_status()
+        fluorescence_intensity = self.fluorescenceIntensityDoubleSpinBox.value()
+        fluorescence_state = self.fluorescenceShutterPushButton.isChecked()
+        exposure = self.cameraExposureDoubleSpinBox.value()
+        save_config = [fluorescence_intensity, fluorescence_state, exposure, status]
+        if self.opticalConfigComboBox.currentText() == 'New':
+            name, ok = QtWidgets.QInputDialog.getText(self, 'Name new config', 'Enter configuration name:')
+            if not ok:
+                return
+            with open(f'C:\\Users\\Mohamed\\Desktop\\Harrison\\OET\\configs\\{name}_config.p', 'wb+') as f:
+                pickle.dump(save_config, f)
+            self.opticalConfigComboBox.addItem(f'{name}_config.p')
+            self.opticalConfigComboBox.setCurrentText(f'{name}_config.p')
+            print(f'wrote new configuration: {name}')
+        else:
+            config = self.opticalConfigComboBox.currentText()
+            reply = QtWidgets.QMessageBox.question(self, 'Overwrite', f'Are you sure you want to overwrite {config}?',
+                                         QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+            if reply == QtWidgets.QMessageBox.Yes:
+                with open(f'C:\\Users\\Mohamed\\Desktop\\Harrison\\OET\\configs\\{config}', 'wb+') as f:
+                    pickle.dump(save_config, f)
+                print(f'overwriting config: {config}')
+            else:
+                print('not saving config')
+                return
 
     def change_condenser_position(self, index):
         index += 1
@@ -200,23 +251,6 @@ class Window(GUI):
         logging.info(f'setting condenser field stop: {value}')
         self.condenserFieldStopLabel.setText(f'Field Stop:{value}mm')
         self.microscope.set_field_stop(value)
-
-    def save_optical_config(self):
-        print('saving config...')
-        if self.opticalConfigComboBox.currentText() == 'New':
-            name, ok = QtWidgets.QInputDialog.getText(self, 'Name new config', 'Enter configuration name:')
-        status = self.microscope.get_status()
-        with open(f'C:\\Users\\Mohamed\\Desktop\\Harrison\\OET\\configs\\{name}_config.p', 'wb+') as f:
-            pickle.dump(status, f)
-        print(f'wrote new configuration:{name}')
-        self.opticalConfigComboBox.setCurrentText(name)
-        # ' '.join([f'{field_name} {getattr(status, field_name)}' for field_name, field_type in status._fields_])
-
-    def go_to_current_optical_config(self):
-        print('going to config...')
-
-    def clear_current_optical_config(self):
-        print('clearing current config')
 
     def execute_pulse(self):
         duration = self.pulseDoubleSpinBox.value()
